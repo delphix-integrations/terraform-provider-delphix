@@ -1,0 +1,13 @@
+temp/*
+*.tfstate*
+infra
+*.DS_Store
+terraform-provider-delphix
+terraform
+*.log
+*.bak
+.terraform
+delphix.json
+debug*
+*.tf
+.vscode
