@@ -1,7 +1,7 @@
 provider "delphix" {
   url = "${var.url}"
   delphix_admin_username = "delphix_admin"
-  delphix_admin_password = "landshark"
+  delphix_admin_password = "${var.delphix_admin_password}"
 }
 
 resource "delphix_environment" "my-target-env" {
@@ -55,3 +55,5 @@ variable "url" {
 variable "num_vdbs" {
   default = 1
 }
+
+variable "delphix_admin_password" {}
