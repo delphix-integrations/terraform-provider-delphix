@@ -110,15 +110,16 @@ func testAccCheckVDBConfigImported(c *Config, v *VDB) string {
 		group_name = "%s"
 		name = "%s"
 		db_name = "%s"
-		source = "ORACLE_DB_CONTAINER-96"
-		environment = "UNIX_HOST_ENVIRONMENT-53"
+		source = "ORACLE_DB_CONTAINER-4"
+		environment = "UNIX_HOST_ENVIRONMENT-18"
 		oracle_home = "%s"
+		mount_base = "%s"
 		}
 
 		variable "url" {
 		default = "%s"
 		}`,
-		c.username, c.password, v.groupName, v.name, v.dbName, v.oracleHome, c.url,
+		c.username, c.password, v.groupName, v.name, v.dbName, v.oracleHome, v.mountBase, c.url,
 	)
 }
 
@@ -134,15 +135,16 @@ func testAccCheckVDBConfigUpdatedName(c *Config, v *VDB, n string) string {
 		group_name = "%s"
 		name = "%s"
 		db_name = "%s"
-		source = "ORACLE_DB_CONTAINER-96"
-		environment = "UNIX_HOST_ENVIRONMENT-53"
+		source = "ORACLE_DB_CONTAINER-4"
+		environment = "UNIX_HOST_ENVIRONMENT-18"
 		oracle_home = "%s"
+		mount_base = "%s"
 		}
 
 		variable "url" {
 		default = "%s"
 		}`,
-		c.username, c.password, v.groupName, n, v.dbName, v.oracleHome, c.url,
+		c.username, c.password, v.groupName, n, v.dbName, v.oracleHome, v.mountBase, c.url,
 	)
 }
 
@@ -161,12 +163,13 @@ func testAccCheckVDBConfigUpdatedMult(c *Config, v *VDB, g string, n string, d s
 		source = "ORACLE_DB_CONTAINER-96"
 		environment = "UNIX_HOST_ENVIRONMENT-53"
 		oracle_home = "%s"
+		mount_base = "%s"
 		}
 
 		variable "url" {
 		default = "%s"
 		}`,
-		c.username, c.password, g, n, d, v.oracleHome, c.url,
+		c.username, c.password, g, n, d, v.oracleHome, v.mountBase, c.url,
 	)
 }
 

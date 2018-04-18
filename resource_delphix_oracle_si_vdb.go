@@ -17,6 +17,7 @@ type VDB struct {
 	groupName   string
 	dbName      string
 	oracleHome  string
+	mountBase   string
 }
 
 func resourceDelphixOracleSIVDB() *schema.Resource {
@@ -57,6 +58,11 @@ func resourceDelphixOracleSIVDB() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"mount_base": &schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
 		},
 	}
 }
@@ -85,6 +91,7 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 		environment: d.Get("environment").(string),
 		groupName:   d.Get("group_name").(string),
 		oracleHome:  d.Get("oracle_home").(string),
+		mountBase:   d.Get("mount_base").(string),
 	}
 
 	vdbExists, err := client.FindDatabaseByName(vdb.name)
@@ -133,7 +140,7 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 		},
 		Source: &delphix.OracleVirtualSource{
 			Type:                            "OracleVirtualSource",
-			MountBase:                       "/mnt/provision",
+			MountBase:                       vdb.mountBase,
 			AllowAutoVDBRestartOnHostReboot: f,
 		},
 		SourceConfig: &delphix.OracleSIConfig{

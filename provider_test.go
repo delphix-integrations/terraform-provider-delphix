@@ -35,6 +35,7 @@ func init() {
 	testAccVDB.name = os.Getenv("TEST_VDBNAME")
 	testAccVDB.groupName = os.Getenv("TEST_GROUP_NAME")
 	testAccVDB.oracleHome = os.Getenv("TEST_ORACLE_HOME")
+	testAccVDB.mountBase = os.Getenv("TEST_MOUNT_BASE")
 	//dSources
 	testAccDsource.name = os.Getenv("TEST_DELPHIX_DSOURCE_NAME")
 	testAccDsource.description = os.Getenv("TEST_DELPHIX_DSOURCE_DESCRIPTION")
