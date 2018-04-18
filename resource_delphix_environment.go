@@ -18,6 +18,7 @@ type Environment struct {
 	address      string
 	toolkitPath  string
 	serverID     string
+	publicKey    bool
 }
 
 func resourceDelphixEnvironment() *schema.Resource {
@@ -36,7 +37,7 @@ func resourceDelphixEnvironment() *schema.Resource {
 			},
 			"user_password": &schema.Schema{
 				Type:      schema.TypeString,
-				Required:  true,
+				Optional:  true,
 				ForceNew:  true,
 				Sensitive: true,
 			},
@@ -59,6 +60,11 @@ func resourceDelphixEnvironment() *schema.Resource {
 			},
 			"server_id": &schema.Schema{
 				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			"public_key": &schema.Schema{
+				Type:     schema.TypeBool,
 				Optional: true,
 				ForceNew: true,
 			},
@@ -85,18 +91,28 @@ func resourceDelphixEnvironmentCreate(d *schema.ResourceData, meta interface{}) 
 		userPassword: d.Get("user_password").(string),
 		address:      d.Get("address").(string),
 		toolkitPath:  d.Get("toolkit_path").(string),
+		publicKey:    d.Get("public_key").(bool),
 	}
-	var reference interface{}
+	var reference, thisCrendential interface{}
+
 	client := meta.(*delphix.Client)
+
+	thisCrendential = &delphix.PasswordCredential{
+		Type:     "PasswordCredential",
+		Password: env.userPassword,
+	}
+	if env.publicKey == true {
+		thisCrendential = &delphix.SystemKeyCredential{
+			Type: "SystemKeyCredential",
+		}
+	}
+
 	environmentCreateParams := delphix.HostEnvironmentCreateParameters{
 		Type: "HostEnvironmentCreateParameters",
 		PrimaryUser: &delphix.EnvironmentUser{
-			Type: "EnvironmentUser",
-			Name: env.userName,
-			Credential: &delphix.PasswordCredential{
-				Type:     "PasswordCredential",
-				Password: env.userPassword,
-			},
+			Type:       "EnvironmentUser",
+			Name:       env.userName,
+			Credential: thisCrendential,
 		},
 		HostEnvironment: &delphix.UnixHostEnvironment{
 			Type:        "UnixHostEnvironment",

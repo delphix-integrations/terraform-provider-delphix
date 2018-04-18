@@ -32,6 +32,27 @@ func TestAccEnvironmentDoesExistBasicCheck(t *testing.T) {
 	})
 }
 
+func TestAccEnvironmentDoesExistBasicCheckPublicKey(t *testing.T) {
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testEnvironmentCheckDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: testAccCheckEnvironmentConfigPublicKey(&testAccDelphixAdminConfig, &testAccEnvironment),
+				Check: resource.ComposeTestCheckFunc(
+					testEnvironmentCheckDoesExist(testAccEnvironment.name),
+					resource.TestCheckResourceAttr(
+						"delphix_environment.test_acc_env", "name", testAccEnvironment.name),
+					resource.TestCheckResourceAttr(
+						"delphix_environment.test_acc_env", "description", testAccEnvironment.description),
+				),
+			},
+		},
+	})
+}
+
 func TestAccEnvironmentDoesExist_UpdatedName(t *testing.T) {
 	updatedEnvironmentName := "UpdatedName"
 	updatedDescription := "UpdatedDescription"
@@ -180,6 +201,31 @@ func testAccCheckEnvironmentConfigImported(c *Config, e *Environment) string {
 		}
 		`,
 		c.username, c.password, e.name, e.description, e.address, e.userName, e.userPassword, e.toolkitPath, c.url,
+	)
+}
+
+func testAccCheckEnvironmentConfigPublicKey(c *Config, e *Environment) string {
+	return fmt.Sprintf(`
+		provider "delphix" {
+		url = "${var.url}"
+		delphix_admin_username = "%s"
+		delphix_admin_password = "%s"
+		}
+
+		resource "delphix_environment" "test_acc_env" {
+		name = "%s"
+		description = "%s"
+		address = "%s"
+		user_name = "%s"
+		toolkit_path = "%s"
+		public_key = true
+		}
+
+		variable "url" {
+		default = "%s"
+		}
+		`,
+		c.username, c.password, e.name, e.description, e.address, e.userName, e.toolkitPath, c.url,
 	)
 }
 
