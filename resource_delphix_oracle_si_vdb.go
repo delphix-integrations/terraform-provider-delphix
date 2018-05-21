@@ -18,6 +18,7 @@ type VDB struct {
 	dbName      string
 	oracleHome  string
 	mountBase   string
+	snapSource  bool
 }
 
 func resourceDelphixOracleSIVDB() *schema.Resource {
@@ -63,6 +64,10 @@ func resourceDelphixOracleSIVDB() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			"snap_source": &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -92,6 +97,7 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 		groupName:   d.Get("group_name").(string),
 		oracleHome:  d.Get("oracle_home").(string),
 		mountBase:   d.Get("mount_base").(string),
+		snapSource:  d.Get("snap_source").(bool),
 	}
 
 	vdbExists, err := client.FindDatabaseByName(vdb.name)
@@ -160,6 +166,13 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 			Location:  "LATEST_SNAPSHOT",
 		},
 	}
+
+	if vdb.snapSource == true {
+		if err = client.SyncDatabase(vdb.source); err != nil {
+			return err
+		}
+	}
+
 	reference, err = client.CreateDatabase(&oracleProvisionParameters)
 	if err != nil {
 		return err
