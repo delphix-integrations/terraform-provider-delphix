@@ -9,8 +9,14 @@ This prototype is narrowly focused to support the following use cases:
 ## Use Case 1 - Adding/Removing a Unix Host Environment running Oracle
 The prototype supports Create, Read (name only), and Delete
 
-## Use Case 2 - Provisioning/Destroying an Oracle Single Instance VDB
+## Use Case 2 - Ingesting/Destroying an Oracle Single Instance dSource
+The prototype supports Create, Read and Delete actions on that dSource.
+
+## Use Case 3 - Provisioning/Destroying an Oracle Single Instance VDB
 The prototype supports Create, Read, Update and Delete actions on that VDB.
+
+## Use Case 4 - Provisioning/Destroying Delphix Dataset Groups
+The prototype supports Create, Read, Update and Delete actions on that Group.
 
 ## Using the plugin
 The following assumes you have a working knowledge of terraform and go
@@ -42,15 +48,15 @@ To get started, you will need to install Golang.
 
 2. If you do not have one already, create a directory to work with go.
 3. Navigate into that directory in your terminal.
-4. Create a directory called srv
+4. Create a directory called goprojects
 5. Export the current working directory as GOPATH
 6. Gather the required packages
 7. Build
 ```bash
-mkdir src
+mkdir goprojects
 export GOPATH=`pwd`
-git clone https://github.com/delphix/terraform-provider-delphix src/terraform-provider-delphix
-cd src/terraform-provider-delphix
+git clone https://github.com/delphix/terraform-provider-delphix goprojects/terraform-provider-delphix
+cd goprojects/terraform-provider-delphix
 go get
 go build
 ```
