@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	delphix "github.com/delphix/delphix-go-sdk"
+	delphix "github.com/ajaytho/delphix-go-sdk"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 type DSource struct {
@@ -125,7 +125,7 @@ func resourceDelphixOracleDSourceCreate(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Environment %s does not exist. Exiting", dSource.name)
 	}
 
-	groupObj, err := client.FindGroupByName(dSource.groupName)
+	groupObj, err := client.FindGroupRefByName(dSource.groupName)
 	if err != nil {
 		return err
 	} else if groupObj == nil {
@@ -141,14 +141,14 @@ func resourceDelphixOracleDSourceCreate(d *schema.ResourceData, meta interface{}
 		return fmt.Errorf("Repo \"%s\" not found on \"%s\"", dSource.oracleHome, dSource.name)
 	}
 
-	sourceConfigObj, err := client.FindSourceConfigByNameAndRepoReference(dSource.instance, repoRef.(string))
+	sourceConfigObj, err := client.FindSourceConfigReferenceByNameAndRepoReference(dSource.instance, repoRef.(string))
 	if err != nil {
 		return err
 	} else if sourceConfigObj == nil {
 		return fmt.Errorf("Oracle Instance \"%s\" not found", dSource.instance)
 	}
 
-	userRef, err := client.FindEnvironmentUserByNameAndEnvironmentReference(dSource.environmentUser, dSource.environment)
+	userRef, err := client.FindEnvironmentUserRefByNameAndEnvironmentReference(dSource.environmentUser, dSource.environment)
 	if err != nil {
 		return err
 	} else if userRef == nil {
@@ -157,24 +157,29 @@ func resourceDelphixOracleDSourceCreate(d *schema.ResourceData, meta interface{}
 	if dSource.linkNow == true {
 		*boolPointer = true
 	}
-	l := &delphix.LinkParameters{
+	l := &delphix.LinkParametersStruct{
 		Type:        "LinkParameters",
 		Name:        dSource.name,
 		Description: dSource.description,
 		Group:       groupRef,
-		LinkData: &delphix.OracleLinkData{
-			Type:            "OracleLinkData",
+		LinkData: &delphix.OracleLinkFromExternalStruct{
+			Type:            "OracleLinkFromExternal",
 			Config:          sourceConfigObj.(string),
 			EnvironmentUser: userRef.(string),
-			DbUser:          dSource.userName,
-			DbCredentials: &delphix.PasswordCredential{
+			OracleFallbackUser:          dSource.userName,
+			OracleFallbackCredentials: &delphix.PasswordCredentialStruct{
 				Type:     "PasswordCredential",
 				Password: dSource.password,
+			},
+			SyncParameters: &delphix.OracleSyncFromExternalParametersStruct{
+				SkipSpaceCheck: boolPointer,
+				Type: "OracleSyncFromExternalParameters",
 			},
 			LinkNow: boolPointer,
 		},
 	}
-
+	log.Println("Value of l")
+	log.Println(l)
 	reference, err = client.CreateDSource(l)
 	if err != nil {
 		return err
@@ -221,7 +226,7 @@ func resourceDelphixOracleDSourceUpdate(d *schema.ResourceData, meta interface{}
 		linkNow:         d.Get("link_now").(bool),
 	}
 
-	oracleDatabaseContainer := delphix.OracleDatabaseContainer{
+	oracleDatabaseContainer := delphix.OracleDatabaseContainerStruct{
 		Type:        "OracleDatabaseContainer",
 		Name:        uDSource.name,
 		Description: uDSource.description,

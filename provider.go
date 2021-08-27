@@ -3,17 +3,17 @@ package main
 import (
 	"log"
 
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Provider returns a terraform.ResourceProvider.
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{ // Source https://github.com/hashicorp/terraform/blob/master/helper/schema
 		Schema: providerSchema(),
 		ResourcesMap: map[string]*schema.Resource{
-			"delphix_vdb":                resourceDelphixOracleSIVDB(),
-			"delphix_environment":        resourceDelphixEnvironment(),
+			"delphix_group": resourceDelphixGroup(),
+			"delphix_vdb": resourceDelphixOracleSIVDB(),
+			"delphix_environment": resourceDelphixEnvironment(),
 			"delphix_data_source_oracle": resourceDelphixOracleDSource(),
 		},
 		ConfigureFunc: providerConfigure,

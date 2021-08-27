@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	delphix "github.com/delphix/delphix-go-sdk"
+	delphix "github.com/ajaytho/delphix-go-sdk"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 type Environment struct {
@@ -18,7 +18,6 @@ type Environment struct {
 	address      string
 	toolkitPath  string
 	serverID     string
-	publicKey    bool
 }
 
 func resourceDelphixEnvironment() *schema.Resource {
@@ -29,6 +28,9 @@ func resourceDelphixEnvironment() *schema.Resource {
 		Update:        resourceDelphixEnvironmentUpdate,
 		Delete:        resourceDelphixEnvironmentDelete,
 		Exists:        resourceDelphixEnvironmentExists,
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 		Schema: map[string]*schema.Schema{ // List of supported configuration fields for your resource
 			"user_name": &schema.Schema{
 				Type:     schema.TypeString,
@@ -37,7 +39,7 @@ func resourceDelphixEnvironment() *schema.Resource {
 			},
 			"user_password": &schema.Schema{
 				Type:      schema.TypeString,
-				Optional:  true,
+				Required:  true,
 				ForceNew:  true,
 				Sensitive: true,
 			},
@@ -63,15 +65,9 @@ func resourceDelphixEnvironment() *schema.Resource {
 				Optional: true,
 				ForceNew: true,
 			},
-			"public_key": &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-				ForceNew: true,
-			},
 		},
 	}
 }
-
 func resourceDelphixEnvironmentExists(d *schema.ResourceData, meta interface{}) (bool, error) {
 	log.Println("Running Exists")
 	client := meta.(*delphix.Client)
@@ -82,7 +78,6 @@ func resourceDelphixEnvironmentExists(d *schema.ResourceData, meta interface{}) 
 	}
 	return true, nil
 }
-
 func resourceDelphixEnvironmentCreate(d *schema.ResourceData, meta interface{}) error {
 	env := Environment{
 		name:         d.Get("name").(string),
@@ -91,65 +86,53 @@ func resourceDelphixEnvironmentCreate(d *schema.ResourceData, meta interface{}) 
 		userPassword: d.Get("user_password").(string),
 		address:      d.Get("address").(string),
 		toolkitPath:  d.Get("toolkit_path").(string),
-		publicKey:    d.Get("public_key").(bool),
 	}
-	var reference, thisCrendential interface{}
-
+	var reference interface{}
 	client := meta.(*delphix.Client)
-
-	thisCrendential = &delphix.PasswordCredential{
-		Type:     "PasswordCredential",
-		Password: env.userPassword,
-	}
-	if env.publicKey == true {
-		thisCrendential = &delphix.SystemKeyCredential{
-			Type: "SystemKeyCredential",
-		}
-	}
-
-	environmentCreateParams := delphix.HostEnvironmentCreateParameters{
+	environmentCreateParams := delphix.HostEnvironmentCreateParametersStruct{
 		Type: "HostEnvironmentCreateParameters",
-		PrimaryUser: &delphix.EnvironmentUser{
-			Type:       "EnvironmentUser",
-			Name:       env.userName,
-			Credential: thisCrendential,
+		PrimaryUser: &delphix.EnvironmentUserStruct{
+			Type: "EnvironmentUser",
+			Name: env.userName,
+			Credential: &delphix.PasswordCredentialStruct{
+				Type:     "PasswordCredential",
+				Password: env.userPassword,
+			},
 		},
-		HostEnvironment: &delphix.UnixHostEnvironment{
+		HostEnvironment: &delphix.UnixHostEnvironmentStruct{
 			Type:        "UnixHostEnvironment",
 			Name:        env.name,
 			Description: env.description,
 		},
-		HostParameters: &delphix.UnixHostCreateParameters{
+		HostParameters: &delphix.UnixHostCreateParametersStruct{
 			Type: "UnixHostCreateParameters",
-			Host: &delphix.UnixHost{
+			Host: &delphix.UnixHostStruct{
 				Type:        "UnixHost",
 				Address:     env.address,
 				ToolkitPath: env.toolkitPath,
 			},
 		},
 	}
+
+	fmt.Println(json.Marshal(environmentCreateParams))
+
 	bits, err := json.Marshal(environmentCreateParams)
 	fmt.Println(string(bits))
-
 	environmentRef, err := client.FindEnvironmentByName(env.name)
 	if err != nil {
 		return err
 	} else if environmentRef != nil {
 		return fmt.Errorf("Environment \"%s\" already exists", env.name)
 	}
-
 	reference, err = client.CreateEnvironment(&environmentCreateParams)
 	if err != nil {
 		return err
 	} else if reference == nil {
 		return fmt.Errorf("Environment \"%s\" was not created", env.name)
 	}
-
 	d.SetId(reference.(string))
-
 	return nil
 }
-
 func resourceDelphixEnvironmentRead(d *schema.ResourceData, meta interface{}) error {
 	log.Println("Running Read")
 	client := meta.(*delphix.Client)
@@ -162,13 +145,10 @@ func resourceDelphixEnvironmentRead(d *schema.ResourceData, meta interface{}) er
 	}
 	d.Set("name", envObj.(map[string]interface{})["name"].(string))
 	d.Set("description", envObj.(map[string]interface{})["description"].(string))
-
 	return nil
 }
-
 func resourceDelphixEnvironmentUpdate(d *schema.ResourceData, meta interface{}) error {
 	client := meta.(*delphix.Client)
-
 	uEnv := Environment{
 		name:         d.Get("name").(string),
 		description:  d.Get("description").(string),
@@ -177,23 +157,18 @@ func resourceDelphixEnvironmentUpdate(d *schema.ResourceData, meta interface{}) 
 		address:      d.Get("address").(string),
 		toolkitPath:  d.Get("toolkit_path").(string),
 	}
-
-	environmentUpdateParams := delphix.UnixHostEnvironment{
+	environmentUpdateParams := delphix.UnixHostEnvironmentStruct{
 		Type:        "UnixHostEnvironment",
 		Name:        uEnv.name,
 		Description: uEnv.description,
 	}
-
 	bits, _ := json.Marshal(environmentUpdateParams)
 	fmt.Println(string(bits))
-
 	if err := client.UpdateEnvironment(d.Id(), &environmentUpdateParams); err != nil {
 		return fmt.Errorf("error updating Environment: %s", err.Error())
 	}
-
 	return resourceDelphixEnvironmentRead(d, meta)
 }
-
 func resourceDelphixEnvironmentDelete(d *schema.ResourceData, meta interface{}) error {
 	log.Println("Running Delete")
 	client := meta.(*delphix.Client)
@@ -208,7 +183,6 @@ func resourceDelphixEnvironmentDelete(d *schema.ResourceData, meta interface{}) 
 	if err != nil {
 		return err
 	}
-
 	d.SetId("")
 	return nil
 }

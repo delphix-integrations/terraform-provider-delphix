@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log"
 
-	delphix "github.com/delphix/delphix-go-sdk"
+	delphix "github.com/ajaytho/delphix-go-sdk"
 
-	"github.com/hashicorp/terraform/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // VDB provides basic VDB object parameters
@@ -87,6 +87,7 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 	var reference interface{}
 	f := new(bool)
 	*f = false
+	var instnum = 1
 
 	client := meta.(*delphix.Client)
 	vdb := VDB{
@@ -121,7 +122,7 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Source Database \"%s\" not found", vdb.source)
 	}
 
-	groupObj, err := client.FindGroupByName(vdb.groupName)
+	groupObj, err := client.FindGroupRefByName(vdb.groupName)
 	if err != nil {
 		return err
 	} else if groupObj == nil {
@@ -137,35 +138,39 @@ func resourceDelphixOracleSIVDBCreate(d *schema.ResourceData, meta interface{}) 
 		return fmt.Errorf("Repo \"%s\" not found on \"%s\"", vdb.oracleHome, vdb.environment)
 	}
 
-	oracleProvisionParameters := delphix.OracleProvisionParameters{
+	log.Println("Milestone 1")
+	oracleProvisionParameters := delphix.OracleProvisionParametersStruct{
 		Type: "OracleProvisionParameters",
-		Container: &delphix.OracleDatabaseContainer{
+		Container: &delphix.OracleDatabaseContainerStruct{
 			Type:  "OracleDatabaseContainer",
 			Name:  vdb.name,
 			Group: groupRef,
 		},
-		Source: &delphix.OracleVirtualSource{
+		Source: &delphix.OracleVirtualSourceStruct{
 			Type:                            "OracleVirtualSource",
 			MountBase:                       vdb.mountBase,
 			AllowAutoVDBRestartOnHostReboot: f,
 		},
-		SourceConfig: &delphix.OracleSIConfig{
+		SourceConfig: &delphix.OracleSIConfigStruct{
 			Type:         "OracleSIConfig",
 			Repository:   repoRef.(string),
 			DatabaseName: vdb.dbName,
 			UniqueName:   vdb.dbName,
-			Instance: &delphix.OracleInstance{
+			Instance: &delphix.OracleInstanceStruct{
 				Type:           "OracleInstance",
 				InstanceName:   vdb.dbName,
-				InstanceNumber: 1,
+				InstanceNumber: &instnum,
 			},
 		},
-		TimeflowPointParameters: delphix.TimeflowPointSemantic{
+		TimeflowPointParameters: delphix.TimeflowPointSemanticStruct{
 			Type:      "TimeflowPointSemantic",
 			Container: vdb.source,
 			Location:  "LATEST_SNAPSHOT",
 		},
 	}
+
+	log.Println("Milestone 2")
+	log.Println(oracleProvisionParameters)
 
 	if vdb.snapSource == true {
 		if err = client.SyncDatabase(vdb.source); err != nil {
@@ -215,7 +220,7 @@ func resourceDelphixOracleSIVDBUpdate(d *schema.ResourceData, meta interface{}) 
 		oracleHome:  d.Get("oracle_home").(string),
 	}
 
-	oracleDatabaseContainer := delphix.OracleDatabaseContainer{
+	oracleDatabaseContainer := delphix.OracleDatabaseContainerStruct{
 		Type: "OracleDatabaseContainer",
 		Name: uVDB.name,
 	}

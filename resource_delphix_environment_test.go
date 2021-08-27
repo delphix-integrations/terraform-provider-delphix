@@ -5,9 +5,9 @@ import (
 	"log"
 	"testing"
 
-	delphix "github.com/delphix/delphix-go-sdk"
+	delphix "github.com/ajaytho/delphix-go-sdk"
 
-	"github.com/hashicorp/terraform/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 )
 
