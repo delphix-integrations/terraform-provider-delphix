@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	delphix "github.com/ajaytho/delphix-go-sdk"
+	delphix "github.com/delphix/delphix-go-sdk"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

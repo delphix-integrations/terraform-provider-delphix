@@ -5,10 +5,10 @@ import (
 	"log"
 	"testing"
 
-	delphix "github.com/ajaytho/delphix-go-sdk"
+	delphix "github.com/delphix/delphix-go-sdk"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 func TestAccEnvironmentDoesExistBasicCheck(t *testing.T) {

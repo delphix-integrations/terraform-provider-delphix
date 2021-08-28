@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	delphix "github.com/ajaytho/delphix-go-sdk"
+	delphix "github.com/delphix/delphix-go-sdk"
 )
 
 //Config holds our parameters for connecting to the Delphix Engine
