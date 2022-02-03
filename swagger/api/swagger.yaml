@@ -1,0 +1,2876 @@
+openapi: 3.0.0
+info:
+  title: Delphix API Gateway
+  description: Delphix API Gateway API
+  contact:
+    name: Delphix Support
+    url: https://support.delphix.com
+    email: support@delphix.com
+  version: "1.0"
+servers:
+- url: /v1
+security:
+- ApiKeyAuth: []
+paths:
+  /engines:
+    get:
+      tags:
+      - Engines
+      summary: List all engines.
+      operationId: get_engines
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListEnginesResponse'
+  /engines/{engineId}:
+    get:
+      tags:
+      - Engines
+      summary: Returns an engine by ID.
+      operationId: get_engine_by_id
+      parameters:
+      - name: engineId
+        in: path
+        description: The ID of the engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Engine'
+  /bookmarks:
+    get:
+      tags:
+      - Bookmarks
+      summary: List all bookmarks.
+      operationId: get_bookmarks
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListBookmarksResponse'
+    post:
+      tags:
+      - Bookmarks
+      summary: Create a bookmark at the current time.
+      operationId: create_bookmark
+      requestBody:
+        description: The parameters to create a bookmark.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Bookmark'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateBookmarkResponse'
+  /bookmarks/{bookmarkId}:
+    get:
+      tags:
+      - Bookmarks
+      summary: Get a bookmark by ID.
+      operationId: get_bookmark_by_id
+      parameters:
+      - name: bookmarkId
+        in: path
+        description: The ID of the bookmark.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bookmark'
+    delete:
+      tags:
+      - Bookmarks
+      summary: Delete a bookmark.
+      operationId: delete_bookmark
+      parameters:
+      - name: bookmarkId
+        in: path
+        description: The ID of the bookmark.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "204":
+          description: No Content
+  /bookmarks/{bookmarkId}/restore:
+    post:
+      tags:
+      - Bookmarks
+      summary: Restore VDBs to the bookmark creation time.
+      operationId: restore_bookmark
+      parameters:
+      - name: bookmarkId
+        in: path
+        description: The ID of the bookmark.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: Bookmark restore initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RestoreBookmarkResponse'
+  /sources:
+    get:
+      tags:
+      - Sources
+      summary: List all sources.
+      operationId: get_sources
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSourcesResponse'
+  /sources/{sourceId}:
+    get:
+      tags:
+      - Sources
+      summary: Get a source by ID.
+      operationId: get_source_by_id
+      parameters:
+      - name: sourceId
+        in: path
+        description: The ID of the source.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Source'
+  /dsources:
+    get:
+      tags:
+      - DSources
+      summary: List all dSources.
+      operationId: get_dsources
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListDSourcesResponse'
+  /dsources/{dsourceId}:
+    get:
+      tags:
+      - DSources
+      summary: Get a dSource by ID.
+      operationId: get_dsource_by_id
+      parameters:
+      - name: dsourceId
+        in: path
+        description: The ID of the dSource.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DSource'
+  /vdbs:
+    get:
+      tags:
+      - VDBs
+      summary: List all vdbs.
+      operationId: get_vdbs
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListVDBsResponse'
+  /vdbs/{vdbId}:
+    get:
+      tags:
+      - VDBs
+      summary: Get a VDB by ID.
+      operationId: get_vdb_by_id
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VDB'
+  /vdbs/{vdbId}/start:
+    post:
+      tags:
+      - VDBs
+      summary: Start a VDB.
+      operationId: start_vdb
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: VDB start initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartVDBResponse'
+  /vdbs/{vdbId}/stop:
+    post:
+      tags:
+      - VDBs
+      summary: Stop a VDB.
+      operationId: stop_vdb
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: VDB stop initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopVDBResponse'
+  /vdbs/{vdbId}/enable:
+    post:
+      tags:
+      - VDBs
+      summary: Enable a VDB.
+      operationId: enable_vdb
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to enable a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnableVDBParameters'
+      responses:
+        "200":
+          description: VDB enable initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnableVDBResponse'
+  /vdbs/{vdbId}/disable:
+    post:
+      tags:
+      - VDBs
+      summary: Disable a VDB.
+      operationId: disable_vdb
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to disable a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisableVDBParameters'
+      responses:
+        "200":
+          description: VDB disable initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DisableVDBResponse'
+  /vdbs/{vdbId}/delete:
+    post:
+      tags:
+      - VDBs
+      summary: Delete a VDB.
+      operationId: delete_vdb
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to delete a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteVDBParameters'
+      responses:
+        "200":
+          description: VDB delete initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteVDBResponse'
+  /vdbs/{vdbId}/rollback_by_timestamp:
+    post:
+      tags:
+      - VDBs
+      summary: Rollback a VDB by timestamp.
+      operationId: rollback_vdb_by_timestamp
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to rollback a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackVDBByTimestampParameters'
+      responses:
+        "200":
+          description: VDB rollback initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackVDBByTimestampResponse'
+  /vdbs/{vdbId}/rollback_by_snapshot:
+    post:
+      tags:
+      - VDBs
+      summary: Rollback a VDB by snapshot.
+      operationId: rollback_vdb_by_snapshot
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to rollback a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackVDBBySnapshotParameters'
+      responses:
+        "200":
+          description: VDB rollback initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RollbackVDBBySnapshotResponse'
+  /vdbs/{vdbId}/refresh_by_timestamp:
+    post:
+      tags:
+      - VDBs
+      summary: Refresh a VDB by timestamp.
+      operationId: refresh_vdb_by_timestamp
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to refresh a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshVDBByTimestampParameters'
+      responses:
+        "200":
+          description: VDB refresh initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshVDBByTimestampResponse'
+  /vdbs/{vdbId}/refresh_by_snapshot:
+    post:
+      tags:
+      - VDBs
+      summary: Refresh a VDB by snapshot.
+      operationId: refresh_vdb_by_snapshot
+      parameters:
+      - name: vdbId
+        in: path
+        description: The ID of the VDB.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      requestBody:
+        description: The parameters to refresh a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshVDBBySnapshotParameters'
+      responses:
+        "200":
+          description: VDB refresh initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshVDBBySnapshotResponse'
+  /vdbs/provision_by_timestamp:
+    post:
+      tags:
+      - VDBs
+      summary: Provision a new VDB by timestamp.
+      operationId: provision_vdb_by_timestamp
+      requestBody:
+        description: The parameters to provision a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionVDBByTimestampParameters'
+        required: true
+      responses:
+        "200":
+          description: VDB provisioning initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvisionVDBResponse'
+  /vdbs/provision_by_snapshot:
+    post:
+      tags:
+      - VDBs
+      summary: Provision a new VDB by snapshot.
+      operationId: provision_vdb_by_snapshot
+      requestBody:
+        description: The parameters to provision a VDB.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProvisionVDBBySnapshotParameters'
+        required: true
+      responses:
+        "200":
+          description: VDB provisioning initiated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProvisionVDBResponse'
+  /snapshots:
+    get:
+      tags:
+      - Snapshots
+      summary: List Snapshots for a dSource or VDB.
+      operationId: get_snapshots
+      parameters:
+      - name: dataset_id
+        in: query
+        description: The ID of the dSource or VDB for which to fetch Snapshots.
+        required: false
+        style: form
+        explode: true
+        schema:
+          minLength: 1
+          type: string
+      - name: limit
+        in: query
+        description: Maximum number of objects to return per query. The value must
+          be between 1 and 1000. Default is 100.
+        required: false
+        style: form
+        explode: true
+        schema:
+          maximum: 100
+          minimum: 1
+          type: integer
+          default: 100
+        example: 50
+      - name: cursor
+        in: query
+        description: Cursor to fetch the next or previous page of results.
+        required: false
+        style: form
+        explode: true
+        schema:
+          maxLength: 4096
+          minLength: 1
+          type: string
+        example: RXlhbCBpcyBncmVhdAo=
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListSnaphotsResponse'
+  /snapshots/{snapshotId}:
+    get:
+      tags:
+      - Snapshots
+      summary: Get a Snapshot by ID.
+      operationId: get_snapshot_by_id
+      parameters:
+      - name: snapshotId
+        in: path
+        description: The ID of the snaphost.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+  /environments:
+    get:
+      tags:
+      - Environments
+      summary: List all environments.
+      operationId: get_environments
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListEnvironmentsResponse'
+  /environments/{environmentId}:
+    get:
+      tags:
+      - Environments
+      summary: Returns an environment by ID.
+      operationId: get_environment_by_id
+      parameters:
+      - name: environmentId
+        in: path
+        description: The ID of the environment.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+  /management/engines:
+    get:
+      tags:
+      - Management
+      summary: Returns a list of registered engines.
+      operationId: get_registered_engines
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegisteredEngine'
+                x-content-type: application/json
+    post:
+      tags:
+      - Management
+      summary: Register an engine.
+      operationId: register_engine
+      requestBody:
+        description: The parameters to register an engine.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EngineRegistrationParameter'
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredEngine'
+  /jobs/{jobId}:
+    get:
+      tags:
+      - Jobs
+      summary: Returns an job by ID.
+      operationId: get_job_by_id
+      parameters:
+      - name: jobId
+        in: path
+        description: The ID of the job.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /management/engines/{engineId}:
+    get:
+      tags:
+      - Management
+      summary: Returns a registered engine by ID.
+      operationId: get_registered_engine
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredEngine'
+    put:
+      tags:
+      - Management
+      summary: Update a registered engine.
+      operationId: update_registered_engine
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      requestBody:
+        description: The updated registration engine information.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisteredEngine'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredEngine'
+    delete:
+      tags:
+      - Management
+      summary: Unregister an engine.
+      operationId: unregister_engine
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+  /management/engines/{engineId}/users:
+    get:
+      tags:
+      - Management
+      summary: Returns the list of users associated to an registered engine.
+      operationId: get_registered_engine_users
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RegisteredEngineUser'
+                x-content-type: application/json
+    post:
+      tags:
+      - Management
+      summary: Associate a new engine user to a registered engine.
+      operationId: add_registered_engine_user
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisteredEngineUser'
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredEngineUser'
+  /management/engines/{engineId}/users/{userId}:
+    delete:
+      tags:
+      - Management
+      summary: Remove a user from the list of users associated to a registered engine.
+      operationId: delete_registered_engine_user
+      parameters:
+      - name: engineId
+        in: path
+        description: Numeric ID of the registered engine.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minimum: 1
+          type: integer
+          format: int64
+      - name: userId
+        in: path
+        description: The ID of the registered engine user.
+        required: true
+        style: simple
+        explode: false
+        schema:
+          minLength: 1
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+  /management/vaults/hashicorp:
+    get:
+      tags:
+      - Management
+      summary: Returns a list of configured Hashicorp vaults.
+      operationId: get_hashicorp_vaults
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HashicorpVault'
+                x-content-type: application/json
+    post:
+      tags:
+      - Management
+      summary: Configure a new Hashicorp Vault
+      operationId: create_hashicorp_vault
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HashicorpVault'
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HashicorpVault'
+  /management/vaults/hashicorp/{vaultId}:
+    get:
+      tags:
+      - Management
+      summary: Get a Hashicorp vault by id
+      operationId: get_hashicorp_vault
+      parameters:
+      - name: vaultId
+        in: path
+        description: Numeric ID of the Hashicorp vault
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HashicorpVault'
+    delete:
+      tags:
+      - Management
+      summary: Delete a Hashicorp vault by id
+      operationId: delete_hashicorp_vault
+      parameters:
+      - name: vaultId
+        in: path
+        description: Numeric ID of the Hashicorp vault
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+  /management/api-clients:
+    get:
+      tags:
+      - ApiClients
+      summary: Returns a list of API clients.
+      operationId: get_api_clients
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiClient'
+                x-content-type: application/json
+    post:
+      tags:
+      - ApiClients
+      summary: |
+        Create a new API Client.
+      operationId: create_api_client
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiClientCreateParameter'
+        required: true
+      responses:
+        "201":
+          description: The created API client id and if requested the generated API
+            key token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClientCreateResponse'
+  /management/api-clients/{id}:
+    get:
+      tags:
+      - ApiClients
+      summary: Get an API client by id
+      operationId: get_api_client
+      parameters:
+      - name: id
+        in: path
+        description: Numeric ID of the Api client
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClient'
+    put:
+      tags:
+      - ApiClients
+      summary: |
+        Update an Api client.
+      operationId: update_api_client
+      parameters:
+      - name: id
+        in: path
+        description: Numeric ID of the Api client
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiClient'
+        required: true
+      responses:
+        "200":
+          description: Updated Api Client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClient'
+    delete:
+      tags:
+      - ApiClients
+      summary: Delete an API client
+      operationId: delete_api_client
+      parameters:
+      - name: id
+        in: path
+        description: Numeric ID of the Api client
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: integer
+          format: int64
+      responses:
+        "200":
+          description: OK
+components:
+  schemas:
+    Source:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Source object entity ID.
+        database_type:
+          type: string
+          description: The type of this source database.
+          nullable: true
+        name:
+          type: string
+          description: The name of this source database.
+          nullable: true
+        database_version:
+          type: string
+          description: The version of this source database.
+          nullable: true
+        environment_id:
+          type: string
+          description: A reference to the Environment that hosts this source database.
+          nullable: true
+        data_uuid:
+          type: string
+          description: A universal ID that uniquely identifies this source database.
+          nullable: true
+        ip_address:
+          type: string
+          description: The IP address of the source's host.
+          nullable: true
+        fqdn:
+          type: string
+          description: The FQDN of the source's host.
+          nullable: true
+        size:
+          type: integer
+          description: "The total size of this source database, in bytes."
+          format: int64
+          nullable: true
+        jdbc_connection_string:
+          type: string
+          description: The JDBC connection URL for this source database.
+          nullable: true
+        plugin_version:
+          type: string
+          description: The version of the plugin associated with this source database.
+          nullable: true
+      description: The Delphix representation of the source database (not typically
+        managed by Delphix).
+      example:
+        id: source-123
+        database_type: Oracle
+        name: production01
+        database_version: 11.1.0.7.0
+        environment_id: environment-123
+        data_uuid: 1734315df891991101eb96963535afa0
+        ip_address: 192.0.2.0
+        fqdn: prod01.myhost.com
+        size: 856981504
+        jdbc_connection_string: jdbc:oracle:thin:@(DESCRIPTION=(ENABLE=broken)(ADDRESS=(PROTOCOL=tcp)(HOST=10.43.47.94)(PORT=1521))(CONNECT_DATA=(UR=A)(SID=production01)))
+        plugin_version: "1.0"
+    DSource:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The dSource object entity ID.
+        database_type:
+          type: string
+          description: The database type of this dSource.
+          nullable: true
+        name:
+          type: string
+          description: The container name of this dSource.
+          nullable: true
+        database_version:
+          type: string
+          description: The database version of this dSource.
+          nullable: true
+        data_uuid:
+          type: string
+          description: A universal ID that uniquely identifies the dSource database.
+          nullable: true
+        storage_size:
+          type: integer
+          description: "The actual space used by this dSource, in bytes."
+          format: int64
+          nullable: true
+        plugin_version:
+          type: string
+          description: The version of the plugin associated with this source database.
+          nullable: true
+        creation_date:
+          type: string
+          description: The date this dSource was created.
+          format: date-time
+          nullable: true
+        group_name:
+          type: string
+          description: The name of the group containing this dSource.
+          nullable: true
+        enabled:
+          type: boolean
+          description: A value indicating whether this dSource is enabled.
+          nullable: true
+        engine_id:
+          type: string
+          description: A reference to the Engine that this dSource belongs to.
+        source_id:
+          type: string
+          description: A reference to the Source associated with this dSource.
+          nullable: true
+        status:
+          type: string
+          description: The runtime status of the dSource. 'Unknown' if all attempts
+            to connect to the source failed.
+          nullable: true
+      description: The Delphix storage-based copy of the source databse including
+        its history.
+      example:
+        id: dsource-123
+        database_type: Oracle
+        name: prod01-main
+        database_version: 10.2.0.5.0
+        data_uuid: 1734315df891991101eb96963535afa0
+        storage_size: 339292672
+        plugin_version: "1.0"
+        creation_date: 2021-05-01T08:51:34.148000+00:00
+        group_name: DSources
+        enabled: true
+        engine_id: engine-123
+        source_id: source-123
+        status: RUNNING
+    VDB:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The VDB object entity ID.
+        database_type:
+          type: string
+          description: The database type of this VDB.
+          nullable: true
+        name:
+          type: string
+          description: The container name of this VDB.
+          nullable: true
+        database_version:
+          type: string
+          description: The database version of this VDB.
+          nullable: true
+        size:
+          type: integer
+          description: "The total size of this VDB, in bytes."
+          format: int64
+          nullable: true
+        engine_id:
+          type: string
+          description: A reference to the Engine that this VDB belongs to.
+        status:
+          type: string
+          description: The runtime status of the VDB. 'Unknown' if all attempts to
+            connect to the dataset failed.
+          nullable: true
+        environment_id:
+          type: string
+          description: A reference to the Environment that hosts this VDB.
+          nullable: true
+        ip_address:
+          type: string
+          description: The IP address of the VDB's host.
+          nullable: true
+        fqdn:
+          type: string
+          description: The FQDN of the VDB's host.
+          nullable: true
+        parent_id:
+          type: string
+          description: A reference to the parent dataset of this VDB.
+          nullable: true
+        group_name:
+          type: string
+          description: The name of the group containing this VDB.
+          nullable: true
+        creation_date:
+          type: string
+          description: The date this VDB was created.
+          format: date-time
+          nullable: true
+      description: A Delphix virtual database or dataset.
+      example:
+        id: vdb-123
+        database_type: Oracle
+        name: prod01-copy01
+        database_version: 10.2.0.5.0
+        size: 339292672
+        engine_id: engine-123
+        status: RUNNING
+        environment_id: environment-123
+        ip_address: 192.0.2.0
+        fqdn: virtual-dbs.myhost.com
+        parent_id: vdb-122
+        group_name: VDBs
+        creation_date: 2021-05-01T08:51:34.148000+00:00
+    Bookmark:
+      required:
+      - name
+      - vdb_ids
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Bookmark object entity ID.
+          readOnly: true
+          example: bookmark-123
+        name:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The user-defined name of this bookmark.
+          example: my-bookmark-123
+        creation_date:
+          type: string
+          description: The date and time that this bookmark was created.
+          format: date-time
+          readOnly: true
+          example: 2021-07-04T08:51:34.148Z
+        vdb_ids:
+          type: array
+          description: The list of VDB IDs associated with this bookmark.
+          example:
+          - vdb-123
+          - vdb-456
+          items:
+            type: string
+        retention:
+          type: integer
+          description: "The retention policy for this bookmark, in days. A value of\
+            \ -1 indicates the bookmark should be kept forever."
+          format: int64
+          example: 365
+        status:
+          type: string
+          description: A message with details about operation progress or state of
+            this bookmark.
+          nullable: true
+          readOnly: true
+          example: RESTORED
+      description: A Data Control Tower object that references points in time for
+        one or more datasets.
+      example:
+        name: my-bookmark-123
+        vdb_ids:
+        - vdb-123
+        - vdb-456
+        id: bookmark-123
+        creation_date: 2021-07-04T08:51:34.148Z
+        retention: 365
+        status: RESTORED
+    Engine:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Engine object entity ID.
+        uuid:
+          type: string
+          description: The unique identifier generated by this engine.
+          nullable: true
+        type:
+          type: string
+          description: The type of this engine.
+          nullable: true
+          enum:
+          - VIRTUALIZATION
+          - MASKING
+          - BOTH
+          - UNSET
+        version:
+          type: string
+          description: The engine version.
+          nullable: true
+        name:
+          type: string
+          description: The name of this engine.
+        hostname:
+          type: string
+          description: The hostname of this engine.
+        registration_status:
+          type: string
+          description: The registration status of this engine.
+          nullable: true
+          enum:
+          - CONNECTED
+          - PENDING
+        connection_status:
+          type: string
+          description: The connection status of this engine.
+          nullable: true
+          enum:
+          - ONLINE
+          - OFFLINE
+        last_connection_time:
+          type: string
+          description: The last time a connection was established with this engine.
+          format: date-time
+          nullable: true
+        boot_storage_capacity:
+          type: integer
+          description: "The total amount of storage allocated to the engine's boot\
+            \ partition, in bytes."
+          format: int64
+          nullable: true
+        cpu_core_count:
+          type: integer
+          description: The total number of CPU cores on this engine.
+          format: int32
+          nullable: true
+        cpu_type:
+          type: string
+          description: The model of the processors on this engine.
+          nullable: true
+        memory_size:
+          type: integer
+          description: "The total amount of memory on this engine, in bytes."
+          format: int64
+          nullable: true
+        data_storage_capacity:
+          type: integer
+          description: "The total amount of storage allocated for engine objects and\
+            \ system metadata, in bytes."
+          format: int64
+          nullable: true
+        data_storage_used:
+          type: integer
+          description: "The amount of storage used by engine objects and system metadata,\
+            \ in bytes."
+          format: int64
+          nullable: true
+      description: A Delphix Virtualization or Masking Engine.
+      example:
+        id: engine-123
+        uuid: 54290b71-58cd-463d-bd62-7219d4c4d2d5
+        type: VIRTUALIZATION
+        version: 6.0.7.0
+        name: My Favorite Engine
+        hostname: eng09.dev.delphix.com
+        registration_status: CONNECTED
+        connection_status: ONLINE
+        last_connection_time: 2021-03-29T15:10:00.976Z
+        boot_storage_capacity: 96000000000
+        cpu_core_count: 4
+        cpu_type: Intel(R) Xeon(R) CPU E5-2690 v3 @ 2.60GHz
+        memory_size: 16000000000
+        data_storage_capacity: 100000000000
+        data_storage_used: 85000000000
+    Environment:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Environment object entity ID.
+          example: environment-123
+        name:
+          type: string
+          description: The name of this environment.
+          example: Linux Test Host
+        namespace:
+          type: string
+          description: The namespace of this environment for replicated and restored
+            objects.
+          nullable: true
+          example: NAMESPACE-1
+        engine_id:
+          type: integer
+          description: A reference to the Engine that this Environment connection
+            is associated with.
+          format: int64
+        enabled:
+          type: boolean
+          description: True if this environment is enabled.
+          example: true
+        is_cluster:
+          type: boolean
+          description: True if this environment is a cluster of hosts.
+          example: false
+        hosts:
+          type: array
+          description: The hosts that are part of this environment.
+          items:
+            $ref: '#/components/schemas/Host'
+      description: A grouping of a single host or a cluster of hosts.
+      example:
+        is_cluster: false
+        engine_id: 0
+        hosts:
+        - hostname: linux.dev.delphix.com
+          os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+          os_name: Linux
+          memory_size: 8382160896
+        - hostname: linux.dev.delphix.com
+          os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+          os_name: Linux
+          memory_size: 8382160896
+        name: Linux Test Host
+        namespace: NAMESPACE-1
+        id: environment-123
+        enabled: true
+    Host:
+      type: object
+      properties:
+        hostname:
+          type: string
+          description: The hostname or IP address of this host.
+          example: linux.dev.delphix.com
+        os_name:
+          type: string
+          description: The name of the OS on this host.
+          example: Linux
+        os_version:
+          type: string
+          description: The version of the OS on this host.
+          example: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+        memory_size:
+          type: integer
+          description: The total amount of memory on this host in bytes.
+          format: int64
+          example: 8382160896
+      description: A physical/virtual server.
+      example:
+        hostname: linux.dev.delphix.com
+        os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+        os_name: Linux
+        memory_size: 8382160896
+    BaseProvisionVDBParameters:
+      type: object
+      properties:
+        source_data_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The ID of the source object (dSource or VDB) to provision from.
+            All other objects referenced by the parameters must live on the same engine
+            as the source.
+          example: source-123
+        engine_id:
+          maxLength: 256
+          minLength: 1
+          type: integer
+          description: "The ID of the Engine onto which to provision. If the source\
+            \ ID unambiguously identifies a source object, this parameter is unnecessary\
+            \ and ignored."
+          format: int64
+        target_group_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "The ID of the group into which the VDB will be provisioned.\
+            \ If unset, a group is selected randomly on the Engine."
+          example: group-123
+        vdb_name:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "The unique name of the provisioned VDB within a group. If\
+            \ unset, a name is randomly generated."
+          example: my-test-vdb
+        database_name:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The name of the database on the target environment. Defaults
+            to vdb_name.
+          example: my-test-database
+        truncate_log_on_checkpoint:
+          type: boolean
+          description: Whether to truncate log on checkpoint (ASE only).
+          example: true
+        username:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The name of the privileged user to run the provision operation
+            (Oracle Only).
+          example: os-user-x
+        password:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The password of the privileged user to run the provision operation
+            (Oracle Only).
+          example: os-user-secret-password
+        environment_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "The ID of the target environment where to provision the VDB.\
+            \ If repository_id unambigously identifies a repository, this is unnecessary\
+            \ and ignored. Otherwise, a compatible repository is randomly selected\
+            \ on the environment."
+          example: environment-123
+        environment_user_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The environment user ID to use to connect to the target environment.
+          example: environment-user-123
+        repository_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "The ID of the target repository where to provision the VDB.\
+            \ A repository typically corresponds to a database installation (Oracle\
+            \ home, database instance, ...). Setting this attribute implicitly determines\
+            \ the environment where to provision the VDB."
+          example: oracle-home-123
+        auto_select_repository:
+          type: boolean
+          description: Option to automatically select a compatible environment and
+            repository. Mutually exclusive with repository_id.
+          example: true
+        pre_refresh:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment before refreshing
+            the VDB.
+          items:
+            $ref: '#/components/schemas/Hook'
+        post_refresh:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment after refreshing
+            the VDB.
+          items:
+            $ref: '#/components/schemas/Hook'
+        pre_rollback:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment before rewinding
+            the VDB.
+          items:
+            $ref: '#/components/schemas/Hook'
+        post_rollback:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment after rewinding
+            the VDB.
+          items:
+            $ref: '#/components/schemas/Hook'
+        configure_clone:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment when the
+            VDB is created or refreshed.
+          items:
+            $ref: '#/components/schemas/Hook'
+        pre_snapshot:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment before snapshotting
+            a virtual source. These commands can quiesce any data prior to snapshotting.
+          items:
+            $ref: '#/components/schemas/Hook'
+        post_snapshot:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment after snapshotting
+            a virtual source.
+          items:
+            $ref: '#/components/schemas/Hook'
+        pre_start:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment before starting
+            a virtual source.
+          items:
+            $ref: '#/components/schemas/Hook'
+        post_start:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment after starting
+            a virtual source.
+          items:
+            $ref: '#/components/schemas/Hook'
+        pre_stop:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment before stopping
+            a virtual source.
+          items:
+            $ref: '#/components/schemas/Hook'
+        post_stop:
+          maxItems: 100
+          type: array
+          description: The commands to execute on the target environment after stopping
+            a virtual source.
+          items:
+            $ref: '#/components/schemas/Hook'
+        vdb_restart:
+          type: boolean
+          description: Indicates whether the Engine should automatically restart this
+            virtual source when target host reboot is detected.
+          example: true
+        template_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The ID of the target VDB Template (Oracle Only).
+          example: template-123
+        file_mapping_rules:
+          maxLength: 131072
+          minLength: 1
+          type: string
+          description: Target VDB file mapping rules (Oracle Only). Rules must be
+            line separated (\n or \r) and each line must have the format "pattern:replacement".
+            Lines are applied in order.
+          example: |-
+            /datafile/dbdhcp3/oradata/dbdhcp3:/data
+            /u03/app/ora11202/product/11.2.0/dbhome_1/dbs/dbv_R2V4.dbf:/data/dbv_R2V4.dbf
+        oracle_instance_name:
+          maxLength: 15
+          minLength: 1
+          pattern: "^[a-zA-Z0-9_]+$"
+          type: string
+          description: Target VDB SID name (Oracle Only).
+          example: dbdhcp2
+        unique_name:
+          maxLength: 30
+          minLength: 1
+          pattern: "^[a-zA-Z0-9_\\$#]+$"
+          type: string
+          description: Target VDB db_unique_name (Oracle Only).
+          example: dbdhcp2
+        mount_point:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "Mount point for the VDB (Oracle, ASE Only)."
+          example: /var/mnt
+        open_reset_logs:
+          type: boolean
+          description: Whether to open the database after provision (Oracle Only).
+          example: true
+        snapshot_policy_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The ID of the snapshot policy for the VDB.
+          example: snapshot-123
+        retention_policy_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: The ID of the retention policy for the VDB.
+          example: retention-policy-123
+        recovery_model:
+          type: string
+          description: Recovery model of the source database (MSSql Only).
+          example: FULL
+          enum:
+          - FULL
+          - SIMPLE
+          - BULK_LOGGED
+        pre_script:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: PowerShell script or executable to run prior to provisioning
+            (MSSql Only).
+          example: C:\Program Files\Delphix\scripts\myscript.ps1
+        post_script:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: PowerShell script or executable to run after provisioning (MSSql
+            Only).
+          example: C:\Program Files\Delphix\scripts\myscript.ps1
+        cdc_on_provision:
+          type: boolean
+          description: "Option to enable change data capture (CDC) on both the provisioned\
+            \ VDB and subsequent snapshot-related operations (e.g. refresh, rewind)\
+            \ (MSSql Only)."
+          example: true
+        online_log_size:
+          minimum: 4
+          type: integer
+          description: Online log size in MB (Oracle Only).
+          example: 4
+        online_log_groups:
+          minimum: 2
+          type: integer
+          description: Number of online log groups (Oracle Only).
+          example: 2
+        archive_log:
+          type: boolean
+          description: Option to create a VDB in archivelog mode (Oracle Only).
+          example: true
+        new_dbid:
+          type: boolean
+          description: Option to generate a new DB ID for the created VDB (Oracle
+            Only).
+          example: true
+        listener_ids:
+          type: array
+          description: The listener IDs for this provision operation (Oracle Only).
+          example:
+          - listener-123
+          - listener-456
+          items:
+            maxLength: 256
+            minLength: 1
+            type: string
+        custom_env_vars:
+          type: object
+          additionalProperties:
+            maxLength: 4096
+            minLength: 1
+            type: string
+          description: Environment variable to be set when the engine creates a VDB.
+            See the Engine documentation for the list of allowed/denied environment
+            variables and rules about substitution.
+          example:
+            MY_ENV_VAR1: $ORACLE_HOME
+            MY_ENV_VAR2: $CRS_HOME/after
+        custom_env_files:
+          type: array
+          description: Environment files to be sourced when the Engine creates a VDB.
+            This path can be followed by parameters. Paths and parameters are separated
+            by spaces.
+          example:
+          - /export/home/env_file_1
+          - /export/home/env_file_2
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+    ProvisionVDBByTimestampParameters:
+      allOf:
+      - $ref: '#/components/schemas/BaseProvisionVDBParameters'
+      - $ref: '#/components/schemas/DataPointByTimestampParameters'
+      - required:
+        - source_data_id
+        type: object
+        properties:
+          source_data_id:
+            maxLength: 256
+            minLength: 1
+            type: string
+            description: The ID of the source object (dSource or VDB) to provision
+              from. All other objects referenced by the parameters must live on the
+              same engine as the source.
+            example: source-123
+    ProvisionVDBBySnapshotParameters:
+      allOf:
+      - $ref: '#/components/schemas/BaseProvisionVDBParameters'
+      - $ref: '#/components/schemas/DataPointBySnapshotParameters'
+    DataPointByTimestampParameters:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          description: "The point in time from which to execute the operation. Mutually\
+            \ exclusive with timestamp_in_database_timezone. If the timestamp is not\
+            \ set, selects the latest point."
+          format: date-time
+          example: 2021-05-01T08:51:34.148Z
+        timestamp_in_database_timezone:
+          pattern: "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(.[0-9]{0,3})?"
+          type: string
+          description: "The point in time from which to execute the operation, expressed\
+            \ as a date-time in the timezone of the source database. Mutually exclusive\
+            \ with timestamp."
+          example: 2021-08-14T14:55:20.507
+    DataPointBySnapshotParameters:
+      type: object
+      properties:
+        snapshot_id:
+          maxLength: 256
+          minLength: 1
+          type: string
+          description: "The ID of the snapshot from which to execute the operation.\
+            \ If the snapshot_id is not, selects the latest snapshot."
+    RollbackVDBByTimestampParameters:
+      allOf:
+      - $ref: '#/components/schemas/DataPointByTimestampParameters'
+    RollbackVDBBySnapshotParameters:
+      allOf:
+      - $ref: '#/components/schemas/DataPointBySnapshotParameters'
+    RefreshVDBByTimestampParameters:
+      allOf:
+      - $ref: '#/components/schemas/DataPointByTimestampParameters'
+    RefreshVDBBySnapshotParameters:
+      allOf:
+      - $ref: '#/components/schemas/DataPointBySnapshotParameters'
+    EnableVDBParameters:
+      type: object
+      properties:
+        attempt_start:
+          type: boolean
+          description: Whether to attempt a startup of the VDB after the enable.
+          default: true
+      description: Parameters to enable a VDB.
+    DisableVDBParameters:
+      type: object
+      properties:
+        attempt_cleanup:
+          type: boolean
+          description: Whether to attempt a cleanup of the VDB before the disable.
+          default: true
+      description: Parameters to disable a VDB.
+    DeleteVDBParameters:
+      type: object
+      properties:
+        force:
+          type: boolean
+          description: Whether to continue the operation upon failures.
+          default: false
+      description: Parameters to delete a VDB.
+    Errors:
+      type: array
+      description: "Sadly, sometimes requests to the API are not successful. Failures\
+        \ can occur for a wide range of reasons. The Errors object contains information\
+        \ about full or partial failures which might have occurred during the request."
+      items:
+        $ref: '#/components/schemas/Error'
+      x-schema-name: Errors
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: "Message providing more detail about the error that occurred,\
+            \ if available."
+          readOnly: true
+        object_name:
+          type: string
+          description: Name of the object affected by the error.
+          readOnly: true
+      example:
+        object_name: object_name
+        message: message
+    ApiClient:
+      required:
+      - is_admin
+      properties:
+        id:
+          type: integer
+          description: The entity ID of this API client.
+          format: int64
+          readOnly: true
+        api_client_id:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: "The unique ID which is used to identity the identity of an\
+            \ API request. The web server (nginx) configuration must be configured\
+            \ so as to include the external ID as the value of the X_CLIENT_ID HTTP\
+            \ request header when requests are proxied. For OAuth2/JWT based authentication,\
+            \ this typically corresponds to a value extracted from the JWT, uniquely\
+            \ identifying the API client."
+        name:
+          maxLength: 1024
+          minLength: 1
+          type: string
+        is_admin:
+          type: boolean
+        engine_users_mapping:
+          type: array
+          description: Mapping of engine ID to the engine User ID.
+          items:
+            $ref: '#/components/schemas/EngineUserMapping'
+      example:
+        is_admin: true
+        api_client_id: api_client_id
+        name: name
+        id: 0
+        engine_users_mapping:
+        - engine_id: 6
+          engine_user_id: 1
+        - engine_id: 6
+          engine_user_id: 1
+    ApiClientCreateParameter:
+      properties:
+        name:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: An optional logical name for the API client.
+        generate_api_key:
+          type: boolean
+          description: "Whether an API key must be generated for this API client.\
+            \ This must be set if the API client will be used for API key based authentication,\
+            \ and unset otherwise."
+          default: true
+        api_client_id:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: "The unique ID which is used to identity the identity of an\
+            \ API request. The web server (nginx) configuration must be configured\
+            \ so as to include the external ID as the value of the X_CLIENT_ID HTTP\
+            \ request header when requests are proxied. If this value isn't set, the\
+            \ application will automatically generate one. For OAuth2/JWT based authentication,\
+            \ this typically corresponds to a value extracted from the JWT, uniquely\
+            \ identifying the API client."
+        is_admin:
+          type: boolean
+          default: false
+        engine_users_mapping:
+          type: array
+          description: Mapping of engine ID to the engine User ID.
+          items:
+            $ref: '#/components/schemas/EngineUserMapping'
+    ApiClientCreateResponse:
+      properties:
+        token:
+          type: string
+          description: "The opaque token to use to authenticate for other API calls.\
+            \ The token must be included in all HTTP API calls\nin a request header\
+            \ named \"Authorization\", and prefixed with \"apk \" to denote that it\
+            \ is a proprietary API key format.\nFor instance, if the token is \"abc123\"\
+            , request must contain the following HTTP request header:\n\"Authorization:\
+            \ apk abc123\".\n"
+        api_client_entity_id:
+          type: integer
+          format: int64
+      example:
+        api_client_entity_id: 0
+        token: token
+    JobId:
+      title: JobId
+      type: object
+      properties:
+        id:
+          type: string
+          description: The job id.
+      description: Reference to a job on an engine.
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Job entity ID.
+          example: job-123
+        status:
+          type: string
+          description: The status of the job.
+          example: RUNNING
+          enum:
+          - RUNNING
+          - CANCELED
+          - FAILED
+          - SUSPENDED
+          - WAITING
+          - COMPLETED
+        type:
+          type: string
+          description: The type of job being done.
+          example: DB_REFRESH
+        error_details:
+          type: string
+          description: Details about the failure for FAILED jobs.
+          example: Unable to connect to the engine.
+      description: An asynchronous task.
+      example:
+        error_details: Unable to connect to the engine.
+        id: job-123
+        type: DB_REFRESH
+        status: RUNNING
+    Snapshot:
+      type: object
+      properties:
+        id:
+          type: string
+          description: The Snapshot ID.
+          example: snapshot-123
+        timestamp:
+          type: string
+          description: The logical time of the data contained in this Snapshot.
+          format: date-time
+          example: 2021-05-01T08:51:34.148Z
+        location:
+          type: string
+          description: "Database specific identifier for the data contained in this\
+            \ Snapshot, such as the Log Sequence Number (LSN) for MSsql databases,\
+            \ System Change Number (SCN) for Oracle databases."
+          example: "1178883"
+        dataset_id:
+          type: string
+          description: The ID of the Snapshot's dSource or VDB.
+          example: dataset-123
+      description: Virtualization Engine Snapshot of a dSource or VDB.
+      example:
+        dataset_id: dataset-123
+        location: "1178883"
+        id: snapshot-123
+        timestamp: 2021-05-01T08:51:34.148Z
+    HashicorpVault:
+      title: HashicorpVault
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          nullable: false
+          readOnly: true
+        env_variables:
+          type: object
+          additionalProperties:
+            maxLength: 4096
+            minLength: 1
+            type: string
+          description: |
+            Environment variables to set when invoking the Vault CLI tool. The environment variables will be used both
+            to login to the vault (if this step is required) and to retrieve engine username and passwords.
+          example:
+          - VAULT_ADDR: https://vault.company.co:8200
+          - VAULT_TOKEN: token-to-retrieve-secrets
+        login_command_args:
+          maxItems: 100
+          minItems: 1
+          type: array
+          description: "Arguments to the \"vault\" CLI tool to be used to fetch a\
+            \ client token (or \"login\").\nIf supporting files, such as TLS certificates,\
+            \ must be used to authenticate, they can be\nmounted to the /etc/config\
+            \ directory.\nThis property must not be set when using the TOKEN authentication\
+            \ method as login is not required.\n"
+          example:
+          - - login
+            - -method=cert
+            - -client-cert=/etc/config/cert.pem
+            - -client-key=/etc/config/key.pem
+          - - write
+            - auth/approle/login
+            - role_id=123
+            - secret_id=456
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+      description: Configuration required to connect and authenticate with an Hashicorp
+        Vault which stores engines username and passwords.
+      example:
+        env_variables:
+        - VAULT_ADDR: https://vault.company.co:8200
+        - VAULT_TOKEN: token-to-retrieve-secrets
+        login_command_args:
+        - - login
+          - -method=cert
+          - -client-cert=/etc/config/cert.pem
+          - -client-key=/etc/config/key.pem
+        - - write
+          - auth/approle/login
+          - role_id=123
+          - secret_id=456
+        id: 0
+    RegisteredEngine:
+      title: RegisteredEngine
+      required:
+      - hostname
+      - name
+      - primaryUser
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        name:
+          maxLength: 256
+          minLength: 1
+          type: string
+        hostname:
+          maxLength: 256
+          minLength: 1
+          type: string
+        primary_user:
+          type: integer
+          description: Id of the primary user for this engine. The primary user must
+            be an engine admin.
+          format: int64
+        insecure_ssl:
+          type: boolean
+          description: "Allow connections to the engine over HTTPs without validating\
+            \ the TLS certificate. Even though\nthe connection to the engine might\
+            \ be performed over HTTPs, setting this property eliminates\nthe protection\
+            \ against a man-in-the-middle attach for connections to this engine. Instead,\n\
+            consider creating a truststore with a Certificate Authority to validate\
+            \ the engine's certificate,\nand set the truststore_path propery.\n"
+          default: false
+        unsafe_ssl_hostname_check:
+          type: boolean
+          description: "Ignore validation of the name associated to the TLS certificate\
+            \ when connecting to the engine over HTTPs.\nSetting this value must only\
+            \ be done if the TLS certificate of the engine does not match the hostname,\n\
+            and the TLS configuration of the engine cannot be fixed. Setting this\
+            \ property reduces the protection\nagainst a man-in-the-middle attack\
+            \ for connections to this engine.\nThis is ignored if insecure_ssl is\
+            \ set.\n"
+          default: false
+        truststore_filename:
+          maxLength: 1024
+          minLength: 1
+          pattern: "^[a-zA-Z0-9_\\.]+$"
+          type: string
+          description: |
+            File name of a truststore which can be used to validate the TLS certificate of the engine. The truststore
+            must be available at /etc/config/certs/<truststore_filename>
+          nullable: true
+        truststore_password:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: |
+            Password to read the truststore.
+          nullable: true
+      description: A registered engine's connection and authentication settings.
+      example:
+        hostname: hostname
+        truststore_password: truststore_password
+        unsafe_ssl_hostname_check: false
+        name: name
+        insecure_ssl: false
+        id: 0
+        primary_user: 6
+        truststore_filename: truststore_filename
+    RegisteredEngineUser:
+      title: RegisteredEngineUser
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          readOnly: true
+        username:
+          maxLength: 256
+          minLength: 1
+          type: string
+          nullable: true
+        password:
+          maxLength: 4096
+          minLength: 1
+          type: string
+          nullable: true
+        hashicorp_vault_username_command_args:
+          maxItems: 100
+          minItems: 1
+          type: array
+          description: Arguments to pass to the Vault CLI tool to retrieve the username
+            for the engine.
+          nullable: true
+          example:
+          - - kv
+            - get
+            - -field=username
+            - kv-v2/delphix-secrets/delphixUser
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+        hashicorp_vault_password_command_args:
+          maxItems: 100
+          minItems: 1
+          type: array
+          description: Arguments to pass to the Vault CLI tool to retrieve the password
+            for the engine.
+          nullable: true
+          example:
+          - - kv
+            - get
+            - -field=password
+            - kv-v2/delphix-secrets/delphixUser
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+        hashicorp_vault_id:
+          type: integer
+          description: Reference to the Hashicorp vault to use to retrieve engine
+            credentials.
+          format: int64
+          nullable: true
+      description: An engine user.
+      example:
+        hashicorp_vault_password_command_args:
+        - - kv
+          - get
+          - -field=password
+          - kv-v2/delphix-secrets/delphixUser
+        password: password
+        id: 0
+        hashicorp_vault_id: 6
+        username: username
+        hashicorp_vault_username_command_args:
+        - - kv
+          - get
+          - -field=username
+          - kv-v2/delphix-secrets/delphixUser
+    EngineUserMapping:
+      title: EngineUserMapping
+      required:
+      - engine_id
+      - engine_user_id
+      type: object
+      properties:
+        engine_id:
+          type: integer
+          format: int64
+        engine_user_id:
+          type: integer
+          format: int64
+      example:
+        engine_id: 6
+        engine_user_id: 1
+    EngineRegistrationParameter:
+      title: EngineRegistrationParameter
+      required:
+      - hostname
+      - name
+      type: object
+      properties:
+        name:
+          maxLength: 256
+          minLength: 1
+          type: string
+        hostname:
+          maxLength: 256
+          minLength: 1
+          type: string
+        username:
+          maxLength: 256
+          minLength: 1
+          type: string
+          nullable: true
+        password:
+          maxLength: 4096
+          minLength: 1
+          type: string
+          nullable: true
+        hashicorp_vault_username_command_args:
+          maxItems: 100
+          minItems: 1
+          type: array
+          description: Arguments to pass to the Vault CLI tool to retrieve the username
+            for the engine.
+          nullable: true
+          example:
+          - - kv
+            - get
+            - -field=username
+            - kv-v2/delphix-secrets/delphixUser
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+        hashicorp_vault_password_command_args:
+          maxItems: 100
+          minItems: 1
+          type: array
+          description: Arguments to pass to the Vault CLI tool to retrieve the password
+            for the engine.
+          nullable: true
+          example:
+          - - kv
+            - get
+            - -field=password
+            - kv-v2/delphix-secrets/delphixUser
+          items:
+            maxLength: 4096
+            minLength: 1
+            type: string
+        hashicorp_vault_id:
+          type: integer
+          description: Reference to the Hashicorp vault to use to retrieve engine
+            credentials.
+          format: int64
+          nullable: true
+        insecure_ssl:
+          type: boolean
+          description: "Allow connections to the engine over HTTPs without validating\
+            \ the TLS certificate. Even though\nthe connection to the engine might\
+            \ be performed over HTTPs, setting this property eliminates\nthe protection\
+            \ against a man-in-the-middle attach for connections to this engine. Instead,\n\
+            consider creating a truststore with a Certificate Authority to validate\
+            \ the engine's certificate,\nand set the truststore_path propery.\n"
+          default: false
+        unsafe_ssl_hostname_check:
+          type: boolean
+          description: "Ignore validation of the name associated to the TLS certificate\
+            \ when connecting to the engine over HTTPs.\nSetting this value must only\
+            \ be done if the TLS certificate of the engine does not match the hostname,\n\
+            and the TLS configuration of the engine cannot be fixed. Setting this\
+            \ property reduces the protection\nagainst a man-in-the-middle attack\
+            \ for connections to this engine.\nThis is ignored if insecure_ssl is\
+            \ set.\n"
+          default: false
+        truststore_filename:
+          maxLength: 1024
+          minLength: 1
+          pattern: "^[a-zA-Z0-9_\\.]+$"
+          type: string
+          description: |
+            File name of a truststore which can be used to validate the TLS certificate of the engine. The truststore
+            must be available at /etc/config/certs/<truststore_filename>
+          nullable: true
+        truststore_password:
+          maxLength: 1024
+          minLength: 1
+          type: string
+          description: |
+            Password to read the truststore.
+          nullable: true
+      description: Parameters to register and authenticate an engine.
+    ProvisionVDBResponse:
+      properties:
+        job_id:
+          type: string
+          description: The ID of the provisioning job.
+        vdb:
+          $ref: '#/components/schemas/VDB'
+      example:
+        vdb:
+          id: vdb-123
+          database_type: Oracle
+          name: prod01-copy01
+          database_version: 10.2.0.5.0
+          size: 339292672
+          engine_id: engine-123
+          status: RUNNING
+          environment_id: environment-123
+          ip_address: 192.0.2.0
+          fqdn: virtual-dbs.myhost.com
+          parent_id: vdb-122
+          group_name: VDBs
+          creation_date: 2021-05-01T08:51:34.148000+00:00
+        job_id: job_id
+    Hook:
+      required:
+      - command
+      properties:
+        name:
+          maxLength: 256
+          minLength: 1
+          type: string
+        command:
+          maxLength: 131072
+          minLength: 1
+          type: string
+        shell:
+          type: string
+          default: bash
+          enum:
+          - bash
+          - shell
+          - expect
+          - ps
+          - psd
+    PaginatedResponseMetadata:
+      type: object
+      properties:
+        prev_cursor:
+          type: string
+          description: "Pointer to the previous page of results. Use this value as\
+            \ a cursor query parameter in a subsequent request, along with limit,\
+            \ to navigate through the collection by virtual page."
+        next_cursor:
+          type: string
+          description: "Pointer to the next page of results. Use this value as a cursor\
+            \ query parameter in a subsequent request, along with limit, to navigate\
+            \ through the collection by virtual page."
+        total:
+          type: integer
+          description: The total number of results. This value may not be provided.
+          format: int_64
+      example:
+        prev_cursor: prev_cursor
+        next_cursor: next_cursor
+        total: 0
+    ListEnginesResponse:
+      title: ListEnginesResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Engine'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - id: engine-123
+          uuid: 54290b71-58cd-463d-bd62-7219d4c4d2d5
+          type: VIRTUALIZATION
+          version: 6.0.7.0
+          name: My Favorite Engine
+          hostname: eng09.dev.delphix.com
+          registration_status: CONNECTED
+          connection_status: ONLINE
+          last_connection_time: 2021-03-29T15:10:00.976Z
+          boot_storage_capacity: 96000000000
+          cpu_core_count: 4
+          cpu_type: Intel(R) Xeon(R) CPU E5-2690 v3 @ 2.60GHz
+          memory_size: 16000000000
+          data_storage_capacity: 100000000000
+          data_storage_used: 85000000000
+        - id: engine-123
+          uuid: 54290b71-58cd-463d-bd62-7219d4c4d2d5
+          type: VIRTUALIZATION
+          version: 6.0.7.0
+          name: My Favorite Engine
+          hostname: eng09.dev.delphix.com
+          registration_status: CONNECTED
+          connection_status: ONLINE
+          last_connection_time: 2021-03-29T15:10:00.976Z
+          boot_storage_capacity: 96000000000
+          cpu_core_count: 4
+          cpu_type: Intel(R) Xeon(R) CPU E5-2690 v3 @ 2.60GHz
+          memory_size: 16000000000
+          data_storage_capacity: 100000000000
+          data_storage_used: 85000000000
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+    ListBookmarksResponse:
+      title: ListBookmarksResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Bookmark'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - name: my-bookmark-123
+          vdb_ids:
+          - vdb-123
+          - vdb-456
+          id: bookmark-123
+          creation_date: 2021-07-04T08:51:34.148Z
+          retention: 365
+          status: RESTORED
+        - name: my-bookmark-123
+          vdb_ids:
+          - vdb-123
+          - vdb-456
+          id: bookmark-123
+          creation_date: 2021-07-04T08:51:34.148Z
+          retention: 365
+          status: RESTORED
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+    CreateBookmarkResponse:
+      title: CreateBookmarkResponse
+      type: object
+      properties:
+        bookmark:
+          $ref: '#/components/schemas/Bookmark'
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        bookmark:
+          name: my-bookmark-123
+          vdb_ids:
+          - vdb-123
+          - vdb-456
+          id: bookmark-123
+          creation_date: 2021-07-04T08:51:34.148Z
+          retention: 365
+          status: RESTORED
+        job_id: job-123
+    RestoreBookmarkResponse:
+      title: RestoreBookmarkResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    ListSourcesResponse:
+      title: ListSourcesResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - id: source-123
+          database_type: Oracle
+          name: production01
+          database_version: 11.1.0.7.0
+          environment_id: environment-123
+          data_uuid: 1734315df891991101eb96963535afa0
+          ip_address: 192.0.2.0
+          fqdn: prod01.myhost.com
+          size: 856981504
+          jdbc_connection_string: jdbc:oracle:thin:@(DESCRIPTION=(ENABLE=broken)(ADDRESS=(PROTOCOL=tcp)(HOST=10.43.47.94)(PORT=1521))(CONNECT_DATA=(UR=A)(SID=production01)))
+          plugin_version: "1.0"
+        - id: source-123
+          database_type: Oracle
+          name: production01
+          database_version: 11.1.0.7.0
+          environment_id: environment-123
+          data_uuid: 1734315df891991101eb96963535afa0
+          ip_address: 192.0.2.0
+          fqdn: prod01.myhost.com
+          size: 856981504
+          jdbc_connection_string: jdbc:oracle:thin:@(DESCRIPTION=(ENABLE=broken)(ADDRESS=(PROTOCOL=tcp)(HOST=10.43.47.94)(PORT=1521))(CONNECT_DATA=(UR=A)(SID=production01)))
+          plugin_version: "1.0"
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+    ListDSourcesResponse:
+      title: ListDSourcesResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DSource'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - id: dsource-123
+          database_type: Oracle
+          name: prod01-main
+          database_version: 10.2.0.5.0
+          data_uuid: 1734315df891991101eb96963535afa0
+          storage_size: 339292672
+          plugin_version: "1.0"
+          creation_date: 2021-05-01T08:51:34.148000+00:00
+          group_name: DSources
+          enabled: true
+          engine_id: engine-123
+          source_id: source-123
+          status: RUNNING
+        - id: dsource-123
+          database_type: Oracle
+          name: prod01-main
+          database_version: 10.2.0.5.0
+          data_uuid: 1734315df891991101eb96963535afa0
+          storage_size: 339292672
+          plugin_version: "1.0"
+          creation_date: 2021-05-01T08:51:34.148000+00:00
+          group_name: DSources
+          enabled: true
+          engine_id: engine-123
+          source_id: source-123
+          status: RUNNING
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+    ListVDBsResponse:
+      title: ListVDBsResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VDB'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - id: vdb-123
+          database_type: Oracle
+          name: prod01-copy01
+          database_version: 10.2.0.5.0
+          size: 339292672
+          engine_id: engine-123
+          status: RUNNING
+          environment_id: environment-123
+          ip_address: 192.0.2.0
+          fqdn: virtual-dbs.myhost.com
+          parent_id: vdb-122
+          group_name: VDBs
+          creation_date: 2021-05-01T08:51:34.148000+00:00
+        - id: vdb-123
+          database_type: Oracle
+          name: prod01-copy01
+          database_version: 10.2.0.5.0
+          size: 339292672
+          engine_id: engine-123
+          status: RUNNING
+          environment_id: environment-123
+          ip_address: 192.0.2.0
+          fqdn: virtual-dbs.myhost.com
+          parent_id: vdb-122
+          group_name: VDBs
+          creation_date: 2021-05-01T08:51:34.148000+00:00
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+    StartVDBResponse:
+      title: StartVDBResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    StopVDBResponse:
+      title: StopVDBResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    EnableVDBResponse:
+      title: EnableVDBResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    DisableVDBResponse:
+      title: DisableVDBResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    DeleteVDBResponse:
+      title: DeleteVDBResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    RollbackVDBByTimestampResponse:
+      title: RollbackVDBByTimestampResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    RollbackVDBBySnapshotResponse:
+      title: RollbackVDBBySnapshotResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    RefreshVDBByTimestampResponse:
+      title: RefreshVDBByTimestampResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    RefreshVDBBySnapshotResponse:
+      title: RefreshVDBBySnapshotResponse
+      type: object
+      properties:
+        job_id:
+          type: string
+          description: The initiated job id.
+          example: job-123
+      example:
+        job_id: job-123
+    ListSnaphotsResponse:
+      title: ListSnaphotsResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Snapshot'
+        response_metadata:
+          $ref: '#/components/schemas/PaginatedResponseMetadata'
+      example:
+        response_metadata:
+          prev_cursor: prev_cursor
+          next_cursor: next_cursor
+          total: 0
+        items:
+        - dataset_id: dataset-123
+          location: "1178883"
+          id: snapshot-123
+          timestamp: 2021-05-01T08:51:34.148Z
+        - dataset_id: dataset-123
+          location: "1178883"
+          id: snapshot-123
+          timestamp: 2021-05-01T08:51:34.148Z
+    ListEnvironmentsResponse:
+      title: ListEnvironmentsResponse
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Environment'
+        errors:
+          $ref: '#/components/schemas/Errors'
+      example:
+        items:
+        - is_cluster: false
+          engine_id: 0
+          hosts:
+          - hostname: linux.dev.delphix.com
+            os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+            os_name: Linux
+            memory_size: 8382160896
+          - hostname: linux.dev.delphix.com
+            os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+            os_name: Linux
+            memory_size: 8382160896
+          name: Linux Test Host
+          namespace: NAMESPACE-1
+          id: environment-123
+          enabled: true
+        - is_cluster: false
+          engine_id: 0
+          hosts:
+          - hostname: linux.dev.delphix.com
+            os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+            os_name: Linux
+            memory_size: 8382160896
+          - hostname: linux.dev.delphix.com
+            os_version: Red Hat Enterprise Linux Server release 7.3 (Maipo)
+            os_name: Linux
+            memory_size: 8382160896
+          name: Linux Test Host
+          namespace: NAMESPACE-1
+          id: environment-123
+          enabled: true
+        errors:
+        - object_name: object_name
+          message: message
+        - object_name: object_name
+          message: message
+  parameters:
+    limit:
+      name: limit
+      in: query
+      description: Maximum number of objects to return per query. The value must be
+        between 1 and 1000. Default is 100.
+      required: false
+      style: form
+      explode: true
+      schema:
+        maximum: 100
+        minimum: 1
+        type: integer
+        default: 100
+      example: 50
+    cursor:
+      name: cursor
+      in: query
+      description: Cursor to fetch the next or previous page of results.
+      required: false
+      style: form
+      explode: true
+      schema:
+        maxLength: 4096
+        minLength: 1
+        type: string
+      example: RXlhbCBpcyBncmVhdAo=
+    vdbIdParam:
+      name: vdbId
+      in: path
+      description: The ID of the VDB.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        minLength: 1
+        type: string
+    engineIdParam:
+      name: engineId
+      in: path
+      description: Numeric ID of the registered engine.
+      required: true
+      style: simple
+      explode: false
+      schema:
+        minimum: 1
+        type: integer
+        format: int64
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      name: Authorization
+      in: header
