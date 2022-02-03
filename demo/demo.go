@@ -16,8 +16,8 @@ func main() {
 	ctx := context.WithValue(context.Background(), swagger.ContextAPIKey, apiKey)
 
 	cfg := swagger.NewConfiguration()
-	cfg.Host = "localhost"
-	cfg.Scheme = "HTTPS"
+	cfg.Host = "/localhost"
+	cfg.Scheme = "https:/"
 
 	bookmarkRes, httpRes, err := swagger.NewAPIClient(cfg).BookmarksApi.GetBookmarks(ctx)
 
