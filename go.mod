@@ -1,11 +1,8 @@
-module dct-go
+module dct-goapi
 
 go 1.17
 
-require (
-	github.com/antihax/optional v1.0.0
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
-)
+require golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 
 require (
 	github.com/golang/protobuf v1.4.2 // indirect
