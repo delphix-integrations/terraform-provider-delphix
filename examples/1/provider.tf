@@ -1,17 +1,16 @@
 terraform {
-  required_version = ">=0.13.0"
 required_providers {
-    dct-goapi = {
-      version = "0.1"
-      source  = "delphix.com/local/dct-goapi"
+    delphix = {
+      version = "0.0-dev"
+      source  = "delphix.com/local/delphix"
     }
   }
 }
 
-provider "dct-goapi" {
+provider "delphix" {
   # example configuration here
 }
 
-resource "dct-goapi_resource" "example" {
+resource "delphix_resource" "example" {
   sample_attribute = "foo"
 }

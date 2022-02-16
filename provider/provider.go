@@ -27,10 +27,10 @@ func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			DataSourcesMap: map[string]*schema.Resource{
-				"dct-goapi_data_source": dataSourceScaffolding(),
+				"delphix_data_source": dataSourceScaffolding(),
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"dct-goapi_resource": resourceScaffolding(),
+				"delphix_resource": resourceScaffolding(),
 			},
 		}
 

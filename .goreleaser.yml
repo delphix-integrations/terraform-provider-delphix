@@ -28,7 +28,13 @@ builds:
   ignore:
     - goos: darwin
       goarch: '386'
-  binary: '{{ .ProjectName }}_v{{ .Version }}'
+  binary: terraform-provider-delphix
+  hooks: 
+    post: 
+      - cmd: ./dev_copy.sh
+        env: 
+          - CP_PATH={{ .Path }}
+          - CP_TARGET={{ .Target }} 
 archives:
 - format: zip
   name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'

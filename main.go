@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	provider "dct-goapi/provider"
+	provider "terraform-provider-delphix/provider"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
