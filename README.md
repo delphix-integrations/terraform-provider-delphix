@@ -1,87 +1,31 @@
-# Project Title
+# POC repository for Delphix Terraform Provider
 
-One Paragraph of project description goes here
+This is a POC project to build a Delphix Terraform Provider using the DCT-OnPrem APIs.
 
-## Getting Started
+### Getting Started (Development)
+This guide will eventually cover the following
+    
+    1. Setup DCT-OnPrem by following: https://github.com/delphix/orbital-api-gateway
+    2. Install IDE: Visual Studio Code https://code.visualstudio.com
+    3. Install "Go" language https://go.dev/dl/
+    4. Install "Goreleaser" package https://goreleaser.com/install/
+    5. Install "Go" Plugin for Visual Studio Code 
+    6. Install Terraform: https://www.terraform.io/downloads
+    7. Fork this repo and clone it locally. Switch to develop branch which always heads to the latest development code. 
+    8. Run following command to create binaries: 
+        goreleaser release --skip-publish --snapshot --rm-dist
+    9. Run example TF file in /examples/1/ by running following: 
+        terraform init
+        terraform plan
+        terraform apply
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+### Guides
+    - For instructions on how to set up DCT-OnPrem, visit https://github.com/delphix/orbital-api-gateway
 
 ### Prerequisites
 
-What things you need to install the software and how to install them
-
-```
-Give examples
-```
-
-### Installing
-
-A step by step series of examples that tell you how to get a development env running
-
-Say what the step will be
-
-```
-Give the example
-```
-
-And repeat
-
-```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
-
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://github.com/delphix/.github/blob/master/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
-
-## Authors
-
-* **Joe Smith** - *Initial work* - [Company](https://github.com/Company)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the XX License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
+    - DCT-OnPrem must be installed and configured.
+    - Delphix Engines must be registered with DCT-OnPrem
+    - API-Keys for authenticatin with DCT-OnPrem
+    - Additional infrastructure required for testing the provider operations [ e.g Environments, Source DBs]
+    - IDE configured for GoLang Development.
