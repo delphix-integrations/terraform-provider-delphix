@@ -26,9 +26,6 @@ func init() {
 func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
-			DataSourcesMap: map[string]*schema.Resource{
-				"delphix_data_source": dataSourceScaffolding(),
-			},
 			ResourcesMap: map[string]*schema.Resource{
 				"delphix_resource": resourceScaffolding(),
 			},
