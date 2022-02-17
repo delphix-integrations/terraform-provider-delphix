@@ -36,10 +36,10 @@ func New(version string) func() *schema.Provider {
 					Sensitive:   true,
 					DefaultFunc: schema.EnvDefaultFunc("DCT_KEY", nil),
 				},
-				"key_prefix": {
-					Type:        schema.TypeString,
+				"tls_insecure_skip": {
+					Type:        schema.TypeBool,
 					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("DCT_KEY_PREFIX", "apk"),
+					DefaultFunc: schema.EnvDefaultFunc("DCT_TLC_INSURE_SKIP", true),
 				},
 				"host": {
 					Type:        schema.TypeString,
@@ -75,7 +75,7 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 		cfg.UserAgent = p.UserAgent("terraform-provider-delphix", version)
 		cfg.Scheme = d.Get("host_scheme").(string)
 		cfg.HTTPClient = &http.Client{Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: d.Get("tls_insecure_skip").(bool)},
 		}}
 
 		client := openapi.NewAPIClient(cfg)
@@ -84,7 +84,7 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 		apiKeyMap := make(map[string]openapi.APIKey)
 		apiKeyMap["ApiKeyAuth"] = openapi.APIKey{
 			Key:    d.Get("key").(string),
-			Prefix: d.Get("key_prefix").(string),
+			Prefix: "apk",
 		}
 		ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, apiKeyMap)
 
