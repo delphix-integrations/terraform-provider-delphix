@@ -39,7 +39,7 @@ func New(version string) func() *schema.Provider {
 				"tls_insecure_skip": {
 					Type:        schema.TypeBool,
 					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("DCT_TLC_INSURE_SKIP", true),
+					DefaultFunc: schema.EnvDefaultFunc("DCT_TLC_INSECURE_SKIP", false),
 				},
 				"host": {
 					Type:        schema.TypeString,
