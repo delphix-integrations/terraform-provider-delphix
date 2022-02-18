@@ -2,7 +2,10 @@ module terraform-provider-delphix
 
 go 1.17
 
-require github.com/hashicorp/terraform-plugin-log v0.2.0
+require (
+	github.com/Uddipaan-Hazarika/demo-go-sdk v0.1.4
+	github.com/hashicorp/terraform-plugin-log v0.2.0
+)
 
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect
@@ -32,9 +35,9 @@ require (
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/zclconf/go-cty v1.9.1 // indirect
+	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
 	golang.org/x/text v0.3.5 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
 	google.golang.org/grpc v1.32.0 // indirect
 )

@@ -2,7 +2,10 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
+	"net/http"
 
+	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -26,6 +29,29 @@ func init() {
 func New(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
+			Schema: map[string]*schema.Schema{
+				"key": {
+					Type:        schema.TypeString,
+					Required:    true,
+					Sensitive:   true,
+					DefaultFunc: schema.EnvDefaultFunc("DCT_KEY", nil),
+				},
+				"tls_insecure_skip": {
+					Type:        schema.TypeBool,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("DCT_TLC_INSECURE_SKIP", false),
+				},
+				"host": {
+					Type:        schema.TypeString,
+					Required:    true,
+					DefaultFunc: schema.EnvDefaultFunc("DCT_HOST", nil),
+				},
+				"host_scheme": {
+					Type:        schema.TypeString,
+					Optional:    true,
+					DefaultFunc: schema.EnvDefaultFunc("DCT_HOST_SCHEME", "https"),
+				},
+			},
 			ResourcesMap: map[string]*schema.Resource{
 				"delphix_resource": resourceScaffolding(),
 			},
@@ -38,17 +64,37 @@ func New(version string) func() *schema.Provider {
 }
 
 type apiClient struct {
-	// Add whatever fields, client or connection info, etc. here
-	// you would need to setup to communicate with the upstream
-	// API.
+	client *openapi.APIClient
 }
 
 func configure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	return func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-		// Setup a User-Agent for your API client (replace the provider name for yours):
-		// userAgent := p.UserAgent("terraform-provider-scaffolding", version)
-		// TODO: myClient.UserAgent = userAgent
+	return func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		// configure client
+		cfg := openapi.NewConfiguration()
+		cfg.Host = d.Get("host").(string)
+		cfg.UserAgent = p.UserAgent("terraform-provider-delphix", version)
+		cfg.Scheme = d.Get("host_scheme").(string)
+		cfg.HTTPClient = &http.Client{Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: d.Get("tls_insecure_skip").(bool)},
+		}}
 
-		return &apiClient{}, nil
+		client := openapi.NewAPIClient(cfg)
+
+		// make a test call
+		apiKeyMap := make(map[string]openapi.APIKey)
+		apiKeyMap["ApiKeyAuth"] = openapi.APIKey{
+			Key:    d.Get("key").(string),
+			Prefix: "apk",
+		}
+		ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, apiKeyMap)
+
+		req := client.EnginesApi.GetEngines(ctx)
+		_, _, err := client.EnginesApi.GetEnginesExecute(req)
+
+		if err != nil {
+			return nil, diag.FromErr(err)
+		}
+
+		return &apiClient{client}, nil
 	}
 }

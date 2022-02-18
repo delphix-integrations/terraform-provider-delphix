@@ -8,7 +8,8 @@ required_providers {
 }
 
 provider "delphix" {
-  # example configuration here
+  key = "KEY_GOES_HERE"
+  host = "IP_GOES_HERE"
 }
 
 resource "delphix_resource" "example" {
