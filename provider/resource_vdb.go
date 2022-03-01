@@ -521,5 +521,27 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	return diag.Errorf("not implemented")
+	client := meta.(*apiClient).client
+
+	var diags diag.Diagnostics
+
+	vdbId := d.Id()
+
+	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams.SetForce(false)
+
+	res, httpRes, err := client.VDBsApi.DeleteVdb(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+
+	if err != nil {
+		log.Print(err.Error())
+		os.Exit(1)
+	}
+
+	log.Print(&res)
+	log.Print(httpRes)
+
+	job_res := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	log.Print(job_res)
+
+	return diags
 }

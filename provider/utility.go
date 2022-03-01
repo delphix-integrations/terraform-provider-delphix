@@ -34,7 +34,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 		res, _, _ = client.JobsApi.GetJobById(ctx, job_id).Execute()
 		i++
 		log.Printf("__________JOB-STATUS_________Iteration %d", i)
-		log.Print(res)
+		log.Print(res.GetStatus())
 	}
 
 	return *res.Status
