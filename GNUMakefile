@@ -1,7 +1,7 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=delphix.com
 NAMESPACE=local
-NAME=delphix
+NAME=dct
 BINARY=terraform-provider-${NAME}
 VERSION=0.0-dev
 OS_ARCH=darwin_amd64

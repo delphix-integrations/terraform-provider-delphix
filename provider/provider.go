@@ -53,8 +53,8 @@ func New(version string) func() *schema.Provider {
 				},
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"delphix_resource":     resourceScaffolding(),
-				"delphix_resource_vdb": resourceVdb(),
+				"delphix_resource": resourceScaffolding(),
+				"delphix_vdb":      resourceVdb(),
 			},
 		}
 

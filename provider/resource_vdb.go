@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"log"
-	"os"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 
@@ -453,23 +452,27 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap))
 
-	res, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	res, _, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 
 	if err != nil {
 		log.Print(err.Error())
-		os.Exit(1)
+		return diag.FromErr(err)
 	}
 
-	log.Print(&res)
-	log.Print(httpRes)
-
-	//d.Set("id", res.Vdb.Id)
 	d.SetId(*res.Vdb.Id)
-	job_res := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	job_res, err := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	if err != nil {
+		log.Print("Job Polling failed but continuing with provisioning.")
+		log.Print(err.Error())
+	}
 	log.Print(job_res)
+	if job_res == "FAILED" {
+		log.Print("Job Failed!!")
+		return diag.Errorf("Job %s Failed", *res.JobId)
+	}
+
 	resourceVdbRead(ctx, d, meta)
 	return diags
-
 }
 
 func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -481,16 +484,13 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	var diags diag.Diagnostics
 
 	vdbId := d.Id()
-
-	res, httpRes, err := client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).Execute()
+	log.Printf("VDBID_____________________: %s", vdbId)
+	res, _, err := client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).Execute()
 
 	if err != nil {
-		log.Print(err)
-		os.Exit(1)
+		log.Print(err.Error())
+		return diag.FromErr(err)
 	}
-
-	log.Print(res.GetName())
-	log.Print(httpRes)
 
 	flatRes := make(map[string]interface{})
 	flatRes["database_type"] = res.GetDatabaseType()
@@ -504,13 +504,12 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	flatRes["parent_id"] = res.GetParentId()
 	flatRes["group_name"] = res.GetGroupName()
 	flatRes["creation_date"] = res.GetCreationDate().String()
-	flatRes["id"] = res.GetId()
+	flatRes["id"] = vdbId
 	flatRes["source_data_id"] = vdb["source_data_id"].(string)
 	flatRes["auto_select_repository"] = vdb["auto_select_repository"].(bool)
 
 	d.Set("vdb", []interface{}{flatRes})
 
-	d.SetId(*res.Id)
 	return diags
 }
 
@@ -530,17 +529,18 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsApi.DeleteVdb(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	res, _, err := client.VDBsApi.DeleteVdb(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if err != nil {
 		log.Print(err.Error())
-		os.Exit(1)
+		return diag.FromErr(err)
 	}
 
-	log.Print(&res)
-	log.Print(httpRes)
-
-	job_res := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	job_res, err := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	if err != nil {
+		log.Print("Job Polling failed but continuing with deletion.")
+		log.Print(err.Error())
+	}
 	log.Print(job_res)
 
 	return diags
