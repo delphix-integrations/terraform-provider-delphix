@@ -12,9 +12,7 @@ provider "delphix" {
   host = "HOST_NAME"
 }
 
-resource "delphix_vdb" "test_vdb" {
-  vdb {
-    auto_select_repository = true
-    source_data_id         = "DSOURCE_ID"
-  }
+resource "delphix_vdb" "vdb_name" {
+  auto_select_repository = true
+  source_data_id         = "DSOURCE_ID"
 }
