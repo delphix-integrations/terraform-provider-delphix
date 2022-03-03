@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"log"
+	"net/http"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 
@@ -507,7 +508,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 }
 
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	client := meta.(*apiClient).client
 
 	var diags diag.Diagnostics
@@ -533,6 +533,10 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		log.Print(job_err)
 	}
 	log.Print(job_res)
+
+	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+		return client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).Execute()
+	})
 
 	return diags
 }

@@ -8,8 +8,9 @@ terraform {
 }
 
 provider "delphix" {
-  key  = "API_KEY"
-  host = "HOST_NAME"
+  tls_insecure_skip = true
+  key = "1.XXXX"
+  host = "localhost"
 }
 
 resource "delphix_vdb" "vdb_name" {
