@@ -118,15 +118,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -138,15 +138,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -158,15 +158,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -178,15 +178,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -198,15 +198,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -218,15 +218,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -238,15 +238,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -258,15 +258,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -278,15 +278,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -298,15 +298,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},
@@ -318,15 +318,15 @@ func resourceVdb() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"command": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Required: true,
 						},
 					},
 				},

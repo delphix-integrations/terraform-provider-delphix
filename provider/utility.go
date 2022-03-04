@@ -12,7 +12,7 @@ import (
 var SLEEP_TIME = 5
 
 // Job Polling function that makes call to the job status API and checks for status of the JOB
-// Input is job status, context with the APIKEY and the client
+// Input is job status, context and the client
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient) (string, string) {
 
