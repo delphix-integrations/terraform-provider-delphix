@@ -439,7 +439,7 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	provisionVDBBySnapshotParameters.SetSourceDataId(d.Get("source_data_id").(string))
 	provisionVDBBySnapshotParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 
-	req := client.VDBsApi.ProvisionVdbBySnapshot(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap))
+	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
 
 	res, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if err != nil {
@@ -452,7 +452,7 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	d.SetId(*res.Vdb.Id)
-	job_res, job_err := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
 		log.Print("Job Polling failed but continuing with provisioning.")
 		log.Print(job_err)
@@ -475,7 +475,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	vdbId := d.Id()
 	log.Printf("VDBID_____________________: %s", vdbId)
-	res, httpRes, err := client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).Execute()
+	res, httpRes, err := client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
@@ -517,7 +517,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsApi.DeleteVdb(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
@@ -527,7 +527,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf(resBody)
 	}
 
-	job_res, job_err := PollJobStatus(*res.JobId, context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), client)
+	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
 		log.Print("Job Polling failed but continuing with deletion.")
 		log.Print(job_err)

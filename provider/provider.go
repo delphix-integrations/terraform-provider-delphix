@@ -64,12 +64,11 @@ func New(version string) func() *schema.Provider {
 }
 
 type apiClient struct {
-	client    *openapi.APIClient
-	apiKeyMap map[string]openapi.APIKey
+	client *openapi.APIClient
 }
 
 func configure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	return func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		// configure client
 		cfg := openapi.NewConfiguration()
 		cfg.Host = d.Get("host").(string)
@@ -78,16 +77,11 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 		cfg.HTTPClient = &http.Client{Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: d.Get("tls_insecure_skip").(bool)},
 		}}
+		cfg.AddDefaultHeader("Authorization", "apk "+d.Get("key").(string))
 
 		client := openapi.NewAPIClient(cfg)
 
 		// make a test call
-		apiKeyMap := make(map[string]openapi.APIKey)
-		apiKeyMap["ApiKeyAuth"] = openapi.APIKey{
-			Key:    d.Get("key").(string),
-			Prefix: "apk",
-		}
-		ctx := context.WithValue(context.Background(), openapi.ContextAPIKeys, apiKeyMap)
 
 		req := client.EnginesApi.GetEngines(ctx)
 		_, _, err := client.EnginesApi.GetEnginesExecute(req)
@@ -96,6 +90,6 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 			return nil, diag.FromErr(err)
 		}
 
-		return &apiClient{client, apiKeyMap}, nil
+		return &apiClient{client}, nil
 	}
 }
