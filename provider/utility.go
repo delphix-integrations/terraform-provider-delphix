@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log"
+	"net/http"
 	"time"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
@@ -58,4 +59,13 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
+}
+
+func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) {
+	for {
+		_, httpRes, _ := apiCall()
+		if httpRes.StatusCode == 404 {
+			break
+		}
+	}
 }

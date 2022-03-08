@@ -26,7 +26,7 @@ func init() {
 	// }
 }
 
-func New(version string) func() *schema.Provider {
+func Provider(version string) func() *schema.Provider {
 	return func() *schema.Provider {
 		p := &schema.Provider{
 			Schema: map[string]*schema.Schema{
@@ -39,7 +39,7 @@ func New(version string) func() *schema.Provider {
 				"tls_insecure_skip": {
 					Type:        schema.TypeBool,
 					Optional:    true,
-					DefaultFunc: schema.EnvDefaultFunc("DCT_TLC_INSECURE_SKIP", false),
+					DefaultFunc: schema.EnvDefaultFunc("DCT_TLS_INSECURE_SKIP", false),
 				},
 				"host": {
 					Type:        schema.TypeString,
