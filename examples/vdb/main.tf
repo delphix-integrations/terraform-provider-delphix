@@ -9,13 +9,13 @@ terraform {
 
 provider "delphix" {
   tls_insecure_skip = true
-  key = "36.VUKgUKpqLrLSWUHKHMbLzgEwgnZR69WZUSgXqLk0n1ADHIWiHuHQTunCVfy2KTPu"
+  key = "1.XXXX"
   host = "localhost"
 }
 
 resource "delphix_vdb" "vdb_name" {
   auto_select_repository = true
-  source_data_id         = "38-MSSQL_DB_CONTAINER-32"
+  source_data_id         = "DATASOURCE_ID"
 }
 
 resource "delphix_vdb_group" "vdb_group_name" {

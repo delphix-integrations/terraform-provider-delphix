@@ -2,9 +2,7 @@ module terraform-provider-delphix
 
 go 1.17
 
-require github.com/Uddipaan-Hazarika/demo-go-sdk v0.1.4
-
-replace github.com/Uddipaan-Hazarika/demo-go-sdk => /Users/ekaspi/repos/dct-sdk-go
+require github.com/Uddipaan-Hazarika/demo-go-sdk v0.1.6
 
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect
