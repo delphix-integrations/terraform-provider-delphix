@@ -2,7 +2,7 @@ module terraform-provider-delphix
 
 go 1.17
 
-require github.com/Uddipaan-Hazarika/demo-go-sdk v0.1.4
+require github.com/Uddipaan-Hazarika/demo-go-sdk v0.1.6
 
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect
@@ -41,9 +41,9 @@ require (
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/zclconf/go-cty v1.9.1 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
-	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1 // indirect
-	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
+	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20200825200019-8632dd797987 // indirect
 	google.golang.org/grpc v1.32.0 // indirect
 )
@@ -51,7 +51,7 @@ require (
 require (
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.10.1
-	golang.org/x/net v0.0.0-20210326060303-6b1517762897 // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 )

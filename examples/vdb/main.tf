@@ -15,5 +15,10 @@ provider "delphix" {
 
 resource "delphix_vdb" "vdb_name" {
   auto_select_repository = true
-  source_data_id         = "DSOURCE_ID"
+  source_data_id         = "DATASOURCE_ID"
+}
+
+resource "delphix_vdb_group" "vdb_group_name" {
+  name  = "my vdb group"
+  vdb_ids = [delphix_vdb.vdb_name.id]
 }

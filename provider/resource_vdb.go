@@ -535,7 +535,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	log.Print(job_res)
 
 	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, meta.(*apiClient).apiKeyMap), vdbId).Execute()
+		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	return diags
