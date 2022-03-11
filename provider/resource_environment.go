@@ -172,7 +172,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetUsername(v.(string))
 	}
 	if v, has_v := d.GetOk("password"); has_v {
-		createEnvParams.SetUsername(v.(string))
+		createEnvParams.SetPassword(v.(string))
 	}
 	if v, has_v := d.GetOk("name"); has_v {
 		createEnvParams.SetName(v.(string))
