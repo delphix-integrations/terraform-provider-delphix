@@ -163,8 +163,6 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		int64(d.Get("engine_id").(int)),
 		d.Get("os_name").(string),
 		d.Get("hostname").(string),
-		// d.Get("username").(string),
-		// d.Get("password").(string),
 	)
 
 	//General
@@ -211,12 +209,13 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetDescription(v.(string))
 	}
 
-	// Clusters
-	if v, has_v := d.GetOk("is_target"); has_v {
-		createEnvParams.SetIsTarget(v.(bool))
-	}
-	if v, has_v := d.GetOk("is_cluster"); has_v {
+	// // Clusters
+	os_name := d.Get("os_name").(string)
+	if v := d.Get("is_cluster"); v.(bool) {
 		createEnvParams.SetIsCluster(v.(bool))
+		if os_name == "WINDOWS" {
+			createEnvParams.SetIsTarget(d.Get("is_target").(bool))
+		}
 	}
 	if v, has_v := d.GetOk("cluster_home"); has_v {
 		createEnvParams.SetClusterHome(v.(string))
