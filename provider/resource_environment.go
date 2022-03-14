@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
-	//openapi "github.com/kurian87/dct-go-sdk"
 )
 
 func resourceEnvironment() *schema.Resource {
@@ -209,7 +208,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetDescription(v.(string))
 	}
 
-	// // Clusters
+	// Clusters
 	os_name := d.Get("os_name").(string)
 	if v := d.Get("is_cluster"); v.(bool) {
 		createEnvParams.SetIsCluster(v.(bool))

@@ -9,7 +9,7 @@ terraform {
 
 provider "delphix" {
   tls_insecure_skip = true
-  key = "1.TduHqrTSATTIYY1gRNJaC8fD5rY4qUAhxDUezRh1jE6RrLiO6vCBG2Wo45xAnjS1"
+  key = "xxx"
   host = "localhost"
 }
 
@@ -17,9 +17,9 @@ provider "delphix" {
  /* resource "delphix_environment" "unixtgt" {
      engine_id = 2
      os_name = "UNIX"
-     username = "root"
-     password = "sailboat"
-     hostname = "unixsingletgt.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      toolkit_path = "/opt/toolkit"
      name = "unixtgt"
      description = "This is a unix target."     
@@ -29,9 +29,9 @@ provider "delphix" {
 /* resource "delphix_environment" "wintgt" {
      engine_id = 2
      os_name = "WINDOWS"
-     username = "administrator"
-     password = "virtual4uNme"
-     hostname = "winsingletgt2.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      name = "wintgt"
      connector_port = 9100
      ssh_port = 22
@@ -43,7 +43,7 @@ provider "delphix" {
      engine_id = 2
      os_name = "WINDOWS"
      username = "delphix\\delphix_src"
-     password = "delphix"
+     password = "xxx"
      hostname = "10.0.1.50"
      name = "WindowsSrc"
      staging_environment = delphix_environment.wintgt.id
@@ -54,8 +54,8 @@ provider "delphix" {
  /* resource "delphix_environment" "env_name" {
      engine_id = 2
      os_name = "UNIX"
-     username = "delphix"
-     password = "delphix"
+     username = "xxx"
+     password = "xxx"
      hostname = "10.0.1.30"
      toolkit_path = "/home/delphix"
      name = "Test"
@@ -82,9 +82,9 @@ provider "delphix" {
      engine_id = 2
      is_target = false
      os_name = "WINDOWS"
-     username = "administrator"
-     password = "virtual4uNme"
-     hostname = "tftest-node-0.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      name = "winsrc-cluster"
      staging_environment = delphix_environment.wintgt.id
      is_cluster = true
@@ -94,9 +94,9 @@ provider "delphix" {
  /* resource "delphix_environment" "unixcluster" {
      engine_id = 2
      os_name = "UNIX"
-     username = "oracle"
-     password = "oracle"
-     hostname = "raczqy16ab61.dcol1.delphix.com"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      toolkit_path = "/work"
      name = "unixcluster"
      description = "This is a unix target." 
@@ -109,9 +109,9 @@ provider "delphix" {
 /* resource "delphix_environment" "fc-cluster-0" {
      engine_id = 2
      os_name = "WINDOWS"
-     username = "administrator"
-     password = "virtual4uNme"
-     hostname = "tffailover-node-0.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      name = "fc-cluster-0"
      connector_port = 9100
      description = "This is an FC cluster"
@@ -119,9 +119,9 @@ provider "delphix" {
  resource "delphix_environment" "fc-cluster-1" {
      engine_id = 2
      os_name = "WINDOWS"
-     username = "administrator"
-     password = "virtual4uNme"
-     hostname = "tffailover-node-1.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      name = "fc-cluster-1"
      connector_port = 9100
      description = "This is an FC cluster."
@@ -130,9 +130,9 @@ resource "delphix_environment" "fc-tgt-cluster" {
      engine_id = 2
      is_target = true
      os_name = "WINDOWS"
-     username = "administrator"
-     password = "virtual4uNme"
-     hostname = "tffailover-node-1.dlpxdc.co"
+     username = "xxx"
+     password = "xxx"
+     hostname = "xxx"
      name = "fc-tgt-cluster"
      staging_environment = delphix_environment.fc-cluster-1.id
      is_cluster = true
