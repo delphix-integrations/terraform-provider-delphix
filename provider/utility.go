@@ -18,7 +18,6 @@ var SLEEP_TIME = 5
 func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient) (string, string) {
 
 	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
-
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
@@ -41,11 +40,10 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 			return "", resBody
 		}
 		i++
-		log.Printf("__________JOB-STATUS_________Iteration %d", i)
-		log.Print(res.GetStatus())
+		log.Printf("DCT JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
 	}
 
-	return *res.Status, ""
+	return res.GetStatus(), res.GetErrorDetails()
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -68,4 +66,12 @@ func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) 
 			break
 		}
 	}
+}
+
+func toStringArray(array interface{}) []string {
+	items := []string{}
+	for _, item := range array.([]interface{}) {
+		items = append(items, item.(string))
+	}
+	return items
 }

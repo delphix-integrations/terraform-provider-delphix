@@ -229,8 +229,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("staging_environment"); has_v {
 		createEnvParams.SetStagingEnvironment(v.(string))
 	}
-
-	// NFS Addresses need to be added to the list.
+	if v, has_v := d.GetOk("nfs_addresses"); has_v {
+		createEnvParams.SetNfsAddresses(toStringArray(v))
+	}
 
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
@@ -247,16 +248,10 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	d.SetId(*apiRes.EnvironmentId)
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
-	log.Printf("JobType: Env-Create / JobId: %s / JobStatus: %s", *apiRes.JobId, job_status)
+	log.Printf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 
-	if job_err != "" {
-		log.Printf("Error during status check for Jobid:%s", *apiRes.JobId)
-		log.Print(job_err)
-		return diag.Errorf("JobType: Env-Create / JobId: %s / Cannot monitor job: %s", *apiRes.JobId, job_err)
-	}
-
-	if job_status == "FAILED" {
-		return diag.Errorf("JobType: Env-Create / JobId: %s / JobStatus: %s", *apiRes.JobId, job_status)
+	if job_err != "" || job_status == "FAILED" {
+		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: ", *apiRes.JobId, job_status, job_err)
 	}
 	// Get environment info and store state.
 	resourceEnvironmentRead(ctx, d, meta)
@@ -280,8 +275,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("namespace", apiRes.GetNamespace())
 	d.Set("engine_id", apiRes.GetEngineId())
 	d.Set("enabled", apiRes.GetEnabled())
-	// Update Hosts.
-	d.Set("hosts", apiRes.GetHosts()[0])
+	d.Set("hosts", apiRes.GetHosts())
 	return diags
 }
 
@@ -296,7 +290,6 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
-
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
 	if err != nil {
@@ -308,15 +301,9 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
-	if job_err != "" {
-		log.Print("An error encountered while checking the status of the Env Delete job.")
-		log.Print(job_err)
+	if job_err != "" || job_status == "FAILED" {
+		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
-	log.Print(job_status)
-	if job_status == "FAILED" {
-		log.Printf("The DeleteEnvironment Job %s failed.", *apiRes.JobId)
-		return diag.Errorf("Job %s failed", *apiRes.JobId)
-	}
-
+	log.Printf("JobType: Env-Delete / JobId: %s / JobStatus: %s", *apiRes.JobId, job_status)
 	return diags
 }
