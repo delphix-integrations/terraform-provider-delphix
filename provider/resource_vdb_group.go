@@ -39,14 +39,6 @@ func resourceVdbGroup() *schema.Resource {
 	}
 }
 
-func toStringArray(array interface{}) []string {
-	items := []string{}
-	for _, item := range array.([]interface{}) {
-		items = append(items, item.(string))
-	}
-	return items
-}
-
 func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics

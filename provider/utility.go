@@ -10,7 +10,7 @@ import (
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 )
 
-var SLEEP_TIME = 5
+var SLEEP_TIME = 10
 
 // Job Polling function that makes call to the job status API and checks for status of the JOB
 // Input is job status, context and the client
@@ -18,7 +18,6 @@ var SLEEP_TIME = 5
 func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient) (string, string) {
 
 	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
-
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
@@ -41,11 +40,10 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 			return "", resBody
 		}
 		i++
-		log.Printf("__________JOB-STATUS_________Iteration %d", i)
-		log.Print(res.GetStatus())
+		log.Printf("DCT JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
 	}
 
-	return *res.Status, ""
+	return res.GetStatus(), res.GetErrorDetails()
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -68,4 +66,28 @@ func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) 
 			break
 		}
 	}
+}
+
+func toStringArray(array interface{}) []string {
+	items := []string{}
+	for _, item := range array.([]interface{}) {
+		items = append(items, item.(string))
+	}
+	return items
+}
+
+func flattenHosts(hosts []openapi.Host) []interface{} {
+	if hosts != nil {
+		returnedHosts := make([]interface{}, len(hosts))
+		for i, host := range hosts {
+			returnedHost := make(map[string]interface{})
+			returnedHost["hostname"] = host.GetHostname()
+			returnedHost["os_name"] = host.GetOsName()
+			returnedHost["os_version"] = host.GetOsVersion()
+			returnedHost["memory_size"] = host.GetMemorySize()
+			returnedHosts[i] = returnedHost
+		}
+		return returnedHosts
+	}
+	return make([]interface{}, 0)
 }
