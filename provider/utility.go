@@ -10,7 +10,7 @@ import (
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 )
 
-var SLEEP_TIME = 5
+var SLEEP_TIME = 10
 
 // Job Polling function that makes call to the job status API and checks for status of the JOB
 // Input is job status, context and the client
@@ -74,4 +74,20 @@ func toStringArray(array interface{}) []string {
 		items = append(items, item.(string))
 	}
 	return items
+}
+
+func flattenHosts(hosts []openapi.Host) []interface{} {
+	if hosts != nil {
+		returnedHosts := make([]interface{}, len(hosts))
+		for i, host := range hosts {
+			returnedHost := make(map[string]interface{})
+			returnedHost["hostname"] = host.GetHostname()
+			returnedHost["os_name"] = host.GetOsName()
+			returnedHost["os_version"] = host.GetOsVersion()
+			returnedHost["memory_size"] = host.GetMemorySize()
+			returnedHosts[i] = returnedHost
+		}
+		return returnedHosts
+	}
+	return make([]interface{}, 0)
 }

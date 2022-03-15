@@ -3,11 +3,11 @@ package provider
 import (
 	"context"
 	"log"
-
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"time"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceEnvironment() *schema.Resource {
@@ -261,6 +261,8 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
+	// Let's wait a few seconds
+	time.Sleep(time.Duration(SLEEP_TIME) * time.Second)
 	apiRes, httpRes, err := client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 
 	if err != nil {
@@ -274,7 +276,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("namespace", apiRes.GetNamespace())
 	d.Set("engine_id", apiRes.GetEngineId())
 	d.Set("enabled", apiRes.GetEnabled())
-	d.Set("hosts", apiRes.GetHosts())
+	d.Set("hosts", flattenHosts(apiRes.GetHosts()))
 	return diags
 }
 
