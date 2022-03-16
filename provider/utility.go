@@ -109,4 +109,5 @@ func flattenHosts(hosts []openapi.Host) []interface{} {
 		return returnedHosts
 	}
 	return make([]interface{}, 0)
+
 }
