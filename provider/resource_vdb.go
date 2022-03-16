@@ -459,7 +459,7 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		log.Print(job_err)
 	}
 	log.Print(job_res)
-	if job_res == "FAILED" {
+	if job_res == Failed {
 		log.Print("Job Failed!!")
 		return diag.Errorf("Job %s Failed", *res.JobId)
 	}
@@ -476,6 +476,14 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	vdbId := d.Id()
 	log.Printf("VDBID_____________________: %s", vdbId)
+
+	if !PollForObjectCreation(func() (interface{}, *http.Response, error) {
+		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+	}) {
+		log.Print("Error getting the VDB, removing from state.")
+		d.SetId("")
+	}
+
 	res, httpRes, err := client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 
 	if err != nil {

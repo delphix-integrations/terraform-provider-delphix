@@ -28,8 +28,8 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 	}
 
 	var i = 0
-	for res.GetStatus() == "RUNNING" {
-		time.Sleep(time.Duration(SLEEP_TIME) * time.Second)
+	for res.GetStatus() == Running {
+		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
 		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			resBody, err := ResponseBodyToString(httpRes.Body)
@@ -59,13 +59,32 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	return string(bytes), nil
 }
 
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) {
+func PollForObjectCreation(apiCall func() (interface{}, *http.Response, error)) bool {
+	return PollForStatusCode(apiCall, http.StatusOK, 20)
+}
+
+func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) bool {
+	return PollForStatusCode(apiCall, http.StatusNotFound, 0)
+}
+
+// poll counter is the retry counter for which an api call should be retried.
+func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, pollCounter int) bool {
+	counter := 0
 	for {
+		if pollCounter != 0 && counter > pollCounter { //retry is exhausted then break
+			log.Print("Breaking poll for status as retry exhausted")
+			return false
+		} else {
+			time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second) //otherwise sleep and make the call
+		}
 		_, httpRes, _ := apiCall()
-		if httpRes.StatusCode == 404 {
+		if httpRes.StatusCode == statusCode {
+			log.Print("Breaking poll for status as status reached")
 			break
 		}
+		counter = counter + 1
 	}
+	return true
 }
 
 func toStringArray(array interface{}) []string {
