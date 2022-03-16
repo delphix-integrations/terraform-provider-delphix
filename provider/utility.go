@@ -59,32 +59,25 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	return string(bytes), nil
 }
 
-func PollForObjectCreation(apiCall func() (interface{}, *http.Response, error)) bool {
-	return PollForStatusCode(apiCall, http.StatusOK, 20)
+func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (bool, interface{}, *http.Response, error) {
+	return PollForStatusCode(apiCall, http.StatusOK, 10)
 }
 
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) bool {
+func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (bool, interface{}, *http.Response, error) {
 	return PollForStatusCode(apiCall, http.StatusNotFound, 0)
 }
 
 // poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, pollCounter int) bool {
-	counter := 0
-	for {
-		if pollCounter != 0 && counter > pollCounter { //retry is exhausted then break
-			log.Print("Breaking poll for status as retry exhausted")
-			return false
-		} else {
-			time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second) //otherwise sleep and make the call
-		}
-		_, httpRes, _ := apiCall()
-		if httpRes.StatusCode == statusCode {
+func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (bool, interface{}, *http.Response, error) {
+	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
+		if res, httpRes, err := apiCall(); httpRes.StatusCode == statusCode {
 			log.Print("Breaking poll for status as status reached")
-			break
+			return true, res, httpRes, err
 		}
-		counter = counter + 1
+		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
-	return true
+	log.Print("Breaking poll for status as retry exhausted")
+	return false, nil, nil, nil
 }
 
 func toStringArray(array interface{}) []string {

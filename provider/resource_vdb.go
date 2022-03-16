@@ -477,14 +477,15 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	vdbId := d.Id()
 	log.Printf("VDBID_____________________: %s", vdbId)
 
-	if !PollForObjectCreation(func() (interface{}, *http.Response, error) {
+	isSuccess, res, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
-	}) {
+	})
+
+	if !isSuccess {
 		log.Print("Error getting the VDB, removing from state.")
 		d.SetId("")
+		return diag.Errorf("Error in polling vdb")
 	}
-
-	res, httpRes, err := client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
@@ -494,17 +495,22 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.Errorf(resBody)
 	}
 
-	d.Set("database_type", res.GetDatabaseType())
-	d.Set("name", res.GetName())
-	d.Set("database_version", res.GetDatabaseVersion())
-	d.Set("engine_id", res.GetEngineId())
-	d.Set("status", res.GetStatus())
-	d.Set("environment_id", res.GetEnvironmentId())
-	d.Set("ip_address", res.GetIpAddress())
-	d.Set("fqdn", res.GetFqdn())
-	d.Set("parent_id", res.GetParentId())
-	d.Set("group_name", res.GetGroupName())
-	d.Set("creation_date", res.GetCreationDate().String())
+	result, ok := res.(*openapi.VDB)
+	if !ok {
+		return diag.Errorf("Error occured in type casting.")
+	}
+
+	d.Set("database_type", result.GetDatabaseType())
+	d.Set("name", result.GetName())
+	d.Set("database_version", result.GetDatabaseVersion())
+	d.Set("engine_id", result.GetEngineId())
+	d.Set("status", result.GetStatus())
+	d.Set("environment_id", result.GetEnvironmentId())
+	d.Set("ip_address", result.GetIpAddress())
+	d.Set("fqdn", result.GetFqdn())
+	d.Set("parent_id", result.GetParentId())
+	d.Set("group_name", result.GetGroupName())
+	d.Set("creation_date", result.GetCreationDate().String())
 	d.Set("id", vdbId)
 
 	return diags
