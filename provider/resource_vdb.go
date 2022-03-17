@@ -25,7 +25,8 @@ func resourceVdb() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				Default:  "snapshot",
 			},
 			"auto_select_repository": {
 				Type:     schema.TypeBool,
@@ -135,11 +136,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 					},
 				},
@@ -155,11 +156,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -175,11 +177,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -195,11 +198,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -215,11 +219,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -235,11 +240,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -255,11 +261,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -275,11 +282,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -295,11 +303,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -315,11 +324,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -335,11 +345,12 @@ func resourceVdb() *schema.Resource {
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"shell": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -454,7 +465,13 @@ func toHookArray(array interface{}) []openapi.Hook {
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
 		hook_item := openapi.NewHook(item_map["command"].(string))
-		hook_item.SetName(item_map["name"].(string))
+
+		name := item_map["name"].(string)
+		if name != "" {
+			hook_item.SetName(item_map["name"].(string))
+		}
+
+		// defaults to "bash" as per resource schema spec
 		hook_item.SetShell(item_map["shell"].(string))
 		items = append(items, *hook_item)
 	}
@@ -467,7 +484,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 
 	provisionVDBBySnapshotParameters := openapi.NewProvisionVDBBySnapshotParameters()
 
-	//General
+	// Setters for provisionVDBBySnapshotParameters
 	if v, has_v := d.GetOk("auto_select_repository"); has_v {
 		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
 	}
@@ -621,7 +638,6 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	d.SetId(*res.Vdb.Id)
-	d.Set("job_id", *res.JobId)
 
 	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
@@ -645,7 +661,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	provisionVDBByTimestampParameters := openapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
 
-	//General
+	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
 		provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
 	}
@@ -771,7 +787,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if v, has_v := d.GetOk("timestamp"); has_v {
-		tt, _ := time.Parse(time.RFC3339, v.(string))
+		tt, err := time.Parse(time.RFC3339, v.(string))
+		if err != nil {
+			log.Fatal("timestamp parameter is not in valid RFC3339 format")
+			log.Print(err)
+			return diag.Errorf("The timestamp parameter %s is not valid RFC3339 format. Please provide valid value. Example: 2021-05-01T08:51:34.148000+00:00", v.(string))
+		}
 		provisionVDBByTimestampParameters.SetTimestamp(tt)
 	}
 
@@ -836,7 +857,6 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	d.SetId(*res.Vdb.Id)
-	d.Set("job_id", *res.JobId)
 
 	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
