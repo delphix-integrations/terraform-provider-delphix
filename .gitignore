@@ -36,3 +36,6 @@ website/vendor
 
 # examples executions
 ./examples/environment/*.terraform*
+./examples/vdb/*.terraform*
+
+

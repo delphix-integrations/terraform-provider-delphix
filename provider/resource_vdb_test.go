@@ -6,7 +6,6 @@ import (
 	"os"
 	"testing"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -58,9 +57,9 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 		}
 
 		client := testAccProvider.Meta().(*apiClient).client
-		apiKeyMap := testAccProvider.Meta().(*apiClient).apiKeyMap
 
-		res, _, err := client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, apiKeyMap), vdbId).Execute()
+		res, _, err := client.VDBsApi.GetVdbById(context.TODO(), vdbId).Execute()
+
 		if err != nil {
 			return err
 		}
@@ -76,7 +75,6 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 
 func testAccCheckVdbDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*apiClient).client
-	apiKeyMap := testAccProvider.Meta().(*apiClient).apiKeyMap
 
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "delphix_vdb" {
@@ -85,7 +83,8 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 
 		vdbId := rs.Primary.ID
 
-		_, httpResp, _ := client.VDBsApi.GetVdbById(context.WithValue(context.Background(), openapi.ContextAPIKeys, apiKeyMap), vdbId).Execute()
+		_, httpResp, _ := client.VDBsApi.GetVdbById(context.TODO(), vdbId).Execute()
+
 		if httpResp == nil {
 			return fmt.Errorf("VDB has not been deleted")
 		}
