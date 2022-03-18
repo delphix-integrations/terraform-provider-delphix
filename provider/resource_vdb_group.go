@@ -59,7 +59,9 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		return diag.Errorf(resBody)
 	}
 
-	d.SetId(*&res.VdbGroup.Id)
+
+	d.SetId(res.VdbGroup.GetId())
+
 	resourceVdbGroupRead(ctx, d, meta)
 	return diags
 }
