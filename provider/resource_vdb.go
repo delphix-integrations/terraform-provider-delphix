@@ -30,7 +30,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"auto_select_repository": {
 				Type:     schema.TypeBool,
-				Required: true,
+				Optional: true,
 			},
 			"size": {
 				Type:     schema.TypeInt,
@@ -62,7 +62,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"engine_id": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
 			},
 			"status": {
 				Type:     schema.TypeString,
@@ -485,7 +485,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	provisionVDBBySnapshotParameters := openapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
-	if v, has_v := d.GetOk("auto_select_repository"); has_v {
+	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
 	}
 
@@ -525,11 +525,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetEnvironmentUserId(v.(string))
 	}
 
-	if v, has_v := d.GetOk("auto_select_repository"); has_v {
+	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
 	}
 
-	if v, has_v := d.GetOk("vdb_restart"); has_v {
+	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
 		provisionVDBBySnapshotParameters.SetVdbRestart(v.(bool))
 	}
 
@@ -565,7 +565,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
 
-	if v, has_v := d.GetOk("archive_log"); has_v {
+	if v, has_v := d.GetOkExists("archive_log"); has_v {
 		provisionVDBBySnapshotParameters.SetArchiveLog(v.(bool))
 	}
 
@@ -678,7 +678,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetDatabaseName(v.(string))
 	}
 
-	if v, has_v := d.GetOk("truncate_log_on_checkpoint"); has_v {
+	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
 		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(v.(bool))
 	}
 
@@ -702,11 +702,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetRepositoryId(v.(string))
 	}
 
-	if v, has_v := d.GetOk("auto_select_repository"); has_v {
+	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBByTimestampParameters.SetAutoSelectRepository(v.(bool))
 	}
 
-	if v, has_v := d.GetOk("vdb_restart"); has_v {
+	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
 		provisionVDBByTimestampParameters.SetVdbRestart(v.(bool))
 	}
 
@@ -730,7 +730,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetMountPoint(v.(string))
 	}
 
-	if v, has_v := d.GetOk("open_reset_logs"); has_v {
+	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
 		provisionVDBByTimestampParameters.SetOpenResetLogs(v.(bool))
 	}
 
@@ -754,7 +754,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetPostScript(v.(string))
 	}
 
-	if v, has_v := d.GetOk("cdc_on_provision"); has_v {
+	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
 	}
 
@@ -766,11 +766,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
 
-	if v, has_v := d.GetOk("archive_log"); has_v {
+	if v, has_v := d.GetOkExists("archive_log"); has_v {
 		provisionVDBByTimestampParameters.SetArchiveLog(v.(bool))
 	}
 
-	if v, has_v := d.GetOk("new_dbid"); has_v {
+	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
 	}
 
@@ -879,9 +879,17 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	provision_type := d.Get("provision_type").(string)
 
 	if provision_type == "timestamp" {
-		return helper_provision_by_timestamp(ctx, d, meta)
+		if _, has_v := d.GetOk("snapshot_id"); has_v {
+			return diag.Errorf("snapshot_id is not supported for provision_type is 'timestamp'")
+		} else {
+			return helper_provision_by_timestamp(ctx, d, meta)
+		}
 	} else if provision_type == "snapshot" {
-		return helper_provision_by_snapshot(ctx, d, meta)
+		if _, has_v := d.GetOk("timestamp"); has_v {
+			return diag.Errorf("timestamp is not supported for provision_type is 'snapshot'")
+		} else {
+			return helper_provision_by_snapshot(ctx, d, meta)
+		}
 	} else {
 		return diag.Errorf("provision_type must be 'timestamp' or 'snapshot'")
 	}
@@ -908,10 +916,8 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("database_type", res.GetDatabaseType())
 	d.Set("name", res.GetName())
 	d.Set("database_version", res.GetDatabaseVersion())
-	d.Set("engine_id", res.GetEngineId())
 	d.Set("status", res.GetStatus())
 	d.Set("size", res.GetSize())
-	d.Set("environment_id", res.GetEnvironmentId())
 	d.Set("ip_address", res.GetIpAddress())
 	d.Set("fqdn", res.GetFqdn())
 	d.Set("parent_id", res.GetParentId())

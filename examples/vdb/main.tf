@@ -10,7 +10,7 @@ terraform {
 provider "delphix" {
   tls_insecure_skip = true
   key               = "1.XXXX"
-  host              = "127.0.0.1"
+  host              = "HOSTNAME"
 }
 
 resource "delphix_vdb" "vdb_name" {
