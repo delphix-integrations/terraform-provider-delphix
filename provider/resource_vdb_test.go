@@ -58,7 +58,7 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		res, _, err := client.VDBsApi.GetVdbById(context.TODO(), vdbId).Execute()
+		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
 
 		if err != nil {
 			return err
@@ -83,7 +83,7 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 
 		vdbId := rs.Primary.ID
 
-		_, httpResp, _ := client.VDBsApi.GetVdbById(context.TODO(), vdbId).Execute()
+		_, httpResp, _ := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
 
 		if httpResp == nil {
 			return fmt.Errorf("VDB has not been deleted")
