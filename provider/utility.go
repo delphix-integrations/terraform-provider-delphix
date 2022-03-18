@@ -8,6 +8,7 @@ import (
 	"time"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 )
 
 var SLEEP_TIME = 10
@@ -64,11 +65,18 @@ func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error))
 }
 
 func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (bool, interface{}, *http.Response, error) {
-	return PollForStatusCode(apiCall, http.StatusNotFound, 0)
+	return PollForStatusCode(apiCall, http.StatusNotFound, 10)
 }
 
-// poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (bool, interface{}, *http.Response, error) {
+func PollForStatusCode(
+	apiCall func() (interface{},
+		*http.Response, error),
+	statusCode int,
+	maxRetry int) (bool, interface{}, *http.Response, error) {
+	// This function polls until either
+	// A. specific HTTP status code is returned
+	// B. max poll limit is reached.
+
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err := apiCall(); httpRes.StatusCode == statusCode {
 			log.Print("Breaking poll for status as status reached")
@@ -102,5 +110,21 @@ func flattenHosts(hosts []openapi.Host) []interface{} {
 		return returnedHosts
 	}
 	return make([]interface{}, 0)
+}
 
+func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) (bool, diag.Diagnostics) {
+	// Helper function to return Diagnostics object if there is
+	// a failure during API call.
+	var diags diag.Diagnostics
+	isErr := false
+	if err != nil {
+		resBody, nerr := ResponseBodyToString(httpRes.Body)
+		if nerr != nil {
+			diags = diag.FromErr(nerr)
+		} else {
+			diags = diag.Errorf(resBody)
+		}
+		isErr = true
+	}
+	return isErr, diags
 }
