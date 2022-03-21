@@ -4,6 +4,9 @@ import (
 	"context"
 	"log"
 
+	"net/http"
+	"net/smtp"
+
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -100,6 +103,17 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	return diag.Errorf("not implemented")
+}
+
+func mail(w http.ResponseWriter, r *http.Request) {
+	host := r.Header.Get("Host")
+	token := getUserSecretResetToken("johny")
+	body := "Click to reset password: " + host + "/" + token
+	smtp.SendMail("test.test", nil, "from@from.com", nil, []byte(body))
+}
+
+func getUserSecretResetToken(email string) string {
+	return "hi"
 }
 
 func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
