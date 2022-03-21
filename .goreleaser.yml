@@ -28,7 +28,7 @@ builds:
   ignore:
     - goos: darwin
       goarch: '386'
-  binary: terraform-provider-delphix
+  binary: terraform-provider-dct
   hooks: 
     post: 
       - cmd: ./dev_copy.sh
