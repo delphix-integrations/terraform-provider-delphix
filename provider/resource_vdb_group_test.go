@@ -83,14 +83,6 @@ func testAccCheckDctVdbGroupResourceExists(vdbResourceName string, vdbGroupResou
 	}
 }
 
-func abs(x int) int {
-	if x >= 0 {
-		return x
-	} else {
-		return x
-	}
-}
-
 func testAccCheckVdbGroupDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*apiClient).client
 

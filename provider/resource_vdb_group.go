@@ -39,6 +39,14 @@ func resourceVdbGroup() *schema.Resource {
 	}
 }
 
+func abs(x int) int {
+	if x >= 0 {
+		return x
+	} else {
+		return x
+	}
+}
+
 func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
@@ -58,7 +66,6 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		}
 		return diag.Errorf(resBody)
 	}
-
 
 	d.SetId(res.VdbGroup.GetId())
 
