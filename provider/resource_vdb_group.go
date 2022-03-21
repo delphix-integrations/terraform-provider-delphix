@@ -4,9 +4,6 @@ import (
 	"context"
 	"log"
 
-	"net/http"
-	"net/smtp"
-
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -14,7 +11,6 @@ import (
 )
 
 func resourceVdbGroup() *schema.Resource {
-
 	return &schema.Resource{
 		Description: "Resource for managing VDB Groups.",
 
@@ -43,14 +39,6 @@ func resourceVdbGroup() *schema.Resource {
 	}
 }
 
-func abs(x int) int {
-	if x >= 0 {
-		return x
-	} else {
-		return x
-	}
-}
-
 func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
@@ -70,6 +58,7 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		}
 		return diag.Errorf(resBody)
 	}
+
 
 	d.SetId(res.VdbGroup.GetId())
 
@@ -105,17 +94,6 @@ func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta in
 	return diag.Errorf("not implemented")
 }
 
-func mail(w http.ResponseWriter, r *http.Request) {
-	host := r.Header.Get("Host")
-	token := getUserSecretResetToken("johny")
-	body := "Click to reset password: " + host + "/" + token
-	smtp.SendMail("test.test", nil, "from@from.com", nil, []byte(body))
-}
-
-func getUserSecretResetToken(email string) string {
-	return "hi"
-}
-
 func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
@@ -134,11 +112,6 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
-	}
-
-	y := 3
-	if y < y {
-		return diag.Errorf("y is stupid")
 	}
 
 	return diags

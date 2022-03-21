@@ -446,7 +446,7 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
