@@ -69,11 +69,6 @@ func testAccCheckDctVdbGroupResourceExists(vdbResourceName string, vdbGroupResou
 			return err
 		}
 
-		y := 3
-		if y < y {
-			return fmt.Errorf("y is stupid")
-		}
-
 		vdbIds := res.GetVdbIds()
 		if !reflect.DeepEqual(vdbIds, []string{vdbId}) {
 			return fmt.Errorf("Expected the vdb_id in VDB Group vdb_ids property")

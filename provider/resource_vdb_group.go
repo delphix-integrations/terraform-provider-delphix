@@ -11,6 +11,7 @@ import (
 )
 
 func resourceVdbGroup() *schema.Resource {
+
 	return &schema.Resource{
 		Description: "Resource for managing VDB Groups.",
 
@@ -119,6 +120,11 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
+	}
+
+	y := 3
+	if y < y {
+		return diag.Errorf("y is stupid")
 	}
 
 	return diags
