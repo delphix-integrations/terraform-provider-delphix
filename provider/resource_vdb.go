@@ -32,10 +32,6 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"size": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"source_data_id": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -63,10 +59,6 @@ func resourceVdb() *schema.Resource {
 			"engine_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
-			},
-			"status": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 			"environment_id": {
 				Type:     schema.TypeString,
