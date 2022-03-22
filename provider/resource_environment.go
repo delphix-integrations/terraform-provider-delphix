@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"log"
+	"net/http"
 	"time"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
@@ -244,13 +245,13 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf(resBody)
 	}
 
-	d.SetId(*apiRes.EnvironmentId)
+	d.SetId(apiRes.GetEnvironmentId())
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	log.Printf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 
 	if job_err != "" || job_status == "FAILED" {
-		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: ", *apiRes.JobId, job_status, job_err)
+		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
 	// Get environment info and store state.
 	resourceEnvironmentRead(ctx, d, meta)
@@ -303,8 +304,11 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	if job_err != "" || job_status == "FAILED" {
-		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
+		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status: %s / Error: %s", apiRes.GetJobId(), job_status, job_err)
 	}
-	log.Printf("JobType: Env-Delete / JobId: %s / JobStatus: %s", *apiRes.JobId, job_status)
+	log.Printf("JobType: Env-Delete / JobId: %s / JobStatus: %s", apiRes.GetJobId(), job_status)
+	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+	})
 	return diags
 }
