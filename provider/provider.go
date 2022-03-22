@@ -51,6 +51,11 @@ func Provider(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("DCT_HOST_SCHEME", "https"),
 				},
+				"debug": {
+					Type:     schema.TypeBool,
+					Optional: true,
+					Default:  false,
+				},
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"delphix_vdb":         resourceVdb(),
@@ -83,10 +88,14 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 
 		client := openapi.NewAPIClient(cfg)
 
-		// make a test call
+		if d.Get("debug").(bool) {
+			// print out raw api request body for debug purposes
+			client.GetConfig().Debug = true
+		}
 
-		req := client.EnginesApi.GetEngines(ctx)
-		_, _, err := client.EnginesApi.GetEnginesExecute(req)
+		// make a test call
+		req := client.ManagementApi.GetRegisteredEngines(ctx)
+		_, _, err := client.ManagementApi.GetRegisteredEnginesExecute(req)
 
 		if err != nil {
 			return nil, diag.FromErr(err)
