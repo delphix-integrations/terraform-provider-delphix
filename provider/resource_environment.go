@@ -3,7 +3,7 @@ package provider
 import (
 	"context"
 	"log"
-	"net/http"
+	"time"
 
 	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -235,18 +235,23 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
-		return diags
+	if err != nil {
+		resBody, httpErr := ResponseBodyToString(httpRes.Body)
+		if httpErr != nil {
+			log.Fatal(httpErr)
+			return diag.FromErr(httpErr)
+		}
+		return diag.Errorf(resBody)
 	}
 
 	d.SetId(*apiRes.EnvironmentId)
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
+	log.Printf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 
-	if job_status == Failed {
-		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
+	if job_err != "" || job_status == "FAILED" {
+		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: ", *apiRes.JobId, job_status, job_err)
 	}
-
 	// Get environment info and store state.
 	resourceEnvironmentRead(ctx, d, meta)
 	return diags
@@ -256,26 +261,22 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
+	// Let's wait a few seconds
+	time.Sleep(time.Duration(SLEEP_TIME) * time.Second)
+	apiRes, httpRes, err := client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 
-	isSuccess, apiRes, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
-	})
-
-	if !isSuccess {
-		log.Printf("Error reading environment. EnvId:%s will be removed from state file.", envId)
-		d.SetId("")
-		return diag.Errorf("Error in Environment-Read:  %s", envId)
+	if err != nil {
+		resBody, httpErr := ResponseBodyToString(httpRes.Body)
+		if httpErr != nil {
+			return diag.FromErr(httpErr)
+		}
+		return diag.Errorf(resBody)
 	}
 
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
-		return diags
-	}
-
-	envRes, _ := apiRes.(*openapi.Environment)
-	d.Set("namespace", envRes.GetNamespace())
-	d.Set("engine_id", envRes.GetEngineId())
-	d.Set("enabled", envRes.GetEnabled())
-	d.Set("hosts", flattenHosts(envRes.GetHosts()))
+	d.Set("namespace", apiRes.GetNamespace())
+	d.Set("engine_id", apiRes.GetEngineId())
+	d.Set("enabled", apiRes.GetEnabled())
+	d.Set("hosts", flattenHosts(apiRes.GetHosts()))
 	return diags
 }
 
@@ -287,24 +288,23 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	client := meta.(*apiClient).client
 	var diags diag.Diagnostics
-
+	client := meta.(*apiClient).client
 	envId := d.Id()
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
-		return diags
+	if err != nil {
+		resBody, httpErr := ResponseBodyToString(httpRes.Body)
+		if httpErr != nil {
+			return diag.FromErr(httpErr)
+		}
+		return diag.Errorf(resBody)
 	}
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
-
-	if job_status == Failed {
-		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status:%s / Error: %s", *apiRes.JobId, job_status, job_err)
+	if job_err != "" || job_status == "FAILED" {
+		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
-	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
-	})
-
+	log.Printf("JobType: Env-Delete / JobId: %s / JobStatus: %s", *apiRes.JobId, job_status)
 	return diags
 }
