@@ -239,7 +239,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if err != nil {
 		resBody, httpErr := ResponseBodyToString(httpRes.Body)
 		if httpErr != nil {
-			log.Fatal(httpErr)
+			log.Print(httpErr)
 			return diag.FromErr(httpErr)
 		}
 		return diag.Errorf(resBody)
