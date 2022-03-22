@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -66,13 +66,13 @@ func Provider(version string) func() *schema.Provider {
 }
 
 type apiClient struct {
-	client *openapi.APIClient
+	client *dctapi.APIClient
 }
 
 func configure(version string, p *schema.Provider) func(context.Context, *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	return func(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 		// configure client
-		cfg := openapi.NewConfiguration()
+		cfg := dctapi.NewConfiguration()
 		cfg.Host = d.Get("host").(string)
 		cfg.UserAgent = p.UserAgent("terraform-provider-delphix", version)
 		cfg.Scheme = d.Get("host_scheme").(string)
@@ -81,12 +81,12 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 		}}
 		cfg.AddDefaultHeader("Authorization", "apk "+d.Get("key").(string))
 
-		client := openapi.NewAPIClient(cfg)
+		client := dctapi.NewAPIClient(cfg)
 
 		// make a test call
 
-		req := client.EnginesApi.GetEngines(ctx)
-		_, _, err := client.EnginesApi.GetEnginesExecute(req)
+		req := client.ManagementApi.GetRegisteredEngines(ctx)
+		_, _, err := client.ManagementApi.GetRegisteredEnginesExecute(req)
 
 		if err != nil {
 			return nil, diag.FromErr(err)
