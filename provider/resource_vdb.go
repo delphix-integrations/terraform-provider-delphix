@@ -631,7 +631,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
