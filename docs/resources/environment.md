@@ -1,4 +1,4 @@
-# <resource name> delphix_environment
+# Resource: <resource name> delphix_environment
 
 An environment is a a grouping of a single host or a cluster of hosts. environment allows creating hosts or a cluster of hosts.
 

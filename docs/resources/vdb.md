@@ -1,4 +1,4 @@
-# <resource name> delphix_vdb
+# Resource: <resource name> delphix_vdb
 
 The VDB resource allows the provisioning, updation and deletion of a Delphix virtual database infrastructure (VDB). However, update is not supported for all parameters, the ones supported is mentioned below.
 
