@@ -32,10 +32,6 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"size": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"source_data_id": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -61,12 +57,8 @@ func resourceVdb() *schema.Resource {
 				Computed: true,
 			},
 			"engine_id": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeInt,
 				Optional: true,
-			},
-			"status": {
-				Type:     schema.TypeString,
-				Computed: true,
 			},
 			"environment_id": {
 				Type:     schema.TypeString,
@@ -141,6 +133,7 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -578,7 +571,12 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
-		provisionVDBBySnapshotParameters.SetCustomEnvVars(v.(map[string]string))
+		custom_env_vars := make(map[string]string)
+
+		for k, v := range v.(map[string]interface{}) {
+			custom_env_vars[k] = v.(string)
+		}
+		provisionVDBBySnapshotParameters.SetCustomEnvVars(custom_env_vars)
 	}
 
 	if v, has_v := d.GetOk("pre_refresh"); has_v {
@@ -631,7 +629,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Print(err)
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
@@ -779,7 +777,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
-		provisionVDBByTimestampParameters.SetCustomEnvVars(v.(map[string]string))
+		custom_env_vars := make(map[string]string)
+
+		for k, v := range v.(map[string]interface{}) {
+			custom_env_vars[k] = v.(string)
+		}
+		provisionVDBByTimestampParameters.SetCustomEnvVars(custom_env_vars)
 	}
 
 	if v, has_v := d.GetOk("custom_env_files"); has_v {
@@ -789,7 +792,6 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("timestamp"); has_v {
 		tt, err := time.Parse(time.RFC3339, v.(string))
 		if err != nil {
-			log.Fatal("timestamp parameter is not in valid RFC3339 format")
 			log.Print(err)
 			return diag.Errorf("The timestamp parameter %s is not valid RFC3339 format. Please provide valid value. Example: 2021-05-01T08:51:34.148000+00:00", v.(string))
 		}
@@ -930,7 +932,8 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
 	d.Set("database_version", result.GetDatabaseVersion())
-	d.Set("status", result.GetStatus())
+	d.Set("engine_id", result.GetEngineId())
+	d.Set("environment_id", result.GetEnvironmentId())
 	d.Set("ip_address", result.GetIpAddress())
 	d.Set("fqdn", result.GetFqdn())
 	d.Set("parent_id", result.GetParentId())
