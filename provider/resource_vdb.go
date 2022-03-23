@@ -24,8 +24,7 @@ func resourceVdb() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
 				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "snapshot",
+				Computed: true,
 			},
 			"auto_select_repository": {
 				Type:     schema.TypeBool,
@@ -883,14 +882,12 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		} else {
 			return helper_provision_by_timestamp(ctx, d, meta)
 		}
-	} else if provision_type == "snapshot" {
+	} else {
 		if _, has_v := d.GetOk("timestamp"); has_v {
 			return diag.Errorf("timestamp is not supported for provision_type is 'snapshot'")
 		} else {
 			return helper_provision_by_snapshot(ctx, d, meta)
 		}
-	} else {
-		return diag.Errorf("provision_type must be 'timestamp' or 'snapshot'")
 	}
 }
 
