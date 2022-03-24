@@ -25,12 +25,6 @@ resource "delphix_environment" "unixtgt" {
      description = "This is a unix target."     
  } 
 
-resource "delphix_vdb" "vdb_name" {
-  auto_select_repository = true
-  source_data_id         = "2-ORACLE_DB_CONTAINER-11"
-  name = substr(delphix_environment.unixtgt.id, 0,5)
-}
-
  /* Win Standalone - Target*/
 /* resource "delphix_environment" "wintgt" {
      engine_id = 2

@@ -239,7 +239,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diags
 	}
 
-	d.SetId(*apiRes.EnvironmentId)
+	d.SetId(apiRes.GetEnvironmentId())
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 
 	if job_status == Failed {

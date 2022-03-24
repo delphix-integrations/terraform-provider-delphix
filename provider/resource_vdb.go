@@ -24,7 +24,8 @@ func resourceVdb() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
+				Default:  "snapshot",
 			},
 			"auto_select_repository": {
 				Type:     schema.TypeBool,
