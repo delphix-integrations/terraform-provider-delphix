@@ -1,4 +1,4 @@
-# <resource name> delphix_vdb_group
+# Resource: <resource name> delphix_vdb_group
 
 A vdb group is a collection of virtual databases and datesets. vdb_group allows creating such collection for some vdbs.
 
