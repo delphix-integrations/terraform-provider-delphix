@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	openapi "github.com/delphix/dct-sdk-go"
 )
 
 var SLEEP_TIME = 10

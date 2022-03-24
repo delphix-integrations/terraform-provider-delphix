@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	openapi "github.com/delphix/dct-sdk-go"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -58,7 +58,6 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		}
 		return diag.Errorf(resBody)
 	}
-
 
 	d.SetId(res.VdbGroup.GetId())
 

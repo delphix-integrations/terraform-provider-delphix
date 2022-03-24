@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	openapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )

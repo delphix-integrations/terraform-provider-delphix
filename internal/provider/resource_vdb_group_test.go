@@ -21,6 +21,7 @@ func TestAccVdb_create_vdb_group_positive(t *testing.T) {
 				Config: testAccCheckDctVDBGroupConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDctVdbGroupResourceExists("delphix_vdb.new", "delphix_vdb_group.new_group")),
+				ExpectNonEmptyPlan: true,
 			},
 		},
 	})

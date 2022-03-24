@@ -4,9 +4,10 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
+	openapi "github.com/delphix/dct-sdk-go"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -48,16 +49,12 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"name": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"database_version": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"engine_id": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"environment_id": {
@@ -487,7 +484,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	if v, has_v := d.GetOk("engine_id"); has_v {
-		provisionVDBBySnapshotParameters.SetEngineId(int64(v.(int)))
+		eng_id, _ := strconv.Atoi(v.(string))
+		provisionVDBBySnapshotParameters.SetEngineId(int64(eng_id))
 	}
 
 	if v, has_v := d.GetOk("target_group_id"); has_v {
@@ -661,7 +659,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
-		provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
+		// provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
+		eng_id, _ := strconv.Atoi(v.(string))
+		provisionVDBByTimestampParameters.SetEngineId(int64(eng_id))
 	}
 
 	if v, has_v := d.GetOk("target_group_id"); has_v {
@@ -904,7 +904,6 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	var diags diag.Diagnostics
 
 	vdbId := d.Id()
-	log.Printf("VDBID_____________________: %s", vdbId)
 
 	isSuccess, res, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
@@ -930,7 +929,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	}
 
 	d.Set("database_type", result.GetDatabaseType())
-	d.Set("name", result.GetName())
+	d.Set("vdb_name", result.GetName())
 	d.Set("database_version", result.GetDatabaseVersion())
 	d.Set("engine_id", result.GetEngineId())
 	d.Set("environment_id", result.GetEnvironmentId())
@@ -946,7 +945,140 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	return diag.Errorf("not implemented")
+	var diags diag.Diagnostics
+	client := meta.(*apiClient).client
+	updateVDBParam := openapi.NewUpdateVDBParameters()
+
+	if d.HasChanges(
+		"auto_select_repository",
+		"source_data_id",
+		"id",
+		"job_id",
+		"database_type",
+		"database_version",
+		"engine_id",
+		"status",
+		"ip_address",
+		"fqdn",
+		"parent_id",
+		"group_name",
+		"creation_date",
+		"target_group_id",
+		"database_name",
+		"truncate_log_on_checkpoint",
+		"repository_id",
+		"pre_refresh",
+		"post_refresh",
+		"pre_rollback",
+		"post_rollback",
+		"configure_clone",
+		"pre_snapshot",
+		"post_snapshot",
+		"pre_start",
+		"post_start",
+		"pre_stop",
+		"post_stop",
+		"file_mapping_rules",
+		"oracle_instance_name",
+		"unique_name",
+		"mount_point",
+		"open_reset_logs",
+		"snapshot_policy_id",
+		"retention_policy_id",
+		"recovery_model",
+		"online_log_groups",
+		"online_log_size",
+		"archive_log",
+		"custom_env_vars",
+		"custom_env_files",
+		"timestamp",
+		"timestamp_in_database_timezone",
+		"snapshot_id") {
+		d.Partial(true)
+		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	}
+
+	var changes []string
+	// This is because environment_id is not something we actively provide, it is returned by the get call, hence we are keeping it unchanged. However, terraform plan will show
+	// that environment_id will be removed.
+	changes = append(changes, "environment_id")
+	// -------------------for testing------------------------
+	if d.HasChange("template_id") {
+		changes = append(changes, "template_id")
+		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string)) //get gives us the new value
+	}
+	// if d.HasChange("auto_select_repository") {
+	// 	log.Printf(">>>>>>>>>>>>>>>>>>>>>>>> %t", d.Get("auto_select_repository").(bool))
+	// 	d.Partial(true)
+	// 	return diag.Errorf("Error")
+	// }
+	if d.HasChange("vdb_name") {
+		changes = append(changes, "vdb_name")
+		updateVDBParam.SetName(d.Get("vdb_name").(string))
+	}
+
+	// ----------------------DATABASE--------------------
+	if d.HasChange("username") {
+		changes = append(changes, "username")
+		updateVDBParam.SetUser(d.Get("username").(string))
+	}
+	if d.HasChange("password") {
+		changes = append(changes, "password")
+		updateVDBParam.SetPassword(d.Get("password").(string))
+	}
+	if d.HasChange("new_dbid") {
+		changes = append(changes, "new_dbid")
+		updateVDBParam.SetNewDbid(d.Get("new_dbid").(bool))
+	}
+	if d.HasChange("vdb_restart") {
+		changes = append(changes, "template_id")
+		updateVDBParam.SetAutoRestart(d.Get("vdb_restart").(bool))
+	}
+
+	//------------LISTENERS----------------------
+	if d.HasChange("listener_ids") {
+		changes = append(changes, "listener_ids")
+		updateVDBParam.SetListeners(toStringArray(d.Get("listener_ids")))
+	}
+
+	//------------ENV USER ID----------------------
+	if d.HasChange("environment_user_id") {
+		changes = append(changes, "environment_user_id")
+		updateVDBParam.SetEnvironmentUser(d.Get("environment_user_id").(string))
+	}
+	// ---------------pre_script and post_script can be included exclusively for non-linked mssql--------------
+	if d.HasChange("pre_script") {
+		changes = append(changes, "pre_script")
+		updateVDBParam.SetPreScript(d.Get("pre_script").(string))
+	}
+	if d.HasChange("post_script") {
+		changes = append(changes, "post_script")
+		updateVDBParam.SetPostScript(d.Get("post_script").(string))
+	}
+
+	if d.HasChange("cdc_on_provision") {
+		changes = append(changes, "cdc_on_provision")
+		updateVDBParam.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
+	}
+
+	httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+
+	if err != nil {
+		d.Partial(true)
+		resBody, err := ResponseBodyToString(httpRes.Body)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		return diag.Errorf(resBody)
+	}
+
+	for _, change := range changes {
+		log.Print("Changing value of - ")
+		log.Print(change)
+		d.Set(change, d.Get(change))
+	}
+
+	return diags
 }
 
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
