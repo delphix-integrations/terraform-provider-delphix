@@ -105,11 +105,10 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 	return make([]interface{}, 0)
 }
 
-func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) (bool, diag.Diagnostics) {
+func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
 	var diags diag.Diagnostics
-	isErr := false
 	if err != nil {
 		resBody, nerr := ResponseBodyToString(httpRes.Body)
 		if nerr != nil {
@@ -117,7 +116,7 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 		} else {
 			diags = diag.Errorf(resBody)
 		}
-		isErr = true
+		return diags
 	}
-	return isErr, diags
+	return nil
 }

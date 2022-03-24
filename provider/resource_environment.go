@@ -235,7 +235,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -264,7 +264,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		d.SetId("")
 		return diag.Errorf("Error in Environment-Read:  %s", envId)
 	}
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 	envRes, _ := apiRes.(*dctapi.Environment)
@@ -287,7 +287,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	envId := d.Id()
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
-	if isErr, diags := apiErrorResponseHelper(apiRes, httpRes, err); isErr {
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
