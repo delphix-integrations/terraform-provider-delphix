@@ -2,7 +2,7 @@ terraform {
   required_providers {
     delphix = {
       version = "0.0-dev"
-      source  = "delphix.com/local/dct"
+      source  = "delphix.com/local/delphix"
     }
   }
 }
@@ -14,16 +14,16 @@ provider "delphix" {
 }
 
 /* Unix Standalone */
- /* resource "delphix_environment" "unixtgt" {
+resource "delphix_environment" "unixtgt" {
      engine_id = 2
      os_name = "UNIX"
      username = "xxx"
      password = "xxx"
      hostname = "xxx"
-     toolkit_path = "/opt/toolkit"
+     toolkit_path = "/opt/toolkit2"
      name = "unixtgt"
      description = "This is a unix target."     
- }  */
+ } 
 
  /* Win Standalone - Target*/
 /* resource "delphix_environment" "wintgt" {
@@ -42,7 +42,7 @@ provider "delphix" {
 /* resource "delphix_environment" "WindowsSrc" {
      engine_id = 2
      os_name = "WINDOWS"
-     username = "delphix\\delphix_src"
+     username = "delphix\\xxx"
      password = "xxx"
      hostname = "10.0.1.50"
      name = "WindowsSrc"
@@ -106,7 +106,7 @@ provider "delphix" {
 
 
  /* Windows Failover Cluster - Used as target */
-/* resource "delphix_environment" "fc-cluster-0" {
+ /* resource "delphix_environment" "fc-cluster-0" {
      engine_id = 2
      os_name = "WINDOWS"
      username = "xxx"
@@ -126,6 +126,7 @@ provider "delphix" {
      connector_port = 9100
      description = "This is an FC cluster."
  }
+
 resource "delphix_environment" "fc-tgt-cluster" {
      engine_id = 2
      is_target = true
@@ -134,6 +135,6 @@ resource "delphix_environment" "fc-tgt-cluster" {
      password = "xxx"
      hostname = "xxx"
      name = "fc-tgt-cluster"
-     staging_environment = delphix_environment.fc-cluster-1.id
+     staging_environment = "2-WINDOWS_HOST_ENVIRONMENT-35"
      is_cluster = true
- }  */
+ }   */

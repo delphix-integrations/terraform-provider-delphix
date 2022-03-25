@@ -24,7 +24,7 @@ website/node_modules
 *.iml
 *.test
 *.iml
-
+*.terraform.lock.hcl
 website/vendor
 
 # Test exclusions
@@ -37,5 +37,3 @@ website/vendor
 # examples executions
 ./examples/environment/*.terraform*
 ./examples/vdb/*.terraform*
-
-

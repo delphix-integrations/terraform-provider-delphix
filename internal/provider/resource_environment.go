@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
 
-	openapi "github.com/delphix/dct-sdk-go"
+	dctapi "github.com/delphix/dct-sdk-go"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -159,7 +159,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	createEnvParams := openapi.NewEnvironmentCreateParameters(
+	createEnvParams := dctapi.NewEnvironmentCreateParameters(
 		int64(d.Get("engine_id").(int)),
 		d.Get("os_name").(string),
 		d.Get("hostname").(string),
@@ -236,22 +236,15 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
-	if err != nil {
-		resBody, httpErr := ResponseBodyToString(httpRes.Body)
-		if httpErr != nil {
-			log.Printf("[DELPHIX] [ERROR] Http Error: %v", httpErr)
-			return diag.FromErr(httpErr)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
 	d.SetId(apiRes.GetEnvironmentId())
-
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
-	log.Printf("[DELPHIX] [INFO] JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 
-	if job_err != "" || job_status == "FAILED" {
-		return diag.Errorf("[DELPHIX] [INFO] JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
+	if job_status == Failed {
+		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
 	// Get environment info and store state.
 	resourceEnvironmentRead(ctx, d, meta)
@@ -262,22 +255,23 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
-	// Let's wait a few seconds
-	time.Sleep(time.Duration(SLEEP_TIME) * time.Second)
-	apiRes, httpRes, err := client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 
-	if err != nil {
-		resBody, httpErr := ResponseBodyToString(httpRes.Body)
-		if httpErr != nil {
-			return diag.FromErr(httpErr)
-		}
-		return diag.Errorf(resBody)
+	isSuccess, apiRes, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+	})
+
+	if !isSuccess {
+		log.Printf("[DELPHIX] [ERROR] Error reading environment. EnvId:%s will be removed from state file.", envId)
+		d.SetId("")
+		return diag.Errorf("Error in Environment-Read:  %s", envId)
 	}
-
-	d.Set("namespace", apiRes.GetNamespace())
-	d.Set("engine_id", apiRes.GetEngineId())
-	d.Set("enabled", apiRes.GetEnabled())
-	d.Set("hosts", flattenHosts(apiRes.GetHosts()))
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	envRes, _ := apiRes.(*dctapi.Environment)
+	d.Set("namespace", envRes.GetNamespace())
+	d.Set("enabled", envRes.GetEnabled())
+	d.Set("hosts", flattenHosts(envRes.GetHosts()))
 	return diags
 }
 
@@ -294,21 +288,19 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	envId := d.Id()
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
-	if err != nil {
-		resBody, httpErr := ResponseBodyToString(httpRes.Body)
-		if httpErr != nil {
-			return diag.FromErr(httpErr)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
-	if job_err != "" || job_status == "FAILED" {
-		return diag.Errorf("[DELPHIX] [ERROR] JobType: Env-Delete / JobId: %s / Status: %s / Error: %s", apiRes.GetJobId(), job_status, job_err)
+
+	if job_status == Failed {
+		return diag.Errorf("[DELPHIX] [ERROR] JobType: Env-Delete / JobId: %s / Status:%s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
-	log.Printf("[DELPHIX] [INFO] JobType: Env-Delete / JobId: %s / JobStatus: %s", apiRes.GetJobId(), job_status)
+
 	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
+
 	return diags
 }

@@ -4,8 +4,7 @@ import (
 	"context"
 	"log"
 
-	openapi "github.com/delphix/dct-sdk-go"
-
+	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -45,21 +44,16 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	client := meta.(*apiClient).client
 
-	res, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*openapi.NewCreateVDBGroupRequest(
+	apiRes, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
 		d.Get("name").(string),
 		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Fatalf("[DELPHIX] [ERROR] an error occured: %v", err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(res.VdbGroup.GetId())
+	d.SetId(apiRes.VdbGroup.GetId())
 
 	resourceVdbGroupRead(ctx, d, meta)
 	return diags
@@ -73,18 +67,14 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 	vdbGroupId := d.Id()
 	log.Printf("[DELPHIX] [INFO] VdbGroupId: %s", vdbGroupId)
-	res, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
+	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.Set("name", res.GetName())
-	d.Set("vdb_ids", res.GetVdbIds())
+	d.Set("name", apiRes.GetName())
+	d.Set("vdb_ids", apiRes.GetVdbIds())
 	return diags
 }
 
@@ -100,11 +90,14 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	vdbGroupId := d.Id()
 
-	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
 	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()
 
+	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+		return diags
+	}
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {

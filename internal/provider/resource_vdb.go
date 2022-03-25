@@ -7,8 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	openapi "github.com/delphix/dct-sdk-go"
-
+	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -450,11 +449,11 @@ func resourceVdb() *schema.Resource {
 	}
 }
 
-func toHookArray(array interface{}) []openapi.Hook {
-	items := []openapi.Hook{}
+func toHookArray(array interface{}) []dctapi.Hook {
+	items := []dctapi.Hook{}
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
-		hook_item := openapi.NewHook(item_map["command"].(string))
+		hook_item := dctapi.NewHook(item_map["command"].(string))
 
 		name := item_map["name"].(string)
 		if name != "" {
@@ -472,7 +471,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	provisionVDBBySnapshotParameters := openapi.NewProvisionVDBBySnapshotParameters()
+	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
@@ -623,26 +622,21 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
 
-	res, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Print(err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(*res.Vdb.Id)
+	d.SetId(*apiRes.Vdb.Id)
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
+	job_res, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	if job_err != "" {
 		log.Printf("[DELPHIX] [ERROR] Job Polling failed but continuing with provisioning. Error: %s", job_err)
 	}
 	log.Printf("[DELPHIX] [INFO] Job result is %s", job_res)
 	if job_res == Failed {
-		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", res.GetJobId())
-		return diag.Errorf("Job %s Failed", res.GetJobId())
+		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", apiRes.GetJobId())
+		return diag.Errorf("Job %s Failed", apiRes.GetJobId())
 	}
 
 	resourceVdbRead(ctx, d, meta)
@@ -654,7 +648,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	provisionVDBByTimestampParameters := openapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
+	provisionVDBByTimestampParameters := dctapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
 
 	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
@@ -847,26 +841,21 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
 
-	res, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Fatal(err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(*res.Vdb.Id)
+	d.SetId(*apiRes.Vdb.Id)
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.GetJobId(), ctx, client)
 	if job_err != "" {
 		log.Printf("[DELPHIX] [ERROR] Job Polling failed but continuing with provisioning. Error: %v", job_err)
 	}
 	log.Printf("[DELPHIX] [INFO] Job result is %s", job_res)
 	if job_res == "FAILED" {
-		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", res.GetJobId())
-		return diag.Errorf("Job %s Failed", res.GetJobId())
+		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", apiRes.GetJobId())
+		return diag.Errorf("Job %s Failed", apiRes.GetJobId())
 	}
 
 	resourceVdbRead(ctx, d, meta)
@@ -913,15 +902,11 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.Errorf("Error in polling vdb")
 	}
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
+		return diags
 	}
 
-	result, ok := res.(*openapi.VDB)
+	result, ok := res.(*dctapi.VDB)
 	if !ok {
 		return diag.Errorf("Error occured in type casting.")
 	}
@@ -945,7 +930,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
-	updateVDBParam := openapi.NewUpdateVDBParameters()
+	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
 	if d.HasChanges(
 		"auto_select_repository",
@@ -1054,13 +1039,9 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
-	if err != nil {
+	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
 		d.Partial(true)
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+		return diags
 	}
 
 	for _, change := range changes {
@@ -1078,17 +1059,13 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	vdbId := d.Id()
 
-	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
 	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
+		return diags
 	}
 
 	jobRes, job_err := PollJobStatus(*res.JobId, ctx, client)
