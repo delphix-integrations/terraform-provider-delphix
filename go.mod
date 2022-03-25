@@ -51,7 +51,7 @@ require (
 
 require (
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.12.0
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.11.0
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	google.golang.org/appengine v1.6.6 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect

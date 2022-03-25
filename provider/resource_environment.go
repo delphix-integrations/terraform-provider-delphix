@@ -243,30 +243,27 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 
 	if job_status == Failed {
-		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
+		d.SetId("")
+		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
 	}
-	// Get environment info and store state.
 	resourceEnvironmentRead(ctx, d, meta)
 	return diags
 }
 
 func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	isSuccess, apiRes, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	apiRes, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
-	if !isSuccess {
-		log.Printf("Error reading environment. EnvId:%s will be removed from state file.", envId)
+	if diags != nil {
+		log.Printf("[ERROR] Env-Read failed for EnvId:%s. Removing from state file.", envId)
 		d.SetId("")
-		return diag.Errorf("Error in Environment-Read:  %s", envId)
-	}
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
 		return diags
 	}
+
 	envRes, _ := apiRes.(*dctapi.Environment)
 	d.Set("namespace", envRes.GetNamespace())
 	d.Set("enabled", envRes.GetEnabled())
@@ -275,16 +272,16 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	log.Printf("Not Implemented: resourceEnvironmentUpdate")
+	log.Printf("[OK] Not Implemented: resourceEnvironmentUpdate")
 	var diags diag.Diagnostics
 	return diags
 }
 
 func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	envId := d.Id()
+
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
 	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
@@ -293,9 +290,9 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	if job_status == Failed {
-		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status:%s / Error: %s", *apiRes.JobId, job_status, job_err)
+		return diag.Errorf("[NOT OK] Env-Delete failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
 	}
-	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 

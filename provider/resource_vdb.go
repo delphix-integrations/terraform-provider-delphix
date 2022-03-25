@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go"
@@ -493,7 +494,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	if v, has_v := d.GetOk("engine_id"); has_v {
-		provisionVDBBySnapshotParameters.SetEngineId(int64(v.(int)))
+		eng_id, _ := strconv.Atoi(v.(string))
+		provisionVDBBySnapshotParameters.SetEngineId(int64(eng_id))
 	}
 
 	if v, has_v := d.GetOk("target_group_id"); has_v {
@@ -896,27 +898,17 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbId := d.Id()
 	log.Printf("VDBID_____________________: %s", vdbId)
 
-	isSuccess, res, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 
-	if !isSuccess {
-		log.Print("Error getting the VDB, removing from state.")
+	if diags != nil {
+		log.Print("[NOT OK] Error reading the VDB, removing from state.")
 		d.SetId("")
-		return diag.Errorf("Error in polling vdb")
-	}
-
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+		return diags
 	}
 
 	result, ok := res.(*dctapi.VDB)
@@ -946,8 +938,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbId := d.Id()
 
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
@@ -955,22 +945,16 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
+		return diags
 	}
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
-	if job_err != "" {
-		log.Print("Job Polling failed but continuing with deletion.")
-		log.Print(job_err)
+	job_status, job_err := PollJobStatus(*res.JobId, ctx, client)
+	if job_status == Failed {
+		return diag.Errorf("[NOT OK] VDB-Delete failed. JobId: %s / Error: %s", *res.JobId, job_err)
 	}
-	log.Print(job_res)
 
-	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 

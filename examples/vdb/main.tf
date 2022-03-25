@@ -2,35 +2,31 @@ terraform {
   required_providers {
     delphix = {
       version = "0.0-dev"
-      source  = "delphix.com/local/delphix"
+      source  = "delphix.com/dct/delphix"
     }
   }
 }
 
 provider "delphix" {
   tls_insecure_skip = true
-  key               = "1.XXXX"
-  host              = "HOSTNAME"
+  key               = "xxx"
+  host              = "localhost"
 }
 
-resource "delphix_vdb" "vdb_name" {
+resource "delphix_vdb" "tfvora1" {
   provision_type         = "snapshot"
   auto_select_repository = true
-  source_data_id         = "dsource"
+  source_data_id         = "orasrc"
+  environment_id = "2-UNIX_HOST_ENVIRONMENT-5"
 
-  pre_refresh {
-    name    = "n"
-    command = "time"
-    shell   = "bash"
-  }
-  pre_refresh {
-    name    = "n2"
-    command = "time"
+  configure_clone {
+    name    = "post-provision-hook"
+    command = "echo $1"
     shell   = "bash"
   }
 }
 
-resource "delphix_vdb" "vdb_name2" {
+/* resource "delphix_vdb" "vdb_name2" {
   provision_type         = "timestamp"
   auto_select_repository = true
   source_data_id         = "dsource2"
@@ -46,4 +42,4 @@ resource "delphix_vdb" "vdb_name2" {
     command = "time"
     shell   = "bash"
   }
-}
+} */
