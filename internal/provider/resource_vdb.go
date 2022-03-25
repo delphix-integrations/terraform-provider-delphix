@@ -637,13 +637,12 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 
 	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
-		log.Print("Job Polling failed but continuing with provisioning.")
-		log.Print(job_err)
+		log.Printf("[DELPHIX] [ERROR] Job Polling failed but continuing with provisioning. Error: %s", job_err)
 	}
-	log.Print(job_res)
+	log.Printf("[DELPHIX] [INFO] Job result is %s", job_res)
 	if job_res == Failed {
-		log.Print("Job Failed!!")
-		return diag.Errorf("Job %s Failed", *res.JobId)
+		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", res.GetJobId())
+		return diag.Errorf("Job %s Failed", res.GetJobId())
 	}
 
 	resourceVdbRead(ctx, d, meta)
@@ -792,7 +791,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("timestamp"); has_v {
 		tt, err := time.Parse(time.RFC3339, v.(string))
 		if err != nil {
-			log.Print(err)
+			log.Printf("[DELPHIX] [ERROR] An error has occured: %v", err)
 			return diag.Errorf("The timestamp parameter %s is not valid RFC3339 format. Please provide valid value. Example: 2021-05-01T08:51:34.148000+00:00", v.(string))
 		}
 		provisionVDBByTimestampParameters.SetTimestamp(tt)
@@ -862,13 +861,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
-		log.Print("Job Polling failed but continuing with provisioning.")
-		log.Print(job_err)
+		log.Printf("[DELPHIX] [ERROR] Job Polling failed but continuing with provisioning. Error: %v", job_err)
 	}
-	log.Print(job_res)
+	log.Printf("[DELPHIX] [INFO] Job result is %s", job_res)
 	if job_res == "FAILED" {
-		log.Print("Job Failed!!")
-		return diag.Errorf("Job %s Failed", *res.JobId)
+		log.Printf("[DELPHIX] [ERROR] Job %s Failed!", res.GetJobId())
+		return diag.Errorf("Job %s Failed", res.GetJobId())
 	}
 
 	resourceVdbRead(ctx, d, meta)
@@ -910,7 +908,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	})
 
 	if !isSuccess {
-		log.Print("Error getting the VDB, removing from state.")
+		log.Print("[DELPHIX] [ERROR] Error getting the VDB, removing from state.")
 		d.SetId("")
 		return diag.Errorf("Error in polling vdb")
 	}
@@ -956,7 +954,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"job_id",
 		"database_type",
 		"database_version",
-		"engine_id",
 		"status",
 		"ip_address",
 		"fqdn",
@@ -1002,16 +999,10 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// This is because environment_id is not something we actively provide, it is returned by the get call, hence we are keeping it unchanged. However, terraform plan will show
 	// that environment_id will be removed.
 	changes = append(changes, "environment_id")
-	// -------------------for testing------------------------
 	if d.HasChange("template_id") {
 		changes = append(changes, "template_id")
 		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string)) //get gives us the new value
 	}
-	// if d.HasChange("auto_select_repository") {
-	// 	log.Printf(">>>>>>>>>>>>>>>>>>>>>>>> %t", d.Get("auto_select_repository").(bool))
-	// 	d.Partial(true)
-	// 	return diag.Errorf("Error")
-	// }
 	if d.HasChange("vdb_name") {
 		changes = append(changes, "vdb_name")
 		updateVDBParam.SetName(d.Get("vdb_name").(string))
@@ -1073,8 +1064,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	for _, change := range changes {
-		log.Print("Changing value of - ")
-		log.Print(change)
+		log.Printf("[DELPHIX] [INFO] Changing value of - %s", change)
 		d.Set(change, d.Get(change))
 	}
 
@@ -1101,12 +1091,11 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf(resBody)
 	}
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
+	jobRes, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
-		log.Print("Job Polling failed but continuing with deletion.")
-		log.Print(job_err)
+		log.Printf("[DELPHIX] [WARN] Job Polling failed but continuing with deletion. Error :%v", job_err)
 	}
-	log.Print(job_res)
+	log.Printf("[DELPHIX] [INFO] Job result is %s", jobRes)
 
 	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()

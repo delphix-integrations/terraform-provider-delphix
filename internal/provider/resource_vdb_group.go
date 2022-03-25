@@ -53,7 +53,7 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("[DELPHIX] [ERROR] an error occured: %v", err)
 			return diag.FromErr(err)
 		}
 		return diag.Errorf(resBody)
@@ -72,7 +72,7 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 	var diags diag.Diagnostics
 
 	vdbGroupId := d.Id()
-	log.Printf("VdbGroupId: %s", vdbGroupId)
+	log.Printf("[DELPHIX] [INFO] VdbGroupId: %s", vdbGroupId)
 	res, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
 	if err != nil {

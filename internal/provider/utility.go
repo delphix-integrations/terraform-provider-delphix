@@ -40,7 +40,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 			return "", resBody
 		}
 		i++
-		log.Printf("DCT JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
+		log.Printf("[DELPHIX] [INFO] JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
 	}
 
 	return res.GetStatus(), res.GetErrorDetails()
@@ -53,7 +53,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *openapi.APIClient
 func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		log.Print("Error occured in reading body of the response.")
+		log.Print("[DELPHIX] [ERROR] Error occured in reading body of the response.")
 		return "", err
 	}
 	return string(bytes), nil
@@ -71,12 +71,12 @@ func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) 
 func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (bool, interface{}, *http.Response, error) {
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err := apiCall(); httpRes.StatusCode == statusCode {
-			log.Print("Breaking poll for status as status reached")
+			log.Print("[DELPHIX] [INFO] Breaking poll for status as status reached")
 			return true, res, httpRes, err
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
-	log.Print("Breaking poll for status as retry exhausted")
+	log.Print("[DELPHIX] [INFO] Breaking poll for status as retry exhausted")
 	return false, nil, nil, nil
 }
 
