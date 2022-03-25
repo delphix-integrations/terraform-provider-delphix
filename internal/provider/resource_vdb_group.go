@@ -4,8 +4,7 @@ import (
 	"context"
 	"log"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
-
+	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -45,7 +44,7 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	client := meta.(*apiClient).client
 
-	res, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*openapi.NewCreateVDBGroupRequest(
+	res, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
 		d.Get("name").(string),
 		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
@@ -58,7 +57,6 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		}
 		return diag.Errorf(resBody)
 	}
-
 
 	d.SetId(res.VdbGroup.GetId())
 
@@ -101,7 +99,7 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	vdbGroupId := d.Id()
 
-	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
 	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()

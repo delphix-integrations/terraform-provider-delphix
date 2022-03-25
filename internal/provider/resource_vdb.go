@@ -6,8 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	openapi "github.com/Uddipaan-Hazarika/demo-go-sdk"
-
+	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -50,7 +49,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"name": {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
 			},
 			"database_version": {
 				Type:     schema.TypeString,
@@ -453,11 +452,11 @@ func resourceVdb() *schema.Resource {
 	}
 }
 
-func toHookArray(array interface{}) []openapi.Hook {
-	items := []openapi.Hook{}
+func toHookArray(array interface{}) []dctapi.Hook {
+	items := []dctapi.Hook{}
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
-		hook_item := openapi.NewHook(item_map["command"].(string))
+		hook_item := dctapi.NewHook(item_map["command"].(string))
 
 		name := item_map["name"].(string)
 		if name != "" {
@@ -475,7 +474,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	provisionVDBBySnapshotParameters := openapi.NewProvisionVDBBySnapshotParameters()
+	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
@@ -657,7 +656,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	provisionVDBByTimestampParameters := openapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
+	provisionVDBByTimestampParameters := dctapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
 
 	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
@@ -924,7 +923,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return diag.Errorf(resBody)
 	}
 
-	result, ok := res.(*openapi.VDB)
+	result, ok := res.(*dctapi.VDB)
 	if !ok {
 		return diag.Errorf("Error occured in type casting.")
 	}
@@ -956,7 +955,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	vdbId := d.Id()
 
-	deleteVdbParams := openapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
 	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
