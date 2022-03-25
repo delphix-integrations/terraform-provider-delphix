@@ -9,7 +9,7 @@ Full documentation can he found [here]()
 This guide will eventually cover the following
 
 
-1. Setup DCT APi Gateway On Premise by following the [DCT API Gateway setup ] (https://github.com/delphix/orbital-api-gateway)
+1. Setup DCT APi Gateway On Premise by following the [DCT API Gateway setup](https://github.com/delphix/orbital-api-gateway)
 
 2. Install IDE [Visual Studio Code](https://code.visualstudio.com)
 
