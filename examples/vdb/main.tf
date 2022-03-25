@@ -2,7 +2,7 @@ terraform {
   required_providers {
     delphix = {
       version = "0.0-dev"
-      source  = "delphix.com/local/dct"
+      source  = "delphix.com/local/delphix"
     }
   }
 }
