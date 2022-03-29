@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"time"
 
@@ -24,7 +23,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		if err != nil {
 			return "", err.Error()
 		}
-		log.Print(err.Error())
+		ErrorLog.Print(err.Error())
 		return "", resBody
 	}
 
@@ -37,11 +36,11 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			if err != nil {
 				return "", err.Error()
 			}
-			log.Print(err.Error())
+			ErrorLog.Print(err.Error())
 			return "", resBody
 		}
 		i++
-		log.Printf("[DELPHIX] [INFO] JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
+		InfoLog.Printf("JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
 	}
 
 	return res.GetStatus(), res.GetErrorDetails()
@@ -54,7 +53,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		log.Print("[DELPHIX] [ERROR] Error occured in reading body of the response.")
+		ErrorLog.Print("Error occured in reading body of the response.")
 		return "", err
 	}
 	return string(bytes), nil
@@ -72,12 +71,12 @@ func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) 
 func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (bool, interface{}, *http.Response, error) {
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err := apiCall(); httpRes.StatusCode == statusCode {
-			log.Print("[DELPHIX] [INFO] Breaking poll for status as status reached")
+			InfoLog.Print("Breaking poll for status as status reached")
 			return true, res, httpRes, err
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
-	log.Print("[DELPHIX] [INFO] Breaking poll for status as retry exhausted")
+	InfoLog.Print("Breaking poll for status as retry exhausted")
 	return false, nil, nil, nil
 }
 
@@ -112,7 +111,7 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 	if err != nil {
 		resBody, nerr := ResponseBodyToString(httpRes.Body)
 		if nerr != nil {
-			log.Fatalf("[DELPHIX] [ERROR] an error occured: %v", err)
+			ErrorLog.Printf("An error occured: %v", err)
 			diags = diag.FromErr(nerr)
 		} else {
 			diags = diag.Errorf(resBody)

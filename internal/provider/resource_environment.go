@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go"
@@ -247,7 +246,10 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("JobType: Env-Create / JobId: %s / Status: %s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
 	// Get environment info and store state.
-	resourceEnvironmentRead(ctx, d, meta)
+	readDiags := resourceEnvironmentRead(ctx, d, meta)
+	if readDiags.HasError() {
+		return readDiags
+	}
 	return diags
 }
 
@@ -261,7 +263,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	})
 
 	if !isSuccess {
-		log.Printf("[DELPHIX] [ERROR] Error reading environment. EnvId:%s will be removed from state file.", envId)
+		ErrorLog.Printf("Error reading environment. EnvId:%s will be removed from state file.", envId)
 		d.SetId("")
 		return diag.Errorf("Error in Environment-Read:  %s", envId)
 	}
@@ -276,7 +278,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	log.Printf("[DELPHIX] [INFO] Not Implemented: resourceEnvironmentUpdate")
+	InfoLog.Printf("Not Implemented: resourceEnvironmentUpdate")
 	var diags diag.Diagnostics
 	return diags
 }
@@ -295,7 +297,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 
 	if job_status == Failed {
-		return diag.Errorf("[DELPHIX] [ERROR] JobType: Env-Delete / JobId: %s / Status:%s / Error: %s", *apiRes.JobId, job_status, job_err)
+		return diag.Errorf("JobType: Env-Delete / JobId: %s / Status:%s / Error: %s", *apiRes.JobId, job_status, job_err)
 	}
 
 	PollForObjectDeletion(func() (interface{}, *http.Response, error) {

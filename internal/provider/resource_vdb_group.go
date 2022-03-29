@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -66,7 +65,7 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 	var diags diag.Diagnostics
 
 	vdbGroupId := d.Id()
-	log.Printf("[DELPHIX] [INFO] VdbGroupId: %s", vdbGroupId)
+	InfoLog.Printf("VdbGroupId: %s", vdbGroupId)
 	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
 	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
