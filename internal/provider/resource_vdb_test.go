@@ -22,7 +22,6 @@ func TestAccVdb_provision_positive(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "parent_id", os.Getenv("DATASOURCE_ID"))),
-				ExpectNonEmptyPlan: true,
 			},
 			{
 				// positive update test case
@@ -31,7 +30,6 @@ func TestAccVdb_provision_positive(t *testing.T) {
 					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_name", "vdbu"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_restart", "true")),
-				ExpectNonEmptyPlan: true, //due to the delay in GET call, we get some inconsistencies
 			},
 			{
 				// negative update test case

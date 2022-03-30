@@ -53,10 +53,12 @@ func resourceVdb() *schema.Resource {
 			},
 			"engine_id": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"environment_id": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"ip_address": {
@@ -86,6 +88,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"vdb_name": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"database_name": {
@@ -936,11 +939,17 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	d.Partial(true)
-
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
+
+	// get the changed keys
+	changedKeys := make([]string, 0, len(d.State().Attributes))
+	for k := range d.State().Attributes {
+		if d.HasChange(k) {
+			changedKeys = append(changedKeys, k)
+		}
+	}
 
 	if d.HasChanges(
 		"auto_select_repository",
@@ -986,72 +995,59 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"timestamp",
 		"timestamp_in_database_timezone",
 		"snapshot_id") {
+
+		// revert and set the old value to the changed keys
+		for _, key := range changedKeys {
+			old, _ := d.GetChange(key)
+			d.Set(key, old)
+		}
+
 		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
 	}
 
-	var changes []string
 	if d.HasChange("template_id") {
-		changes = append(changes, "template_id")
-		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string)) //get gives us the new value
+		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string))
 	}
 	if d.HasChange("vdb_name") {
-		changes = append(changes, "vdb_name")
 		updateVDBParam.SetName(d.Get("vdb_name").(string))
 	}
-
-	// ----------------------DATABASE--------------------
 	if d.HasChange("username") {
-		changes = append(changes, "username")
 		updateVDBParam.SetUser(d.Get("username").(string))
 	}
 	if d.HasChange("password") {
-		changes = append(changes, "password")
 		updateVDBParam.SetPassword(d.Get("password").(string))
 	}
 	if d.HasChange("new_dbid") {
-		changes = append(changes, "new_dbid")
 		updateVDBParam.SetNewDbid(d.Get("new_dbid").(bool))
 	}
 	if d.HasChange("vdb_restart") {
-		changes = append(changes, "template_id")
 		updateVDBParam.SetAutoRestart(d.Get("vdb_restart").(bool))
 	}
-
-	//------------LISTENERS----------------------
 	if d.HasChange("listener_ids") {
-		changes = append(changes, "listener_ids")
 		updateVDBParam.SetListeners(toStringArray(d.Get("listener_ids")))
 	}
-
-	//------------ENV USER ID----------------------
 	if d.HasChange("environment_user_id") {
-		changes = append(changes, "environment_user_id")
 		updateVDBParam.SetEnvironmentUser(d.Get("environment_user_id").(string))
 	}
-	// ---------------pre_script and post_script can be included exclusively for non-linked mssql--------------
 	if d.HasChange("pre_script") {
-		changes = append(changes, "pre_script")
 		updateVDBParam.SetPreScript(d.Get("pre_script").(string))
 	}
 	if d.HasChange("post_script") {
-		changes = append(changes, "post_script")
 		updateVDBParam.SetPostScript(d.Get("post_script").(string))
 	}
-
 	if d.HasChange("cdc_on_provision") {
-		changes = append(changes, "cdc_on_provision")
 		updateVDBParam.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
 
 	httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+		// revert and set the old value to the changed keys
+		for _, key := range changedKeys {
+			old, _ := d.GetChange(key)
+			d.Set(key, old)
+		}
 		return diags
-	}
-
-	for _, change := range changes {
-		InfoLog.Printf("Changing value of - %s", change)
-		d.Set(change, d.Get(change))
 	}
 
 	return diags
