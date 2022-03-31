@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 	"time"
 

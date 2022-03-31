@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go"

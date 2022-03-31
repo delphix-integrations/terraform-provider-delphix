@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -1065,7 +1064,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	if job_err != "" {
 		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
 	}
-	InfoLog.Printf("Job result is %s", jobRes)
+	InfoLog.Printf("Job result is %s", job_status)
 	if job_status == Failed {
 		return diag.Errorf("[NOT OK] VDB-Delete failed. JobId: %s / Error: %s", *res.JobId, job_err)
 	}
