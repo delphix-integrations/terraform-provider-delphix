@@ -242,6 +242,10 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	d.SetId(apiRes.GetEnvironmentId())
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 
+	if job_err != "" {
+		ErrorLog.Printf("Job Polling failed but continuing with env creation. Error: %v", job_err)
+	}
+
 	if job_status == Failed {
 		d.SetId("")
 		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
@@ -293,6 +297,9 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
+	if job_err != "" {
+		ErrorLog.Printf("Job Polling failed but continuing with env deletion. Error: %v", job_err)
+	}
 	if job_status == Failed {
 		return diag.Errorf("[NOT OK] Env-Delete failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
 	}
