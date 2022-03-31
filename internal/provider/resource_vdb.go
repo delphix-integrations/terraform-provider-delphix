@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -634,12 +635,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	job_res, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	if job_err != "" {
 		ErrorLog.Printf("Job Polling failed but continuing with provisioning. Error: %s", job_err)
-
 	}
 	InfoLog.Printf("Job result is %s", job_res)
 	if job_res == Failed {
 		ErrorLog.Printf("Job %s Failed!", apiRes.GetJobId())
-		return diag.Errorf("Job %s Failed with error %s", apiRes.GetJobId(), job_err)
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.GetJobId(), job_err)
 	}
 
 	readDiags := resourceVdbRead(ctx, d, meta)
@@ -862,7 +862,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	InfoLog.Printf("Job result is %s", job_res)
 	if job_res == "FAILED" {
 		ErrorLog.Printf("Job %s Failed!", apiRes.GetJobId())
-		return diag.Errorf("Job %s Failed with error %s", apiRes.GetJobId(), job_err)
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.GetJobId(), job_err)
 	}
 
 	readDiags := resourceVdbRead(ctx, d, meta)
@@ -899,22 +899,16 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbId := d.Id()
 
-	isSuccess, res, httpRes, err := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 
-	if !isSuccess {
-		ErrorLog.Printf("Error getting the VDB, removing from state.")
+	if diags != nil {
+		ErrorLog.Printf("Error reading the VDB, removing from state.")
 		d.SetId("")
-		return diag.Errorf("Error in polling vdb")
-	}
-
-	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
-		return diags
+		return diag.Errorf("[NOT OK] Error in polling vdb")
 	}
 
 	result, ok := res.(*dctapi.VDB)
@@ -1056,8 +1050,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbId := d.Id()
 
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
@@ -1069,13 +1061,16 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diags
 	}
 
-	jobRes, job_err := PollJobStatus(*res.JobId, ctx, client)
+	job_status, job_err := PollJobStatus(*res.JobId, ctx, client)
 	if job_err != "" {
 		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
 	}
 	InfoLog.Printf("Job result is %s", jobRes)
+	if job_status == Failed {
+		return diag.Errorf("[NOT OK] VDB-Delete failed. JobId: %s / Error: %s", *res.JobId, job_err)
+	}
 
-	PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 

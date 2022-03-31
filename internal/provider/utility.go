@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -40,7 +41,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			return "", resBody
 		}
 		i++
-		InfoLog.Printf("JobId:%s / Status:%s / Error:%s / PollIteration:%d", job_id, res.GetStatus(), res.GetErrorDetails(), i)
+		InfoLog.Printf("DCT-JobId:%s has Status:%s", job_id, res.GetStatus())
 	}
 
 	return res.GetStatus(), res.GetErrorDetails()
@@ -59,25 +60,32 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	return string(bytes), nil
 }
 
-func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (bool, interface{}, *http.Response, error) {
+func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+	// Function to check if an object exists in the Delphix estate.
 	return PollForStatusCode(apiCall, http.StatusOK, 10)
 }
 
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (bool, interface{}, *http.Response, error) {
+func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+	// Function to check if an object does not exist in the Delphix estate.
 	return PollForStatusCode(apiCall, http.StatusNotFound, 10)
 }
 
 // poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (bool, interface{}, *http.Response, error) {
+func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var res interface{}
+	var httpRes *http.Response
+	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
-		if res, httpRes, err := apiCall(); httpRes.StatusCode == statusCode {
-			InfoLog.Print("Breaking poll for status as status reached")
-			return true, res, httpRes, err
+		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
+			InfoLog.Print("[OK] Breaking poll - Status %d reached.", statusCode)
+			return res, nil
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
-	InfoLog.Print("Breaking poll for status as retry exhausted")
-	return false, nil, nil, nil
+	diags = apiErrorResponseHelper(res, httpRes, err)
+	InfoLog.Print("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
+	return nil, diags
 }
 
 func toStringArray(array interface{}) []string {

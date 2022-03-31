@@ -2,7 +2,7 @@ terraform {
   required_providers {
     delphix = {
       version = "0.0-dev"
-      source  = "delphix.com/local/delphix"
+      source  = "delphix.com/dct/delphix"
     }
   }
 }
@@ -15,12 +15,12 @@ provider "delphix" {
 
 /* Unix Standalone */
 resource "delphix_environment" "unixtgt" {
-     engine_id = 2
+     engine_id = 1
      os_name = "UNIX"
      username = "xxx"
      password = "xxx"
      hostname = "xxx"
-     toolkit_path = "/opt/toolkit2"
+     toolkit_path = "/home/delphix_os/toolkit"
      name = "unixtgt"
      description = "This is a unix target."     
  } 
@@ -42,9 +42,9 @@ resource "delphix_environment" "unixtgt" {
 /* resource "delphix_environment" "WindowsSrc" {
      engine_id = 2
      os_name = "WINDOWS"
-     username = "delphix\\xxx"
+     username = "xxx"
      password = "xxx"
-     hostname = "10.0.1.50"
+     hostname = "xxx"
      name = "WindowsSrc"
      staging_environment = delphix_environment.wintgt.id
  } */
@@ -56,7 +56,7 @@ resource "delphix_environment" "unixtgt" {
      os_name = "UNIX"
      username = "xxx"
      password = "xxx"
-     hostname = "10.0.1.30"
+     hostname = "xxx"
      toolkit_path = "/home/delphix"
      name = "Test"
      is_cluster = false
