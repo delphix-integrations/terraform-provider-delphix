@@ -1,6 +1,6 @@
 # Terraform Provider Delphix
 
-Terraform Provider for Delphix enables Terraform to create and manage Delphix Continuous Data & 
+Terraform Provider for Delphix enables Terraform to create and manage Delphix Continuous Data &
 Continuous Compliance infrastructure using the Delphix Control Tower (DCT) APIs.
 
 Full documentation can he found [here]()
@@ -24,8 +24,8 @@ This guide will eventually cover the following
 7. Fork this repo and clone it locally. Switch to develop branch which always heads to the latest development code.
 
 8. Run following command to create binaries:
-    
-    ```goreleaser release --skip-publish --snapshot --rm-dist```
+
+   ```goreleaser release --skip-publish --snapshot --rm-dist```
 
 9. Execute example main.tf file under /examples/<resource> directory using the following commands:
 
