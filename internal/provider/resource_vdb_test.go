@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -21,6 +22,20 @@ func TestAccVdb_provision_positive(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "parent_id", os.Getenv("DATASOURCE_ID"))),
+			},
+			{
+				// positive update test case
+				Config: testAccUpdatePositive("vdbu", true),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
+					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_name", "vdbu"),
+					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_restart", "true")),
+				ExpectNonEmptyPlan: true,
+			},
+			{
+				// negative update test case
+				Config:      testAccUpdateNegative(false),
+				ExpectError: regexp.MustCompile("Error running apply: exit status 1"),
 			},
 		},
 	})
@@ -90,9 +105,30 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 		}
 
 		if httpResp.StatusCode != 404 {
-			return fmt.Errorf("Exepcted a 404 Not Found for a deleted VDB but got %d", httpResp.StatusCode)
+			return fmt.Errorf("Expected a 404 Not Found for a deleted VDB but got %d", httpResp.StatusCode)
 		}
 	}
 
 	return nil
+}
+func testAccUpdateNegative(value bool) string {
+	datasource_id := os.Getenv("DATASOURCE_ID")
+	return fmt.Sprintf(`
+	resource "delphix_vdb" "new" {
+		auto_select_repository = "%t"
+    	source_data_id         = "%s"
+	}
+	`, value, datasource_id)
+}
+
+func testAccUpdatePositive(name string, vdb_restart bool) string {
+	datasource_id := os.Getenv("DATASOURCE_ID")
+	return fmt.Sprintf(`
+	resource "delphix_vdb" "new" {
+		auto_select_repository = true
+    	source_data_id         = "%s"
+		vdb_name = "%s"
+		vdb_restart = "%t"
+	}
+	`, datasource_id, name, vdb_restart)
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -51,6 +52,11 @@ func Provider(version string) func() *schema.Provider {
 					Optional:    true,
 					DefaultFunc: schema.EnvDefaultFunc("DCT_HOST_SCHEME", "https"),
 				},
+				"debug": {
+					Type:     schema.TypeBool,
+					Optional: true,
+					Default:  false,
+				},
 			},
 			ResourcesMap: map[string]*schema.Resource{
 				"delphix_vdb":         resourceVdb(),
@@ -83,6 +89,10 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 
 		client := dctapi.NewAPIClient(cfg)
 
+		if d.Get("debug").(bool) {
+			// print out raw api request body for debug purposes
+			client.GetConfig().Debug = true
+		}
 		// make a test call
 
 		req := client.ManagementApi.GetRegisteredEngines(ctx)
