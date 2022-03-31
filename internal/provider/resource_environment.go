@@ -246,7 +246,11 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		d.SetId("")
 		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
 	}
-	resourceEnvironmentRead(ctx, d, meta)
+	// Get environment info and store state.
+	readDiags := resourceEnvironmentRead(ctx, d, meta)
+	if readDiags.HasError() {
+		return readDiags
+	}
 	return diags
 }
 
@@ -259,7 +263,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	})
 
 	if diags != nil {
-		log.Printf("[ERROR] Env-Read failed for EnvId:%s. Removing from state file.", envId)
+		ErrorLog.Printf("Error Env-Read failed for EnvId:%s. Removing from state file.", envId)
 		d.SetId("")
 		return diags
 	}
@@ -272,7 +276,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	log.Printf("[OK] Not Implemented: resourceEnvironmentUpdate")
+	InfoLog.Printf("Not Implemented: resourceEnvironmentUpdate")
 	var diags diag.Diagnostics
 	return diags
 }

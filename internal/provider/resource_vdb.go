@@ -32,10 +32,6 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"size": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"source_data_id": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -52,24 +48,18 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"name": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
 			"database_version": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"engine_id": {
 				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"status": {
-				Type:     schema.TypeString,
 				Computed: true,
+				Optional: true,
 			},
 			"environment_id": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"ip_address": {
@@ -99,6 +89,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"vdb_name": {
 				Type:     schema.TypeString,
+				Computed: true,
 				Optional: true,
 			},
 			"database_name": {
@@ -141,6 +132,7 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
+							Default:  "bash",
 						},
 					},
 				},
@@ -579,7 +571,12 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
-		provisionVDBBySnapshotParameters.SetCustomEnvVars(v.(map[string]string))
+		custom_env_vars := make(map[string]string)
+
+		for k, v := range v.(map[string]interface{}) {
+			custom_env_vars[k] = v.(string)
+		}
+		provisionVDBBySnapshotParameters.SetCustomEnvVars(custom_env_vars)
 	}
 
 	if v, has_v := d.GetOk("pre_refresh"); has_v {
@@ -628,30 +625,28 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
 
-	res, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Fatal(err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(*res.Vdb.Id)
+	d.SetId(*apiRes.Vdb.Id)
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
+	job_res, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
 	if job_err != "" {
-		log.Print("Job Polling failed but continuing with provisioning.")
-		log.Print(job_err)
+		ErrorLog.Printf("Job Polling failed but continuing with provisioning. Error: %s", job_err)
 	}
-	log.Print(job_res)
+	InfoLog.Printf("Job result is %s", job_res)
 	if job_res == Failed {
-		log.Print("Job Failed!!")
-		return diag.Errorf("Job %s Failed", *res.JobId)
+		ErrorLog.Printf("Job %s Failed!", apiRes.GetJobId())
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.GetJobId(), job_err)
 	}
 
-	resourceVdbRead(ctx, d, meta)
+	readDiags := resourceVdbRead(ctx, d, meta)
+
+	if readDiags.HasError() {
+		return readDiags
+	}
 
 	return diags
 }
@@ -664,7 +659,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
-		provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
+		// provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
+		eng_id, _ := strconv.Atoi(v.(string))
+		provisionVDBByTimestampParameters.SetEngineId(int64(eng_id))
 	}
 
 	if v, has_v := d.GetOk("target_group_id"); has_v {
@@ -780,7 +777,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
-		provisionVDBByTimestampParameters.SetCustomEnvVars(v.(map[string]string))
+		custom_env_vars := make(map[string]string)
+
+		for k, v := range v.(map[string]interface{}) {
+			custom_env_vars[k] = v.(string)
+		}
+		provisionVDBByTimestampParameters.SetCustomEnvVars(custom_env_vars)
 	}
 
 	if v, has_v := d.GetOk("custom_env_files"); has_v {
@@ -790,8 +792,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("timestamp"); has_v {
 		tt, err := time.Parse(time.RFC3339, v.(string))
 		if err != nil {
-			log.Fatal("timestamp parameter is not in valid RFC3339 format")
-			log.Print(err)
+			ErrorLog.Printf("An error has occured: %v", err)
 			return diag.Errorf("The timestamp parameter %s is not valid RFC3339 format. Please provide valid value. Example: 2021-05-01T08:51:34.148000+00:00", v.(string))
 		}
 		provisionVDBByTimestampParameters.SetTimestamp(tt)
@@ -847,30 +848,28 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
 
-	res, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Fatal(err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(*res.Vdb.Id)
+	d.SetId(*apiRes.Vdb.Id)
 
-	job_res, job_err := PollJobStatus(*res.JobId, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.GetJobId(), ctx, client)
 	if job_err != "" {
-		log.Print("Job Polling failed but continuing with provisioning.")
-		log.Print(job_err)
+		ErrorLog.Printf("Job Polling failed but continuing with provisioning. Error: %v", job_err)
 	}
-	log.Print(job_res)
+	InfoLog.Printf("Job result is %s", job_res)
 	if job_res == "FAILED" {
-		log.Print("Job Failed!!")
-		return diag.Errorf("Job %s Failed", *res.JobId)
+		ErrorLog.Printf("Job %s Failed!", apiRes.GetJobId())
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.GetJobId(), job_err)
 	}
 
-	resourceVdbRead(ctx, d, meta)
+	readDiags := resourceVdbRead(ctx, d, meta)
+
+	if readDiags.HasError() {
+		return readDiags
+	}
 
 	return diags
 }
@@ -885,12 +884,14 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		} else {
 			return helper_provision_by_timestamp(ctx, d, meta)
 		}
-	} else {
+	} else if provision_type == "snapshot" {
 		if _, has_v := d.GetOk("timestamp"); has_v {
 			return diag.Errorf("timestamp is not supported for provision_type is 'snapshot'")
 		} else {
 			return helper_provision_by_snapshot(ctx, d, meta)
 		}
+	} else {
+		return diag.Errorf("provision_type must be 'timestamp' or 'snapshot'")
 	}
 }
 
@@ -899,16 +900,15 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	client := meta.(*apiClient).client
 
 	vdbId := d.Id()
-	log.Printf("VDBID_____________________: %s", vdbId)
 
 	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	if diags != nil {
-		log.Print("[NOT OK] Error reading the VDB, removing from state.")
+		ErrorLog.Printf("Error reading the VDB, removing from state.")
 		d.SetId("")
-		return diags
+		return diag.Errorf("[NOT OK] Error in polling vdb")
 	}
 
 	result, ok := res.(*dctapi.VDB)
@@ -917,9 +917,10 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	}
 
 	d.Set("database_type", result.GetDatabaseType())
-	d.Set("name", result.GetName())
+	d.Set("vdb_name", result.GetName())
 	d.Set("database_version", result.GetDatabaseVersion())
-	d.Set("status", result.GetStatus())
+	d.Set("engine_id", result.GetEngineId())
+	d.Set("environment_id", result.GetEnvironmentId())
 	d.Set("ip_address", result.GetIpAddress())
 	d.Set("fqdn", result.GetFqdn())
 	d.Set("parent_id", result.GetParentId())
@@ -932,7 +933,118 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	return diag.Errorf("not implemented")
+	var diags diag.Diagnostics
+	client := meta.(*apiClient).client
+	updateVDBParam := dctapi.NewUpdateVDBParameters()
+
+	// get the changed keys
+	changedKeys := make([]string, 0, len(d.State().Attributes))
+	for k := range d.State().Attributes {
+		if d.HasChange(k) {
+			changedKeys = append(changedKeys, k)
+		}
+	}
+
+	if d.HasChanges(
+		"auto_select_repository",
+		"source_data_id",
+		"id",
+		"job_id",
+		"database_type",
+		"database_version",
+		"status",
+		"ip_address",
+		"fqdn",
+		"parent_id",
+		"group_name",
+		"creation_date",
+		"target_group_id",
+		"database_name",
+		"truncate_log_on_checkpoint",
+		"repository_id",
+		"pre_refresh",
+		"post_refresh",
+		"pre_rollback",
+		"post_rollback",
+		"configure_clone",
+		"pre_snapshot",
+		"post_snapshot",
+		"pre_start",
+		"post_start",
+		"pre_stop",
+		"post_stop",
+		"file_mapping_rules",
+		"oracle_instance_name",
+		"unique_name",
+		"mount_point",
+		"open_reset_logs",
+		"snapshot_policy_id",
+		"retention_policy_id",
+		"recovery_model",
+		"online_log_groups",
+		"online_log_size",
+		"archive_log",
+		"custom_env_vars",
+		"custom_env_files",
+		"timestamp",
+		"timestamp_in_database_timezone",
+		"snapshot_id") {
+
+		// revert and set the old value to the changed keys
+		for _, key := range changedKeys {
+			old, _ := d.GetChange(key)
+			d.Set(key, old)
+		}
+
+		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	}
+
+	if d.HasChange("template_id") {
+		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string))
+	}
+	if d.HasChange("vdb_name") {
+		updateVDBParam.SetName(d.Get("vdb_name").(string))
+	}
+	if d.HasChange("username") {
+		updateVDBParam.SetUser(d.Get("username").(string))
+	}
+	if d.HasChange("password") {
+		updateVDBParam.SetPassword(d.Get("password").(string))
+	}
+	if d.HasChange("new_dbid") {
+		updateVDBParam.SetNewDbid(d.Get("new_dbid").(bool))
+	}
+	if d.HasChange("vdb_restart") {
+		updateVDBParam.SetAutoRestart(d.Get("vdb_restart").(bool))
+	}
+	if d.HasChange("listener_ids") {
+		updateVDBParam.SetListeners(toStringArray(d.Get("listener_ids")))
+	}
+	if d.HasChange("environment_user_id") {
+		updateVDBParam.SetEnvironmentUser(d.Get("environment_user_id").(string))
+	}
+	if d.HasChange("pre_script") {
+		updateVDBParam.SetPreScript(d.Get("pre_script").(string))
+	}
+	if d.HasChange("post_script") {
+		updateVDBParam.SetPostScript(d.Get("post_script").(string))
+	}
+	if d.HasChange("cdc_on_provision") {
+		updateVDBParam.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
+	}
+
+	httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+
+	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+		// revert and set the old value to the changed keys
+		for _, key := range changedKeys {
+			old, _ := d.GetChange(key)
+			d.Set(key, old)
+		}
+		return diags
+	}
+
+	return diags
 }
 
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -950,6 +1062,10 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	job_status, job_err := PollJobStatus(*res.JobId, ctx, client)
+	if job_err != "" {
+		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
+	}
+	InfoLog.Printf("Job result is %s", jobRes)
 	if job_status == Failed {
 		return diag.Errorf("[NOT OK] VDB-Delete failed. JobId: %s / Error: %s", *res.JobId, job_err)
 	}

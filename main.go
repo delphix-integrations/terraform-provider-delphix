@@ -5,7 +5,7 @@ import (
 	"flag"
 	"log"
 
-	provider "terraform-provider-delphix/provider"
+	provider "terraform-provider-delphix/internal/provider"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )

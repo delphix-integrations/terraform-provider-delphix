@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"log"
 
 	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -44,23 +43,22 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	client := meta.(*apiClient).client
 
-	res, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
+	apiRes, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
 		d.Get("name").(string),
 		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			log.Fatal(err)
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.SetId(res.VdbGroup.GetId())
+	d.SetId(apiRes.VdbGroup.GetId())
 
-	resourceVdbGroupRead(ctx, d, meta)
+	readDiags := resourceVdbGroupRead(ctx, d, meta)
+
+	if readDiags.HasError() {
+		return readDiags
+	}
 	return diags
 }
 
@@ -71,19 +69,15 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 	var diags diag.Diagnostics
 
 	vdbGroupId := d.Id()
-	log.Printf("VdbGroupId: %s", vdbGroupId)
-	res, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
+	InfoLog.Printf("VdbGroupId: %s", vdbGroupId)
+	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
 	}
 
-	d.Set("name", res.GetName())
-	d.Set("vdb_ids", res.GetVdbIds())
+	d.Set("name", apiRes.GetName())
+	d.Set("vdb_ids", apiRes.GetVdbIds())
 	return diags
 }
 
@@ -104,6 +98,9 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()
 
+	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+		return diags
+	}
 	if err != nil {
 		resBody, err := ResponseBodyToString(httpRes.Body)
 		if err != nil {

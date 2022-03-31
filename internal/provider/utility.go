@@ -24,7 +24,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		if err != nil {
 			return "", err.Error()
 		}
-		log.Print(err.Error())
+		ErrorLog.Print(err.Error())
 		return "", resBody
 	}
 
@@ -37,11 +37,11 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			if err != nil {
 				return "", err.Error()
 			}
-			log.Print(err.Error())
+			ErrorLog.Print(err.Error())
 			return "", resBody
 		}
 		i++
-		log.Printf("[OK] DCT-JobId:%s has Status:%s", job_id, res.GetStatus())
+		InfoLog.Printf("DCT-JobId:%s has Status:%s", job_id, res.GetStatus())
 	}
 
 	return res.GetStatus(), res.GetErrorDetails()
@@ -54,7 +54,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		log.Print("Error occured in reading body of the response.")
+		ErrorLog.Print("Error occured in reading body of the response.")
 		return "", err
 	}
 	return string(bytes), nil
@@ -78,13 +78,13 @@ func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), stat
 	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
-			log.Printf("[OK] Breaking poll - Status %d reached.", statusCode)
+			InfoLog.Print("[OK] Breaking poll - Status %d reached.", statusCode)
 			return res, nil
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
 	diags = apiErrorResponseHelper(res, httpRes, err)
-	log.Printf("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
+	InfoLog.Print("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
 	return nil, diags
 }
 
@@ -119,6 +119,7 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 	if err != nil {
 		resBody, nerr := ResponseBodyToString(httpRes.Body)
 		if nerr != nil {
+			ErrorLog.Printf("An error occured: %v", err)
 			diags = diag.FromErr(nerr)
 		} else {
 			diags = diag.Errorf(resBody)
