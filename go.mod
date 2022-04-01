@@ -2,7 +2,7 @@ module terraform-provider-delphix
 
 go 1.17
 
-require github.com/delphix/dct-sdk-go v0.22.321
+require github.com/delphix/dct-sdk-go v1.0.0-beta
 
 require (
 	github.com/agext/levenshtein v1.2.2 // indirect

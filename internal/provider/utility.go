@@ -77,13 +77,13 @@ func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), stat
 	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
-			InfoLog.Print("[OK] Breaking poll - Status %d reached.", statusCode)
+			InfoLog.Printf("[OK] Breaking poll - Status %d reached.", statusCode)
 			return res, nil
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
 	diags = apiErrorResponseHelper(res, httpRes, err)
-	InfoLog.Print("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
+	InfoLog.Printf("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
 	return nil, diags
 }
 
