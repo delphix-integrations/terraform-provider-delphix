@@ -3,7 +3,7 @@
 Terraform Provider for Delphix enables Terraform to create and manage Delphix Continuous Data &
 Continuous Compliance infrastructure using the Delphix Control Tower (DCT) APIs.
 
-Full documentation can he found [here]()
+Full documentation can he found [here](https://integrations.delphix.com/Terraform/)
 
 ## Getting Started (Development)
 This guide will eventually cover the following
