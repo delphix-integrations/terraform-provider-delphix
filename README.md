@@ -1,6 +1,7 @@
 # Terraform Provider Delphix
 
-![Security Checks](actions/workflows/codeql.yml/badge.svg?branch=develop)
+![CodeQL](https://github.com/delphix-integrations/terraform-provider-delphix/actions/workflows/codeql.yml/badge.svg?branch=main)
+![Release](https://github.com/delphix-integrations/terraform-provider-delphix/actions/workflows/release.yml/badge.svg?event=release)
 
 Terraform Provider for Delphix enables Terraform to create and manage Delphix Continuous Data &
 Continuous Compliance infrastructure using the Delphix Control Tower (DCT) APIs.
