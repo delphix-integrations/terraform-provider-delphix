@@ -1,7 +1,7 @@
 # Visit https://goreleaser.com for documentation on how to customize this
 # behavior.
 env:
-  - PROVIDER_VERSION=1.0-beta
+  - PROVIDER_VERSION=0.1-beta
 before:
   hooks:
     # this is just an example and not a requirement for provider building/publishing
@@ -49,6 +49,18 @@ checksum:
       name_template: '{{ .ProjectName }}_{{ .Env.PROVIDER_VERSION }}_manifest.json'
   name_template: '{{ .ProjectName }}_{{ .Env.PROVIDER_VERSION }}_SHA256SUMS'
   algorithm: sha256
+signs:
+  - artifacts: checksum
+    args:
+      # if you are using this in a GitHub action or some other automated pipeline, you 
+      # need to pass the batch flag to indicate its not interactive.
+      - "--batch"
+      - "--local-user"
+      - "{{ .Env.GPG_FINGERPRINT }}" # set this environment variable for your signing key
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
 release:
   extra_files:
     - glob: 'terraform-registry-manifest.json'
