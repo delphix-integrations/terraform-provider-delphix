@@ -1,5 +1,7 @@
 # Terraform Provider Delphix
 
+![Security Checks](https://github.com/github/docs/actions/workflows/main.yml/badge.svg?branch=feature-1)
+
 Terraform Provider for Delphix enables Terraform to create and manage Delphix Continuous Data &
 Continuous Compliance infrastructure using the Delphix Control Tower (DCT) APIs.
 
