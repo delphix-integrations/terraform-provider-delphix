@@ -1,10 +1,15 @@
 # Resource: <resource name> delphix_environment
 
-An environment is a a grouping of a single host or a cluster of hosts. environment allows creating hosts or a cluster of hosts.
+In Delphix, an environment is either a single instance host or cluster of hosts that run database software. 
+
+Environments can either be a source (where data comes from), staging (where data are prepared/masked) or target (where data are delivered and used by developers and testers).
+
+Each environment has its own properties and information depending on the type of environment it is
 
 ## Example Usage
 
-### Creating a UNIX standalone environment
+### Create UNIX standalone environment
+
 ```hcl
 resource "delphix_environment" "unix_env_name" {
      engine_id = 2
@@ -31,7 +36,7 @@ resource "delphix_environment" "unix_env_name" {
      is_target = false
  }
 ```
-### Creating a UNIX cluster
+### Create UNIX cluster
 ```hcl
 resource "delphix_environment" "unixcluster" {
      engine_id = 2
@@ -124,28 +129,28 @@ resource "delphix_environment" "fc-tgt-cluster" {
 
 ## Argument Reference
 
-* `name` - (Optional) The name of the environment.
-* `engine_id` - (Required) The ID of the Engine onto which to create the environment.
+* `engine_id` - (Required) The DCT ID of the Engine on which to create the environment. This ID can be obtained by querying the DCT engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID.
 * `os_name` - (Required) Operating system type of the environment. Valid values are `[UNIX, WINDOWS]`
+* `hostname` - (Required) Host Name or IP Address of the host that being added to Delphix.
+* `name` - (Optional) The name of the environment.
 * `is_cluster` - (Optional) Whether the environment to be created is a cluster.
-* `cluster_home` - (Optional) Absolute path to cluster home drectory. This parameter is mandatory for UNIX cluster environments.
-* `hostname` - (Required) host address of the machine.
-* `staging_environment` - (Optional) Id of the connector environment which is used to connect to this source environment. This is mandatory parameter when creating Windows source environments.
-* `connector_port` - (Optional) Specify port on which Delphix connector will run. This is mandatory parameter when creating Windows target environments.
+* `cluster_home` - (Optional) Absolute path to cluster home drectory. This parameter is (Required) for UNIX cluster environments.
+* `staging_environment` - (Optional) Id of the environment where Delphix Connector is installed. This is a (Required) parameter when creating Windows source environments.
+* `connector_port` - (Optional) Specify port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments.
 * `is_target` - (Optional) Whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments.
-* `ssh_port` - (Optional) ssh port of the host.
-* `toolkit_path` - (Optional) The path for the toolkit that resides on the host.
-* `username` - (Optional) Username of the OS.
-* `password` - (Optional) Password of the OS.
+* `ssh_port` - (Optional) ssh port of the enviornment.
+* `toolkit_path` - (Optional) The path where Delphix toolkit can be pushed.
+* `username` - (Optional) OS username for Delphix.
+* `password` - (Optional) OS user's password.
 * `vault` - (Optional) The name or reference of the vault from which to read the host credentials.
 * `hashicorp_vault_engine` - (Optional) Vault engine name where the credential is stored.
 * `hashicorp_vault_secret_path` - (Optional) Path in the vault engine where the credential is stored.
 * `hashicorp_vault_username_key` - (Optional) Key for the username in the key-value store.
 * `hashicorp_vault_secret_key` - (Optional) Key for the password in the key-value store.
 * `cyberark_vault_query_string` - (Optional) Query to find a credential in the CyberArk vault.
-* `nfs_addresses` - (Optional) array of ip address or hostnames. Valid values are a list of addresses. For eg: `["192.168.10.2"]`
-* `ase_db_username` - (Optional) username of the SAP ASE database.
-* `ase_db_password` - (Optional) password of the SAP ASE database.
+* `nfs_addresses` - (Optional) Array of ip address or hostnames. Valid values are a list of addresses. For eg: `["192.168.10.2"]`
+* `ase_db_username` - (Optional) Username for the SAP ASE database.
+* `ase_db_password` - (Optional) Password for the SAP ASE database.
 * `ase_db_vault` - (Optional) The name or reference of the vault from which to read the ASE database credentials.
 * `ase_db_hashicorp_vault_engine` - (Optional) Vault engine name where the credential is stored.
 * `ase_db_hashicorp_vault_secret_path` - (Optional) Path in the vault engine where the credential is stored.
