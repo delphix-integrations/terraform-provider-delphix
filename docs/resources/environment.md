@@ -138,7 +138,7 @@ resource "delphix_environment" "fc-tgt-cluster" {
 * `staging_environment` - (Optional) Id of the environment where Delphix Connector is installed. This is a (Required) parameter when creating Windows source environments.
 * `connector_port` - (Optional) Specify port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments.
 * `is_target` - (Optional) Whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments.
-* `ssh_port` - (Optional) ssh port of the enviornment.
+* `ssh_port` - (Optional) ssh port of the environment.
 * `toolkit_path` - (Optional) The path where Delphix toolkit can be pushed.
 * `username` - (Optional) OS username for Delphix.
 * `password` - (Optional) OS user's password.
