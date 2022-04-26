@@ -878,6 +878,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 }
 
 func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	if _, has_v := d.GetOk("db_username"); has_v {
+		return diag.Errorf("db_username can not be set when creating a VDB.")
+	}
+	if _, has_v := d.GetOk("db_password"); has_v {
+		return diag.Errorf("db_password can not be set when creating a VDB.")
+	}
 
 	provision_type := d.Get("provision_type").(string)
 
