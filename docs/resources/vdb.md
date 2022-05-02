@@ -1,6 +1,11 @@
 # Resource: <resource name> delphix_vdb
 
-The VDB resource allows the provisioning, updation and deletion of a Delphix virtual database infrastructure (VDB). However, update is not supported for all parameters, the ones supported is mentioned below.
+In Delphix terminology, a VDB is a database provisioned from either a dSource or another VDB which is a full read/write copy of the source data. 
+A VDB is created and managed by the Delphix Continuous Data Engine.
+
+
+The VDB resource allows terraform to CREATE (also known as Provision), READ, UPDATE and DELETE Delphix Virtual Databases (VDB). 
+Update operation does not support all VDB parameters. The supported parameters are listed below.
 
 ## Example Usage
 Provisioning can be done in 2 methods, provision by snapshot and provision by timestamp.
