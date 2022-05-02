@@ -51,6 +51,39 @@ resource "delphix_environment" "unixcluster" {
      cluster_home = "/u01/app/19.0.0.0/grid"
  }
 ```
+### Creating UNIX standalone target environment using HashiCorp Vault
+```hcl
+resource "delphix_environment" "wintgt" {
+     engine_id = 2
+     os_name = "UNIX"
+     hostname = "xxx"
+     toolkit_path = "/home/delphix"
+     name = "unixtgt"
+
+     vault = "vault-name"
+     hashicorp_vault_engine       = "xxx"
+     hashicorp_vault_secret_path  = "xxx"
+     hashicorp_vault_username_key = "xxx"
+     hashicorp_vault_secret_key   = "xxx"
+
+     description = "This is unix target."
+ }
+```
+### Creating UNIX standalone target environment using CyberArk Vault
+```hcl
+resource "delphix_environment" "wintgt" {
+     engine_id = 2
+     os_name = "UNIX"
+     hostname = "xxx"
+     toolkit_path = "/home/delphix"
+     name = "unixtgt"
+
+     vault = "vault-name"
+     cyberark_query_string = "xxx"
+
+     description = "This is unix target."
+ }
+```
 ### Creating a WINDOWS standalone target environment
 ```hcl
 resource "delphix_environment" "wintgt" {

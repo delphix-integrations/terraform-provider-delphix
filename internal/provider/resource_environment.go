@@ -66,11 +66,59 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"username": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"password": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+			},
+			"vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 			"nfs_addresses": {
 				Type:     schema.TypeList,
@@ -205,6 +253,42 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	if v, has_v := d.GetOk("description"); has_v {
 		createEnvParams.SetDescription(v.(string))
+	}
+	if v, has_v := d.GetOk("vault"); has_v {
+		createEnvParams.SetVault(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_engine"); has_v {
+		createEnvParams.SetHashicorpVaultEngine(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_secret_path"); has_v {
+		createEnvParams.SetHashicorpVaultSecretPath(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_username_key"); has_v {
+		createEnvParams.SetHashicorpVaultUsernameKey(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_secret_key"); has_v {
+		createEnvParams.SetHashicorpVaultSecretKey(v.(string))
+	}
+	if v, has_v := d.GetOk("cyberark_vault_query_string"); has_v {
+		createEnvParams.SetCyberarkVaultQueryString(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_vault"); has_v {
+		createEnvParams.SetAseDbVault(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_engine"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultEngine(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_secret_path"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultSecretPath(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_username_key"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultUsernameKey(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_secret_key"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultSecretKey(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_cyberark_vault_query_string"); has_v {
+		createEnvParams.SetAseDbCyberarkVaultQueryString(v.(string))
 	}
 
 	// Clusters
