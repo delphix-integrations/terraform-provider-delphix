@@ -181,6 +181,8 @@ resource "delphix_environment" "fc-tgt-cluster" {
 * `hashicorp_vault_username_key` - (Optional) Key for the username in the key-value store.
 * `hashicorp_vault_secret_key` - (Optional) Key for the password in the key-value store.
 * `cyberark_vault_query_string` - (Optional) Query to find a credential in the CyberArk vault.
+* `use_kerberos_authentication` - (Optional) Whether to use kerberos authentication.
+* `use_engine_public_key` - (Optional) Whether to use public key authentication.
 * `nfs_addresses` - (Optional) Array of ip address or hostnames. Valid values are a list of addresses. For eg: `["192.168.10.2"]`
 * `ase_db_username` - (Optional) Username for the SAP ASE database.
 * `ase_db_password` - (Optional) Password for the SAP ASE database.
@@ -190,6 +192,7 @@ resource "delphix_environment" "fc-tgt-cluster" {
 * `ase_db_hashicorp_vault_username_key` - (Optional) Key for the username in the key-value store.
 * `ase_db_hashicorp_vault_secret_key` - (Optional) Key for the password in the key-value store.
 * `ase_db_cyberark_vault_query_string` - (Optional) Query to find a credential in the CyberArk vault.
+* `ase_db_use_kerberos_authentication` - (Optional) Whether to use kerberos authentication for ASE DB discovery.
 * `java_home` - (Optional) The path to the user managed Java Development Kit (JDK). If not specified, then the OpenJDK will be used.
 * `dsp_keystore_path` - (Optional) DSP keystore path.
 * `dsp_keystore_password` - (Optional) DSP keystore password.
