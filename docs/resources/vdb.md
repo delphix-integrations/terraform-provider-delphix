@@ -60,9 +60,13 @@ resource "delphix_vdb" "vdb_name" {
 
 * `truncate_log_on_checkpoint` - (Optional) Whether to truncate log on checkpoint (ASE only).
 
-* `username` - (Optional) [Updatable] The name of the privileged user to run the provision operation (Oracle Only).
+* `os_username` - (Optional) The name of the privileged user to run the provision operation (Oracle Only).
 
-* `password` - (Optional) [Updatable] The password of the privileged user to run the provision operation (Oracle Only).
+* `os_password` - (Optional) The password of the privileged user to run the provision operation (Oracle Only).
+
+* `db_username` - (Optional) [Updatable] The username of the database user (Oracle, ASE Only). Only for update.
+
+* `db_password` - (Optional) [Updatable] The password of the database user (Oracle, ASE Only). Only for update.
 
 * `environment_id` - (Optional) The ID of the target environment where to provision the VDB. If repository_id unambigously identifies a repository, this is unnecessary and ignored. Otherwise, a compatible repository is randomly selected on the environment.
 
