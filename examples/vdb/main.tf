@@ -9,41 +9,20 @@ terraform {
 
 provider "delphix" {
   tls_insecure_skip = true
-  key               = "1.XXXX"
-  host              = "HOSTNAME"
-}
-
-resource "delphix_vdb" "vdb_name" {
-  provision_type         = "snapshot"
-  auto_select_repository = true
-  source_data_id         = "dsource"
-
-  pre_refresh {
-    name    = "n"
-    command = "time"
-    shell   = "bash"
-  }
-  pre_refresh {
-    name    = "n2"
-    command = "time"
-    shell   = "bash"
-  }
+  key               = "1.089N1yoNUoHis8cJqA6BHRaf5OnS1HWmDAlQgxzNmhxNESamd9T4CNuLyvjw8eVF"
+  host              = "localhost"
 }
 
 resource "delphix_vdb" "vdb_name2" {
-  provision_type         = "timestamp"
+  provision_type         = "snapshot"
   auto_select_repository = true
-  source_data_id         = "dsource2"
-  timestamp              = "2021-05-01T08:51:34.148000+00:00"
-
-  post_refresh {
-    name    = "n"
-    command = "time"
-    shell   = "bash"
-  }
-  post_refresh {
-    name    = "n2"
-    command = "time"
-    shell   = "bash"
-  }
+  source_data_id         = "dsource"
+  vdb_name = "vdb-from-tf2"
+  oracle_instance_name = "vdbtf"
+  database_name = "vdbtf"
+  unique_name = "vdbtf"
+  db_username = "oracle"
+  db_password = "oracle"
+  template_id = "myTemplate"
+  listener_ids = ["LISTENER"]
 }

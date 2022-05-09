@@ -39,10 +39,6 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"job_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"database_type": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -99,11 +95,19 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"username": {
+			"os_username": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"password": {
+			"os_password": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"db_username": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"db_password": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -494,19 +498,19 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 
 	if v, has_v := d.GetOk("vdb_name"); has_v {
-		provisionVDBBySnapshotParameters.SetVdbName(v.(string))
+		provisionVDBBySnapshotParameters.SetName(v.(string))
 	}
 
 	if v, has_v := d.GetOk("database_name"); has_v {
 		provisionVDBBySnapshotParameters.SetDatabaseName(v.(string))
 	}
 
-	if v, has_v := d.GetOk("username"); has_v {
-		provisionVDBBySnapshotParameters.SetUsername(v.(string))
+	if v, has_v := d.GetOk("os_username"); has_v {
+		provisionVDBBySnapshotParameters.SetOsUsername(v.(string))
 	}
 
-	if v, has_v := d.GetOk("password"); has_v {
-		provisionVDBBySnapshotParameters.SetPassword(v.(string))
+	if v, has_v := d.GetOk("os_password"); has_v {
+		provisionVDBBySnapshotParameters.SetOsPassword(v.(string))
 	}
 
 	if v, has_v := d.GetOk("environment_id"); has_v {
@@ -668,7 +672,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 
 	if v, has_v := d.GetOk("vdb_name"); has_v {
-		provisionVDBByTimestampParameters.SetVdbName(v.(string))
+		provisionVDBByTimestampParameters.SetName(v.(string))
 	}
 
 	if v, has_v := d.GetOk("database_name"); has_v {
@@ -679,12 +683,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(v.(bool))
 	}
 
-	if v, has_v := d.GetOk("username"); has_v {
-		provisionVDBByTimestampParameters.SetUsername(v.(string))
+	if v, has_v := d.GetOk("os_username"); has_v {
+		provisionVDBByTimestampParameters.SetOsUsername(v.(string))
 	}
 
-	if v, has_v := d.GetOk("password"); has_v {
-		provisionVDBByTimestampParameters.SetPassword(v.(string))
+	if v, has_v := d.GetOk("os_password"); has_v {
+		provisionVDBByTimestampParameters.SetOsPassword(v.(string))
 	}
 
 	if v, has_v := d.GetOk("environment_id"); has_v {
@@ -874,6 +878,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 }
 
 func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	if _, has_v := d.GetOk("db_username"); has_v {
+		return diag.Errorf("db_username can not be set when creating a VDB.")
+	}
+	if _, has_v := d.GetOk("db_password"); has_v {
+		return diag.Errorf("db_password can not be set when creating a VDB.")
+	}
 
 	provision_type := d.Get("provision_type").(string)
 
@@ -948,7 +958,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"auto_select_repository",
 		"source_data_id",
 		"id",
-		"job_id",
 		"database_type",
 		"database_version",
 		"status",
@@ -982,6 +991,8 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"recovery_model",
 		"online_log_groups",
 		"online_log_size",
+		"os_username",
+		"os_password",
 		"archive_log",
 		"custom_env_vars",
 		"custom_env_files",
@@ -999,16 +1010,16 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if d.HasChange("template_id") {
-		updateVDBParam.SetConfigTemplate(d.Get("template_id").(string))
+		updateVDBParam.SetTemplateId(d.Get("template_id").(string))
 	}
 	if d.HasChange("vdb_name") {
 		updateVDBParam.SetName(d.Get("vdb_name").(string))
 	}
-	if d.HasChange("username") {
-		updateVDBParam.SetUser(d.Get("username").(string))
+	if d.HasChange("db_username") {
+		updateVDBParam.SetDbUsername(d.Get("db_username").(string))
 	}
-	if d.HasChange("password") {
-		updateVDBParam.SetPassword(d.Get("password").(string))
+	if d.HasChange("db_password") {
+		updateVDBParam.SetDbPassword(d.Get("db_password").(string))
 	}
 	if d.HasChange("new_dbid") {
 		updateVDBParam.SetNewDbid(d.Get("new_dbid").(bool))
@@ -1017,10 +1028,10 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetAutoRestart(d.Get("vdb_restart").(bool))
 	}
 	if d.HasChange("listener_ids") {
-		updateVDBParam.SetListeners(toStringArray(d.Get("listener_ids")))
+		updateVDBParam.SetListenerIds(toStringArray(d.Get("listener_ids")))
 	}
 	if d.HasChange("environment_user_id") {
-		updateVDBParam.SetEnvironmentUser(d.Get("environment_user_id").(string))
+		updateVDBParam.SetEnvironmentUserId(d.Get("environment_user_id").(string))
 	}
 	if d.HasChange("pre_script") {
 		updateVDBParam.SetPreScript(d.Get("pre_script").(string))
@@ -1032,7 +1043,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
 
-	httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
@@ -1041,6 +1052,15 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			d.Set(key, old)
 		}
 		return diags
+	}
+
+	job_status, job_err := PollJobStatus(*res.JobId, ctx, client)
+	if job_err != "" {
+		WarnLog.Printf("VDB Update Job Polling failed but continuing with update. Error :%v", job_err)
+	}
+	InfoLog.Printf("Job result is %s", job_status)
+	if job_status == Failed {
+		return diag.Errorf("[NOT OK] VDB-Update failed. JobId: %s / Error: %s", *res.JobId, job_err)
 	}
 
 	return diags

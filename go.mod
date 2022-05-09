@@ -2,6 +2,8 @@ module terraform-provider-delphix
 
 go 1.17
 
+replace github.com/delphix/dct-sdk-go => /Users/ekaspi/repos/dct-sdk-go
+
 require github.com/delphix/dct-sdk-go v1.0.0-beta3
 
 require (
@@ -42,7 +44,7 @@ require (
 	github.com/vmihailenco/tagparser v0.1.1 // indirect
 	github.com/zclconf/go-cty v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
-	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a // indirect
+	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
 	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d // indirect
