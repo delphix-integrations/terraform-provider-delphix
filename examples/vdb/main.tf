@@ -9,8 +9,8 @@ terraform {
 
 provider "delphix" {
   tls_insecure_skip = true
-  key               = "1.089N1yoNUoHis8cJqA6BHRaf5OnS1HWmDAlQgxzNmhxNESamd9T4CNuLyvjw8eVF"
-  host              = "localhost"
+  key               = "1.XXXX"
+  host              = "HOSTNAME"
 }
 
 resource "delphix_vdb" "vdb_name2" {
