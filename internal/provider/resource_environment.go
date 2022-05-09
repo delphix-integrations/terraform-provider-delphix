@@ -329,9 +329,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		ErrorLog.Printf("Job Polling failed but continuing with env creation. Error: %v", job_err)
 	}
 
-	if job_status == Failed {
+	if job_status == Failed || job_status == Canceled || job_status == Abandoned {
 		d.SetId("")
-		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, *apiRes.JobId, job_err)
 	}
 	// Get environment info and store state.
 	readDiags := resourceEnvironmentRead(ctx, d, meta)
@@ -383,8 +383,8 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	if job_err != "" {
 		ErrorLog.Printf("Job Polling failed but continuing with env deletion. Error: %v", job_err)
 	}
-	if job_status == Failed {
-		return diag.Errorf("[NOT OK] Env-Delete failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+	if job_status == Failed || job_status == Canceled || job_status == Abandoned {
+		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.JobId, job_err)
 	}
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()

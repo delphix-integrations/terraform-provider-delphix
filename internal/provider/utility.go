@@ -28,7 +28,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	}
 
 	var i = 0
-	for res.GetStatus() == Running {
+	for res.GetStatus() == Pending || res.GetStatus() == Started {
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
 		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
 		if err != nil {
