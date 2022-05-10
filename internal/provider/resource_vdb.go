@@ -529,6 +529,10 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetVdbRestart(v.(bool))
 	}
 
+	if v, has_v := d.GetOk("template_id"); has_v {
+		provisionVDBBySnapshotParameters.SetTemplateId(v.(string))
+	}
+
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBBySnapshotParameters.SetFileMappingRules(v.(string))
 	}
