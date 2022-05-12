@@ -96,6 +96,14 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"use_kerberos_authentication": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"use_engine_public_key": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"ase_db_vault": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -118,6 +126,10 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"ase_db_cyberark_vault_query_string": {
 				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_use_kerberos_authentication": {
+				Type:     schema.TypeBool,
 				Optional: true,
 			},
 			"nfs_addresses": {
@@ -272,6 +284,12 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("cyberark_vault_query_string"); has_v {
 		createEnvParams.SetCyberarkVaultQueryString(v.(string))
 	}
+	if v, has_v := d.GetOk("use_kerberos_authentication"); has_v {
+		createEnvParams.SetUseKerberosAuthentication(v.(bool))
+	}
+	if v, has_v := d.GetOk("use_engine_public_key"); has_v {
+		createEnvParams.SetUseEnginePublicKey(v.(bool))
+	}
 	if v, has_v := d.GetOk("ase_db_vault"); has_v {
 		createEnvParams.SetAseDbVault(v.(string))
 	}
@@ -289,6 +307,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	if v, has_v := d.GetOk("ase_db_cyberark_vault_query_string"); has_v {
 		createEnvParams.SetAseDbCyberarkVaultQueryString(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_use_kerberos_authentication"); has_v {
+		createEnvParams.SetAseDbUseKerberosAuthentication(v.(bool))
 	}
 
 	// Clusters
@@ -329,9 +350,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		ErrorLog.Printf("Job Polling failed but continuing with env creation. Error: %v", job_err)
 	}
 
-	if job_status == Failed {
+	if isJobTerminalFailure(job_status) {
 		d.SetId("")
-		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, *apiRes.JobId, job_err)
 	}
 	// Get environment info and store state.
 	readDiags := resourceEnvironmentRead(ctx, d, meta)
@@ -383,8 +404,8 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	if job_err != "" {
 		ErrorLog.Printf("Job Polling failed but continuing with env deletion. Error: %v", job_err)
 	}
-	if job_status == Failed {
-		return diag.Errorf("[NOT OK] Env-Delete failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.JobId, job_err)
 	}
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
