@@ -127,3 +127,7 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 	}
 	return nil
 }
+
+func isJobTerminalFailure(job_status string) bool {
+	return job_status == Failed || job_status == Canceled || job_status == Abandoned
+}

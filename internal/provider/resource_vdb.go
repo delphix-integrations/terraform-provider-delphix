@@ -1063,7 +1063,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		WarnLog.Printf("VDB Update Job Polling failed but continuing with update. Error :%v", job_err)
 	}
 	InfoLog.Printf("Job result is %s", job_status)
-	if job_status == Failed || job_status == Canceled || job_status == Abandoned {
+	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.JobId, job_err)
 	}
 
@@ -1089,7 +1089,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
 	}
 	InfoLog.Printf("Job result is %s", job_status)
-	if job_status == Failed || job_status == Canceled || job_status == Abandoned {
+	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, *res.JobId, job_err)
 	}
 
