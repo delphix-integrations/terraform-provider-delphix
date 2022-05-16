@@ -2,6 +2,8 @@ module terraform-provider-delphix
 
 go 1.17
 
+replace github.com/delphix/dct-sdk-go => /Users/ekaspi/repos/dct-sdk-go
+
 require github.com/delphix/dct-sdk-go v1.0.0-beta4
 
 require (
