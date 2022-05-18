@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -214,7 +213,6 @@ func resourceEnvironment() *schema.Resource {
 func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Function to add an environment in an engine.
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
@@ -339,7 +337,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -355,32 +353,25 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
 	// Get environment info and store state.
-	readDiags := resourceEnvironmentRead(ctx, d, meta)
-	if readDiags.HasError() {
-		return readDiags
-	}
-	return diags
+	return resourceEnvironmentRead(ctx, d, meta)
 }
 
 func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
-	})
+	envRes, httpRes, err := client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 
-	if diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		ErrorLog.Printf("Error Env-Read failed for EnvId:%s. Removing from state file.", envId)
 		d.SetId("")
 		return diags
 	}
 
-	envRes, _ := apiRes.(*dctapi.Environment)
 	d.Set("namespace", envRes.GetNamespace())
 	d.Set("enabled", envRes.GetEnabled())
 	d.Set("hosts", flattenHosts(envRes.GetHosts()))
-	return diags
+	return nil
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -396,7 +387,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -407,9 +398,6 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
-	})
 
-	return diags
+	return nil
 }

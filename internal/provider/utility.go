@@ -32,12 +32,15 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
 		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
 		if err != nil {
-			resBody, err := ResponseBodyToString(httpRes.Body)
-			if err != nil {
-				return "", err.Error()
+			if httpRes != nil && httpRes.Body != nil {
+				resBody, err := ResponseBodyToString(httpRes.Body)
+				if err != nil {
+					return "", err.Error()
+				}
+				ErrorLog.Print(err.Error())
+				return "", resBody
 			}
-			ErrorLog.Print(err.Error())
-			return "", resBody
+			return "", "No body in error response"
 		}
 		i++
 		InfoLog.Printf("DCT-JobId:%s has Status:%s", job_id, res.GetStatus())
@@ -57,34 +60,6 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 		return "", err
 	}
 	return string(bytes), nil
-}
-
-func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
-	// Function to check if an object exists in the Delphix estate.
-	return PollForStatusCode(apiCall, http.StatusOK, 10)
-}
-
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
-	// Function to check if an object does not exist in the Delphix estate.
-	return PollForStatusCode(apiCall, http.StatusNotFound, 10)
-}
-
-// poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics) {
-	var diags diag.Diagnostics
-	var res interface{}
-	var httpRes *http.Response
-	var err error
-	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
-		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
-			InfoLog.Printf("[OK] Breaking poll - Status %d reached.", statusCode)
-			return res, nil
-		}
-		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
-	}
-	diags = apiErrorResponseHelper(res, httpRes, err)
-	InfoLog.Printf("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
-	return nil, diags
 }
 
 func toStringArray(array interface{}) []string {
@@ -111,7 +86,7 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 	return make([]interface{}, 0)
 }
 
-func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
+func apiErrorResponseHelper(httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
 	var diags diag.Diagnostics

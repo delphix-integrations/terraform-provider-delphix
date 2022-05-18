@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -474,7 +473,6 @@ func toHookArray(array interface{}) []dctapi.Hook {
 }
 
 func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
 	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
@@ -633,7 +631,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -649,13 +647,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
-	readDiags := resourceVdbRead(ctx, d, meta)
-
-	if readDiags.HasError() {
-		return readDiags
-	}
-
-	return diags
+	return resourceVdbRead(ctx, d, meta)
 }
 
 func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -856,7 +848,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -914,39 +906,28 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	vdbId := d.Id()
 
-	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
-	})
-
-	if diags != nil {
-		ErrorLog.Printf("Error reading the VDB, removing from state.")
-		d.SetId("")
-		return diag.Errorf("[NOT OK] Error in polling vdb")
+	vdb, httpRes, err := client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
+		return diags
 	}
 
-	result, ok := res.(*dctapi.VDB)
-	if !ok {
-		return diag.Errorf("Error occured in type casting.")
-	}
-
-	d.Set("database_type", result.GetDatabaseType())
-	d.Set("vdb_name", result.GetName())
-	d.Set("database_version", result.GetDatabaseVersion())
-	d.Set("engine_id", result.GetEngineId())
-	d.Set("environment_id", result.GetEnvironmentId())
-	d.Set("ip_address", result.GetIpAddress())
-	d.Set("fqdn", result.GetFqdn())
-	d.Set("parent_id", result.GetParentId())
-	d.Set("group_name", result.GetGroupName())
-	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("database_type", vdb.GetDatabaseType())
+	d.Set("vdb_name", vdb.GetName())
+	d.Set("database_version", vdb.GetDatabaseVersion())
+	d.Set("engine_id", vdb.GetEngineId())
+	d.Set("environment_id", vdb.GetEnvironmentId())
+	d.Set("ip_address", vdb.GetIpAddress())
+	d.Set("fqdn", vdb.GetFqdn())
+	d.Set("parent_id", vdb.GetParentId())
+	d.Set("group_name", vdb.GetGroupName())
+	d.Set("creation_date", vdb.GetCreationDate().String())
 	d.Set("id", vdbId)
 
-	return diags
+	return nil
 }
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
@@ -1049,7 +1030,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
-	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
 		for _, key := range changedKeys {
 			old, _ := d.GetChange(key)
@@ -1067,7 +1048,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
-	return diags
+	return nil
 }
 
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1079,8 +1060,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams.SetForce(false)
 
 	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
-
-	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -1093,9 +1073,5 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
-	})
-
-	return diags
+	return nil
 }

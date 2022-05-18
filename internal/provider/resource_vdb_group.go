@@ -39,8 +39,6 @@ func resourceVdbGroup() *schema.Resource {
 
 func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
-
 	client := meta.(*apiClient).client
 
 	apiRes, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
@@ -48,37 +46,30 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
 	d.SetId(apiRes.VdbGroup.GetId())
 
-	readDiags := resourceVdbGroupRead(ctx, d, meta)
-
-	if readDiags.HasError() {
-		return readDiags
-	}
-	return diags
+	return resourceVdbGroupRead(ctx, d, meta)
 }
 
 func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbGroupId := d.Id()
 	InfoLog.Printf("VdbGroupId: %s", vdbGroupId)
 	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(httpRes, err); diags != nil {
 		return diags
 	}
 
 	d.Set("name", apiRes.GetName())
 	d.Set("vdb_ids", apiRes.GetVdbIds())
-	return diags
+	return nil
 }
 
 func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -89,8 +80,6 @@ func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta in
 func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
-	var diags diag.Diagnostics
-
 	vdbGroupId := d.Id()
 
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
@@ -98,16 +87,5 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()
 
-	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
-		return diags
-	}
-	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return diag.FromErr(err)
-		}
-		return diag.Errorf(resBody)
-	}
-
-	return diags
+	return apiErrorResponseHelper(httpRes, err)
 }
