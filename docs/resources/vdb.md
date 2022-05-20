@@ -32,6 +32,15 @@ resource "delphix_vdb" "vdb_name2" {
   }
 }
 
+# Provision a VDB from a bookmark with a single VDB
+
+resource "delphix_vdb" "test_vdb" {
+  provision_type         = "bookmark"
+  auto_select_repository = true
+  bookmark_id            = "BOOKMARK_ID"
+  environment_id         = "ENV_ID"
+}
+
 # Provision a VDB using snapshot and pre refresh hooks
 
 resource "delphix_vdb" "vdb_name" {
@@ -48,7 +57,7 @@ resource "delphix_vdb" "vdb_name" {
 
 ## Argument Reference
 
-* `source_data_id` - (Required) The ID of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
+* `source_data_id` - (Optional) The ID of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
 
 * `engine_id` - (Optional) The ID of the Engine onto which to provision. If the source ID unambiguously identifies a source object, this parameter is unnecessary and ignored.
 
@@ -177,6 +186,8 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 * `timestamp_in_database_timezone` - (Optional) The point in time from which to execute the operation, expressed as a date-time in the timezone of the source database. Mutually exclusive with timestamp.
 
 * `snapshot_id` - (Optional) The ID of the snapshot from which to execute the operation. If the snapshot_id is not, selects the latest snapshot.
+
+* `bookmark_id` - (Optional) The ID of the bookmark from which to execute the operation. The boomkark must contain only one VDB.
 
 
 ## Attribute Reference
