@@ -1127,7 +1127,7 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 			return diag.Errorf("bookmark_id is required for provision_type = 'bookmark'")
 		}
 	} else {
-		return diag.Errorf("provision_type must be 'timestamp','snapshot' or 'bookmark'")
+		return diag.Errorf("provision_type must be 'timestamp', 'snapshot' or 'bookmark'")
 	}
 }
 
