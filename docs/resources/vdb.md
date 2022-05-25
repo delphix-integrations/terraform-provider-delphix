@@ -32,6 +32,15 @@ resource "delphix_vdb" "vdb_name2" {
   }
 }
 
+# Provision a VDB from a bookmark with a single VDB
+
+resource "delphix_vdb" "test_vdb" {
+  provision_type         = "bookmark"
+  auto_select_repository = true
+  bookmark_id            = "BOOKMARK_ID"
+  environment_id         = "ENV_ID"
+}
+
 # Provision a VDB using snapshot and pre refresh hooks
 
 resource "delphix_vdb" "vdb_name" {
@@ -48,9 +57,9 @@ resource "delphix_vdb" "vdb_name" {
 
 ## Argument Reference
 
-* `source_data_id` - (Required) The ID of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
+* `source_data_id` - (Optional) The ID or name of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
 
-* `engine_id` - (Optional) The ID of the Engine onto which to provision. If the source ID unambiguously identifies a source object, this parameter is unnecessary and ignored.
+* `engine_id` - (Optional) The ID or name of the Engine onto which to provision. If the source ID unambiguously identifies a source object, this parameter is unnecessary and ignored.
 
 * `target_group_id` - (Optional) The ID of the group into which the VDB will be provisioned. If unset, a group is selected randomly on the Engine.
 
@@ -68,7 +77,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * `db_password` - (Optional) [Updatable] The password of the database user (Oracle, ASE Only). Only for update.
 
-* `environment_id` - (Optional) The ID of the target environment where to provision the VDB. If repository_id unambigously identifies a repository, this is unnecessary and ignored. Otherwise, a compatible repository is randomly selected on the environment.
+* `environment_id` - (Optional) The ID or name of the target environment where to provision the VDB. If repository_id unambigously identifies a repository, this is unnecessary and ignored. Otherwise, a compatible repository is randomly selected on the environment.
 
 * `environment_user_id` - (Optional)[Updatable] The environment user ID to use to connect to the target environment.
 
@@ -176,7 +185,9 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 
 * `timestamp_in_database_timezone` - (Optional) The point in time from which to execute the operation, expressed as a date-time in the timezone of the source database. Mutually exclusive with timestamp.
 
-* `snapshot_id` - (Optional) The ID of the snapshot from which to execute the operation. If the snapshot_id is not, selects the latest snapshot.
+* `snapshot_id` - (Optional) The ID or name of the snapshot from which to execute the operation. If the snapshot_id is not, selects the latest snapshot.
+
+* `bookmark_id` - (Optional) The ID or name of the bookmark from which to execute the operation. The bookmark must contain only one VDB.
 
 
 ## Attribute Reference

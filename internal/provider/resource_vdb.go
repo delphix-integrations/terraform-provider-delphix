@@ -33,7 +33,7 @@ func resourceVdb() *schema.Resource {
 			},
 			"source_data_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"id": {
 				Type:     schema.TypeString,
@@ -82,7 +82,7 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"vdb_name": {
+			"name": {
 				Type:     schema.TypeString,
 				Computed: true,
 				Optional: true,
@@ -451,6 +451,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"bookmark_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -497,7 +501,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetTargetGroupId(v.(string))
 	}
 
-	if v, has_v := d.GetOk("vdb_name"); has_v {
+	if v, has_v := d.GetOk("name"); has_v {
 		provisionVDBBySnapshotParameters.SetName(v.(string))
 	}
 
@@ -675,7 +679,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetTargetGroupId(v.(string))
 	}
 
-	if v, has_v := d.GetOk("vdb_name"); has_v {
+	if v, has_v := d.GetOk("name"); has_v {
 		provisionVDBByTimestampParameters.SetName(v.(string))
 	}
 
@@ -881,6 +885,219 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	return diags
 }
 
+func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	client := meta.(*apiClient).client
+
+	provisionVDBFromBookmarkParameters := dctapi.NewProvisionVDBFromBookmarkParameters(d.Get("bookmark_id").(string))
+
+	// Setters for provisionVDBFromBookmarkParameters
+	if v, has_v := d.GetOk("source_data_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetSourceDataId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("engine_id"); has_v {
+		eng_id, _ := strconv.Atoi(v.(string))
+		provisionVDBFromBookmarkParameters.SetEngineId(int64(eng_id))
+	}
+
+	if v, has_v := d.GetOk("target_group_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetTargetGroupId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("name"); has_v {
+		provisionVDBFromBookmarkParameters.SetName(v.(string))
+	}
+
+	if v, has_v := d.GetOk("database_name"); has_v {
+		provisionVDBFromBookmarkParameters.SetDatabaseName(v.(string))
+	}
+
+	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
+		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	}
+
+	if v, has_v := d.GetOk("os_username"); has_v {
+		provisionVDBFromBookmarkParameters.SetOsUsername(v.(string))
+	}
+
+	if v, has_v := d.GetOk("os_password"); has_v {
+		provisionVDBFromBookmarkParameters.SetOsPassword(v.(string))
+	}
+
+	if v, has_v := d.GetOk("environment_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetEnvironmentId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("environment_user_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetEnvironmentUserId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("repository_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetRepositoryId(v.(string))
+	}
+
+	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
+		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(v.(bool))
+	}
+
+	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
+		provisionVDBFromBookmarkParameters.SetVdbRestart(v.(bool))
+	}
+
+	if v, has_v := d.GetOk("template_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetTemplateId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
+		provisionVDBFromBookmarkParameters.SetFileMappingRules(v.(string))
+	}
+
+	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+		provisionVDBFromBookmarkParameters.SetOracleInstanceName(v.(string))
+	}
+
+	if v, has_v := d.GetOk("unique_name"); has_v {
+		provisionVDBFromBookmarkParameters.SetUniqueName(v.(string))
+	}
+
+	if v, has_v := d.GetOk("mount_point"); has_v {
+		provisionVDBFromBookmarkParameters.SetMountPoint(v.(string))
+	}
+
+	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
+		provisionVDBFromBookmarkParameters.SetOpenResetLogs(v.(bool))
+	}
+
+	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetSnapshotPolicyId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("retention_policy_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetRetentionPolicyId(v.(string))
+	}
+
+	if v, has_v := d.GetOk("recovery_model"); has_v {
+		provisionVDBFromBookmarkParameters.SetRecoveryModel(v.(string))
+	}
+
+	if v, has_v := d.GetOk("pre_script"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreScript(v.(string))
+	}
+
+	if v, has_v := d.GetOk("post_script"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostScript(v.(string))
+	}
+
+	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
+		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
+	}
+
+	if v, has_v := d.GetOk("online_log_size"); has_v {
+		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
+	}
+
+	if v, has_v := d.GetOk("online_log_groups"); has_v {
+		provisionVDBFromBookmarkParameters.SetOnlineLogGroups(int32(v.(int)))
+	}
+
+	if v, has_v := d.GetOkExists("archive_log"); has_v {
+		provisionVDBFromBookmarkParameters.SetArchiveLog(v.(bool))
+	}
+
+	if v, has_v := d.GetOkExists("new_dbid"); has_v {
+		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
+	}
+
+	if v, has_v := d.GetOk("listener_ids"); has_v {
+		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
+	}
+
+	if v, has_v := d.GetOk("custom_env_vars"); has_v {
+		custom_env_vars := make(map[string]string)
+
+		for k, v := range v.(map[string]interface{}) {
+			custom_env_vars[k] = v.(string)
+		}
+		provisionVDBFromBookmarkParameters.SetCustomEnvVars(custom_env_vars)
+	}
+
+	if v, has_v := d.GetOk("custom_env_files"); has_v {
+		provisionVDBFromBookmarkParameters.SetCustomEnvFiles(toStringArray(v))
+	}
+
+	if v, has_v := d.GetOk("pre_refresh"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreRefresh(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("post_refresh"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostRefresh(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("pre_rollback"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreRollback(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("post_rollback"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostRollback(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("configure_clone"); has_v {
+		provisionVDBFromBookmarkParameters.SetConfigureClone(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("pre_snapshot"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreSnapshot(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("post_snapshot"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostSnapshot(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("pre_start"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreStart(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("post_start"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostStart(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("pre_stop"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreStop(toHookArray(v))
+	}
+
+	if v, has_v := d.GetOk("post_stop"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostStop(toHookArray(v))
+	}
+
+	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
+
+	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
+	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+
+	d.SetId(*apiRes.Vdb.Id)
+
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		ErrorLog.Printf("Job Polling failed but continuing with provisioning. Error: %s", job_err)
+	}
+	InfoLog.Printf("Job result is %s", job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		ErrorLog.Printf("Job %s %s!", job_res, *apiRes.Job.Id)
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+
+	readDiags := resourceVdbRead(ctx, d, meta)
+
+	if readDiags.HasError() {
+		return readDiags
+	}
+
+	return diags
+}
+
 func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	if _, has_v := d.GetOk("db_username"); has_v {
 		return diag.Errorf("db_username can not be set when creating a VDB.")
@@ -893,18 +1110,24 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	if provision_type == "timestamp" {
 		if _, has_v := d.GetOk("snapshot_id"); has_v {
-			return diag.Errorf("snapshot_id is not supported for provision_type is 'timestamp'")
+			return diag.Errorf("snapshot_id is not supported for provision_type = 'timestamp'")
 		} else {
 			return helper_provision_by_timestamp(ctx, d, meta)
 		}
 	} else if provision_type == "snapshot" {
 		if _, has_v := d.GetOk("timestamp"); has_v {
-			return diag.Errorf("timestamp is not supported for provision_type is 'snapshot'")
+			return diag.Errorf("timestamp is not supported for provision_type = 'snapshot'")
 		} else {
 			return helper_provision_by_snapshot(ctx, d, meta)
 		}
+	} else if provision_type == "bookmark" {
+		if _, has_v := d.GetOk("bookmark_id"); has_v {
+			return helper_provision_by_bookmark(ctx, d, meta)
+		} else {
+			return diag.Errorf("bookmark_id is required for provision_type = 'bookmark'")
+		}
 	} else {
-		return diag.Errorf("provision_type must be 'timestamp' or 'snapshot'")
+		return diag.Errorf("provision_type must be 'timestamp', 'snapshot' or 'bookmark'")
 	}
 }
 
@@ -930,7 +1153,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	}
 
 	d.Set("database_type", result.GetDatabaseType())
-	d.Set("vdb_name", result.GetName())
+	d.Set("name", result.GetName())
 	d.Set("database_version", result.GetDatabaseVersion())
 	d.Set("engine_id", result.GetEngineId())
 	d.Set("environment_id", result.GetEnvironmentId())
@@ -1016,8 +1239,8 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	if d.HasChange("template_id") {
 		updateVDBParam.SetTemplateId(d.Get("template_id").(string))
 	}
-	if d.HasChange("vdb_name") {
-		updateVDBParam.SetName(d.Get("vdb_name").(string))
+	if d.HasChange("name") {
+		updateVDBParam.SetName(d.Get("name").(string))
 	}
 	if d.HasChange("db_username") {
 		updateVDBParam.SetDbUsername(d.Get("db_username").(string))

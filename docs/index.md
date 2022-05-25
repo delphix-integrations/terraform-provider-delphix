@@ -1,7 +1,7 @@
 # <provider> Delphix Provider
 
 !> **NOTE**
-The Terraform Provider for Delphix is currently beta and requires Delphix Control Tower (DCT) APIs to work.
+The Terraform Provider for Delphix is currently beta and requires the Delphix Continuous Data Platform and Data Control Tower (DCT).
 
 
 The Terraform Provider for Delphix enables customers to natively manage data-as-code along with their infrastructure. 
