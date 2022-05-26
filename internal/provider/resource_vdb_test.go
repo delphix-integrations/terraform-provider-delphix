@@ -28,7 +28,7 @@ func TestAccVdb_provision_positive(t *testing.T) {
 				Config: testAccUpdatePositive("vdbu", true),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
-					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_name", "vdbu"),
+					resource.TestCheckResourceAttr("delphix_vdb.new", "name", "vdbu"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_restart", "true")),
 				ExpectNonEmptyPlan: true,
 			},
@@ -41,10 +41,32 @@ func TestAccVdb_provision_positive(t *testing.T) {
 	})
 }
 
+func TestAccVdb_bookmark_provision(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccVdbBookmarkPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckVdbDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctVDBBookmarkConfigBasic(),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctVdbBookmarkResourceExists("delphix_vdb.new2")),
+			},
+		},
+	})
+}
+
 func testAccVdbPreCheck(t *testing.T) {
 	testAccPreCheck(t)
 	if err := os.Getenv("DATASOURCE_ID"); err == "" {
 		t.Fatal("DATASOURCE_ID must be set for vdb acceptance tests")
+	}
+}
+
+func testAccVdbBookmarkPreCheck(t *testing.T) {
+	testAccPreCheck(t)
+	if err := os.Getenv("DCT_BOOKMARK_ID"); err == "" {
+		t.Fatal("DCT_BOOKMARK_ID must be set for vdb bookmark acceptance tests")
 	}
 }
 
@@ -56,6 +78,17 @@ func testAccCheckDctVDBConfigBasic() string {
     	source_data_id         = "%s"
 	}
 	`, datasource_id)
+}
+
+func testAccCheckDctVDBBookmarkConfigBasic() string {
+	bookmark_id := os.Getenv("DCT_BOOKMARK_ID")
+	return fmt.Sprintf(`
+	resource "delphix_vdb" "new2" {
+		provision_type         = "bookmark"
+		auto_select_repository = true
+    	bookmark_id            = "%s"
+	}
+	`, bookmark_id)
 }
 
 func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
@@ -82,6 +115,43 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 		parentId := res.GetParentId()
 		if parentId != os.Getenv("DATASOURCE_ID") {
 			return fmt.Errorf("parentId does not match DATASOURCE_ID")
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckDctVdbBookmarkResourceExists(n string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		vdbId := rs.Primary.ID
+		if vdbId == "" {
+			return fmt.Errorf("No VdbID set")
+		}
+
+		client := testAccProvider.Meta().(*apiClient).client
+
+		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+
+		if err != nil {
+			return err
+		}
+
+		res2, _, err2 := client.BookmarksApi.GetBookmarkById(context.Background(), os.Getenv("DCT_BOOKMARK_ID")).Execute()
+
+		if err2 != nil {
+			return err2
+		}
+
+		sourceId := res2.GetVdbIds()[0]
+		parentId := res.GetParentId()
+		if parentId != sourceId {
+			return fmt.Errorf("parentId does not match sourceId")
 		}
 
 		return nil
@@ -127,7 +197,7 @@ func testAccUpdatePositive(name string, vdb_restart bool) string {
 	resource "delphix_vdb" "new" {
 		auto_select_repository = true
     	source_data_id         = "%s"
-		vdb_name = "%s"
+		name = "%s"
 		vdb_restart = "%t"
 	}
 	`, datasource_id, name, vdb_restart)
