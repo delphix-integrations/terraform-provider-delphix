@@ -136,20 +136,20 @@ func testAccCheckDctVdbBookmarkResourceExists(n string) resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		get_vdb_reponse, _, get_vdb_error := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
 
-		if err != nil {
-			return err
+		if get_vdb_error != nil {
+			return get_vdb_error
 		}
 
-		res2, _, err2 := client.BookmarksApi.GetBookmarkById(context.Background(), os.Getenv("DCT_BOOKMARK_ID")).Execute()
+		get_bookmark_response, _, get_bookmark_error := client.BookmarksApi.GetBookmarkById(context.Background(), os.Getenv("DCT_BOOKMARK_ID")).Execute()
 
-		if err2 != nil {
-			return err2
+		if get_bookmark_error != nil {
+			return get_bookmark_error
 		}
 
-		sourceId := res2.GetVdbIds()[0]
-		parentId := res.GetParentId()
+		sourceId := get_bookmark_response.GetVdbIds()[0]
+		parentId := get_vdb_reponse.GetParentId()
 		if parentId != sourceId {
 			return fmt.Errorf("parentId does not match sourceId")
 		}
