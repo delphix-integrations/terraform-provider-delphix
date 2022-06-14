@@ -91,6 +91,14 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"cdb_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"cluster_node_ids": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"truncate_log_on_checkpoint": {
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -135,7 +143,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -156,7 +171,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -177,7 +199,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -198,7 +227,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -219,7 +255,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -240,7 +283,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -261,7 +311,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -282,7 +339,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -303,7 +367,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -324,7 +395,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -345,7 +423,14 @@ func resourceVdb() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-							Default:  "bash",
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -358,6 +443,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"auxiliary_template_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"file_mapping_rules": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -367,6 +456,14 @@ func resourceVdb() *schema.Resource {
 				Optional: true,
 			},
 			"unique_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"vcdb_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"vcdb_database_name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -455,6 +552,22 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"tags": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -477,6 +590,17 @@ func toHookArray(array interface{}) []dctapi.Hook {
 	return items
 }
 
+func toTagArray(array interface{}) []dctapi.Tag {
+	items := []dctapi.Tag{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
+
+		items = append(items, *tag_item)
+	}
+	return items
+}
+
 func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
@@ -487,100 +611,118 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("source_data_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSourceDataId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("engine_id"); has_v {
 		eng_id, _ := strconv.Atoi(v.(string))
 		provisionVDBBySnapshotParameters.SetEngineId(int64(eng_id))
 	}
-
 	if v, has_v := d.GetOk("target_group_id"); has_v {
 		provisionVDBBySnapshotParameters.SetTargetGroupId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("name"); has_v {
 		provisionVDBBySnapshotParameters.SetName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("database_name"); has_v {
 		provisionVDBBySnapshotParameters.SetDatabaseName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("cdb_id"); has_v {
+		provisionVDBBySnapshotParameters.SetCdbId(v.(string))
+	}
+	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
+		provisionVDBBySnapshotParameters.SetClusterNodeIds(toStringArray(v))
+	}
+	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
+		provisionVDBBySnapshotParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBBySnapshotParameters.SetOsUsername(v.(string))
 	}
-
 	if v, has_v := d.GetOk("os_password"); has_v {
 		provisionVDBBySnapshotParameters.SetOsPassword(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_id"); has_v {
 		provisionVDBBySnapshotParameters.SetEnvironmentId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_user_id"); has_v {
 		provisionVDBBySnapshotParameters.SetEnvironmentUserId(v.(string))
 	}
-
+	if v, has_v := d.GetOk("repository_id"); has_v {
+		provisionVDBBySnapshotParameters.SetRepositoryId(v.(string))
+	}
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
 	}
-
 	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
 		provisionVDBBySnapshotParameters.SetVdbRestart(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBBySnapshotParameters.SetTemplateId(v.(string))
 	}
-
+	if v, has_v := d.GetOk("auxiliary_template_id"); has_v {
+		provisionVDBBySnapshotParameters.SetAuxiliaryTemplateId(v.(string))
+	}
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBBySnapshotParameters.SetFileMappingRules(v.(string))
 	}
-
 	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
 		provisionVDBBySnapshotParameters.SetOracleInstanceName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("unique_name"); has_v {
 		provisionVDBBySnapshotParameters.SetUniqueName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("vcdb_name"); has_v {
+		provisionVDBBySnapshotParameters.SetVcdbName(v.(string))
+	}
+	if v, has_v := d.GetOk("vcdb_database_name"); has_v {
+		provisionVDBBySnapshotParameters.SetVcdbDatabaseName(v.(string))
+	}
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBBySnapshotParameters.SetMountPoint(v.(string))
 	}
-
+	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
+		provisionVDBBySnapshotParameters.SetOpenResetLogs(v.(bool))
+	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSnapshotPolicyId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("retention_policy_id"); has_v {
 		provisionVDBBySnapshotParameters.SetRetentionPolicyId(v.(string))
 	}
-
+	if v, has_v := d.GetOk("recovery_model"); has_v {
+		provisionVDBBySnapshotParameters.SetRecoveryModel(v.(string))
+	}
+	if v, has_v := d.GetOk("pre_script"); has_v {
+		provisionVDBBySnapshotParameters.SetPreScript(v.(string))
+	}
+	if v, has_v := d.GetOk("post_script"); has_v {
+		provisionVDBBySnapshotParameters.SetPostScript(v.(string))
+	}
+	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
+		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
+	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOkExists("archive_log"); has_v {
 		provisionVDBBySnapshotParameters.SetArchiveLog(v.(bool))
 	}
-
+	if v, has_v := d.GetOkExists("new_dbid"); has_v {
+		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("listener_ids"); has_v {
+		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
+	}
 	if v, has_v := d.GetOk("snapshot_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSnapshotId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("custom_env_files"); has_v {
 		provisionVDBBySnapshotParameters.SetCustomEnvFiles(toStringArray(v))
 	}
-
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
 		custom_env_vars := make(map[string]string)
 
@@ -593,45 +735,38 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("pre_refresh"); has_v {
 		provisionVDBBySnapshotParameters.SetPreRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBBySnapshotParameters.SetPostRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBBySnapshotParameters.SetPreRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_rollback"); has_v {
 		provisionVDBBySnapshotParameters.SetPostRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("configure_clone"); has_v {
 		provisionVDBBySnapshotParameters.SetConfigureClone(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_snapshot"); has_v {
 		provisionVDBBySnapshotParameters.SetPreSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_snapshot"); has_v {
 		provisionVDBBySnapshotParameters.SetPostSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_start"); has_v {
 		provisionVDBBySnapshotParameters.SetPreStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_start"); has_v {
 		provisionVDBBySnapshotParameters.SetPostStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_stop"); has_v {
 		provisionVDBBySnapshotParameters.SetPreStop(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_stop"); has_v {
 		provisionVDBBySnapshotParameters.SetPostStop(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("tags"); has_v {
+		provisionVDBBySnapshotParameters.SetTags(toTagArray(v))
 	}
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
@@ -641,7 +776,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.Vdb.Id)
+	d.SetId(*apiRes.VdbId)
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
@@ -674,119 +809,105 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		eng_id, _ := strconv.Atoi(v.(string))
 		provisionVDBByTimestampParameters.SetEngineId(int64(eng_id))
 	}
-
 	if v, has_v := d.GetOk("target_group_id"); has_v {
 		provisionVDBByTimestampParameters.SetTargetGroupId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("name"); has_v {
 		provisionVDBByTimestampParameters.SetName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("database_name"); has_v {
 		provisionVDBByTimestampParameters.SetDatabaseName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("cdb_id"); has_v {
+		provisionVDBByTimestampParameters.SetCdbId(v.(string))
+	}
+	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
+		provisionVDBByTimestampParameters.SetClusterNodeIds(toStringArray(v))
+	}
 	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
 		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBByTimestampParameters.SetOsUsername(v.(string))
 	}
-
 	if v, has_v := d.GetOk("os_password"); has_v {
 		provisionVDBByTimestampParameters.SetOsPassword(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_id"); has_v {
 		provisionVDBByTimestampParameters.SetEnvironmentId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_user_id"); has_v {
 		provisionVDBByTimestampParameters.SetEnvironmentUserId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBByTimestampParameters.SetRepositoryId(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBByTimestampParameters.SetAutoSelectRepository(v.(bool))
 	}
-
 	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
 		provisionVDBByTimestampParameters.SetVdbRestart(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBByTimestampParameters.SetTemplateId(v.(string))
 	}
-
+	if v, has_v := d.GetOk("auxiliary_template_id"); has_v {
+		provisionVDBByTimestampParameters.SetAuxiliaryTemplateId(v.(string))
+	}
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBByTimestampParameters.SetFileMappingRules(v.(string))
 	}
-
 	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
 		provisionVDBByTimestampParameters.SetOracleInstanceName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("unique_name"); has_v {
 		provisionVDBByTimestampParameters.SetUniqueName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("vcdb_name"); has_v {
+		provisionVDBByTimestampParameters.SetVcdbName(v.(string))
+	}
+	if v, has_v := d.GetOk("vcdb_database_name"); has_v {
+		provisionVDBByTimestampParameters.SetVcdbDatabaseName(v.(string))
+	}
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBByTimestampParameters.SetMountPoint(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
 		provisionVDBByTimestampParameters.SetOpenResetLogs(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBByTimestampParameters.SetSnapshotPolicyId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("retention_policy_id"); has_v {
 		provisionVDBByTimestampParameters.SetRetentionPolicyId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("recovery_model"); has_v {
 		provisionVDBByTimestampParameters.SetRecoveryModel(v.(string))
 	}
-
 	if v, has_v := d.GetOk("pre_script"); has_v {
 		provisionVDBByTimestampParameters.SetPreScript(v.(string))
 	}
-
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBByTimestampParameters.SetPostScript(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOkExists("archive_log"); has_v {
 		provisionVDBByTimestampParameters.SetArchiveLog(v.(bool))
 	}
-
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
 	}
-
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
 		custom_env_vars := make(map[string]string)
 
@@ -795,11 +916,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		}
 		provisionVDBByTimestampParameters.SetCustomEnvVars(custom_env_vars)
 	}
-
 	if v, has_v := d.GetOk("custom_env_files"); has_v {
 		provisionVDBByTimestampParameters.SetCustomEnvFiles(toStringArray(v))
 	}
-
 	if v, has_v := d.GetOk("timestamp"); has_v {
 		tt, err := time.Parse(time.RFC3339, v.(string))
 		if err != nil {
@@ -808,53 +927,44 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		}
 		provisionVDBByTimestampParameters.SetTimestamp(tt)
 	}
-
 	if v, has_v := d.GetOk("timestamp_in_database_timezone"); has_v {
 		provisionVDBByTimestampParameters.SetTimestampInDatabaseTimezone(v.(string))
 	}
-
 	if v, has_v := d.GetOk("pre_refresh"); has_v {
 		provisionVDBByTimestampParameters.SetPreRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBByTimestampParameters.SetPostRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBByTimestampParameters.SetPreRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_rollback"); has_v {
 		provisionVDBByTimestampParameters.SetPostRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("configure_clone"); has_v {
 		provisionVDBByTimestampParameters.SetConfigureClone(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_snapshot"); has_v {
 		provisionVDBByTimestampParameters.SetPreSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_snapshot"); has_v {
 		provisionVDBByTimestampParameters.SetPostSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_start"); has_v {
 		provisionVDBByTimestampParameters.SetPreStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_start"); has_v {
 		provisionVDBByTimestampParameters.SetPostStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_stop"); has_v {
 		provisionVDBByTimestampParameters.SetPreStop(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_stop"); has_v {
 		provisionVDBByTimestampParameters.SetPostStop(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("tags"); has_v {
+		provisionVDBByTimestampParameters.SetTags(toTagArray(v))
 	}
 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
@@ -864,7 +974,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		return diags
 	}
 
-	d.SetId(*apiRes.Vdb.Id)
+	d.SetId(*apiRes.VdbId)
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
@@ -892,127 +1002,105 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	provisionVDBFromBookmarkParameters := dctapi.NewProvisionVDBFromBookmarkParameters(d.Get("bookmark_id").(string))
 
 	// Setters for provisionVDBFromBookmarkParameters
-	if v, has_v := d.GetOk("source_data_id"); has_v {
-		provisionVDBFromBookmarkParameters.SetSourceDataId(v.(string))
-	}
-
-	if v, has_v := d.GetOk("engine_id"); has_v {
-		eng_id, _ := strconv.Atoi(v.(string))
-		provisionVDBFromBookmarkParameters.SetEngineId(int64(eng_id))
-	}
-
 	if v, has_v := d.GetOk("target_group_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetTargetGroupId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("name"); has_v {
 		provisionVDBFromBookmarkParameters.SetName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("database_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetDatabaseName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("cdb_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetCdbId(v.(string))
+	}
+	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
+		provisionVDBFromBookmarkParameters.SetClusterNodeIds(toStringArray(v))
+	}
 	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
 		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBFromBookmarkParameters.SetOsUsername(v.(string))
 	}
-
 	if v, has_v := d.GetOk("os_password"); has_v {
 		provisionVDBFromBookmarkParameters.SetOsPassword(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetEnvironmentId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("environment_user_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetEnvironmentUserId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetRepositoryId(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
 		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(v.(bool))
 	}
-
 	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
 		provisionVDBFromBookmarkParameters.SetVdbRestart(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetTemplateId(v.(string))
 	}
-
+	if v, has_v := d.GetOk("auxiliary_template_id"); has_v {
+		provisionVDBFromBookmarkParameters.SetAuxiliaryTemplateId(v.(string))
+	}
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBFromBookmarkParameters.SetFileMappingRules(v.(string))
 	}
-
 	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetOracleInstanceName(v.(string))
 	}
-
 	if v, has_v := d.GetOk("unique_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetUniqueName(v.(string))
 	}
-
+	if v, has_v := d.GetOk("vcdb_name"); has_v {
+		provisionVDBFromBookmarkParameters.SetVcdbName(v.(string))
+	}
+	if v, has_v := d.GetOk("vcdb_database_name"); has_v {
+		provisionVDBFromBookmarkParameters.SetVcdbDatabaseName(v.(string))
+	}
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBFromBookmarkParameters.SetMountPoint(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
 		provisionVDBFromBookmarkParameters.SetOpenResetLogs(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetSnapshotPolicyId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("retention_policy_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetRetentionPolicyId(v.(string))
 	}
-
 	if v, has_v := d.GetOk("recovery_model"); has_v {
 		provisionVDBFromBookmarkParameters.SetRecoveryModel(v.(string))
 	}
-
 	if v, has_v := d.GetOk("pre_script"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreScript(v.(string))
 	}
-
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostScript(v.(string))
 	}
-
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-
 	if v, has_v := d.GetOkExists("archive_log"); has_v {
 		provisionVDBFromBookmarkParameters.SetArchiveLog(v.(bool))
 	}
-
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
 	}
-
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
 	}
-
 	if v, has_v := d.GetOk("custom_env_vars"); has_v {
 		custom_env_vars := make(map[string]string)
 
@@ -1021,52 +1109,43 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		}
 		provisionVDBFromBookmarkParameters.SetCustomEnvVars(custom_env_vars)
 	}
-
 	if v, has_v := d.GetOk("custom_env_files"); has_v {
 		provisionVDBFromBookmarkParameters.SetCustomEnvFiles(toStringArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_refresh"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostRefresh(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_rollback"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostRollback(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("configure_clone"); has_v {
 		provisionVDBFromBookmarkParameters.SetConfigureClone(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_snapshot"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_snapshot"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostSnapshot(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_start"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_start"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostStart(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("pre_stop"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreStop(toHookArray(v))
 	}
-
 	if v, has_v := d.GetOk("post_stop"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostStop(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("tags"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostStop(toHookArray(v))
 	}
 
@@ -1077,7 +1156,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.Vdb.Id)
+	d.SetId(*apiRes.VdbId)
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
