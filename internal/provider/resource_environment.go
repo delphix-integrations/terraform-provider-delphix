@@ -175,6 +175,22 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"tags": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"namespace": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -334,6 +350,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	if v, has_v := d.GetOk("nfs_addresses"); has_v {
 		createEnvParams.SetNfsAddresses(toStringArray(v))
+	}
+	if v, has_v := d.GetOk("tags"); has_v {
+		createEnvParams.SetTags(toTagArray(v))
 	}
 
 	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
