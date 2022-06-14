@@ -2,11 +2,16 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 	"testing"
+	"time"
 
+	dctapi "github.com/delphix/dct-sdk-go"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -43,14 +48,14 @@ func TestAccVdb_provision_positive(t *testing.T) {
 
 func TestAccVdb_bookmark_provision(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccVdbBookmarkPreCheck(t) },
+		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,
 		CheckDestroy: testAccCheckVdbDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckDctVDBBookmarkConfigBasic(),
 				Check: resource.ComposeTestCheckFunc(
-					testAccCheckDctVdbBookmarkResourceExists("delphix_vdb.new2")),
+					testAccCheckDctVdbBookmarkResourceExists()),
 			},
 		},
 	})
@@ -60,13 +65,6 @@ func testAccVdbPreCheck(t *testing.T) {
 	testAccPreCheck(t)
 	if err := os.Getenv("DATASOURCE_ID"); err == "" {
 		t.Fatal("DATASOURCE_ID must be set for vdb acceptance tests")
-	}
-}
-
-func testAccVdbBookmarkPreCheck(t *testing.T) {
-	testAccPreCheck(t)
-	if err := os.Getenv("DCT_BOOKMARK_ID"); err == "" {
-		t.Fatal("DCT_BOOKMARK_ID must be set for vdb bookmark acceptance tests")
 	}
 }
 
@@ -81,14 +79,76 @@ func testAccCheckDctVDBConfigBasic() string {
 }
 
 func testAccCheckDctVDBBookmarkConfigBasic() string {
-	bookmark_id := os.Getenv("DCT_BOOKMARK_ID")
-	return fmt.Sprintf(`
-	resource "delphix_vdb" "new2" {
-		provision_type         = "bookmark"
-		auto_select_repository = true
-    	bookmark_id            = "%s"
+	var bookmark_id, vdb_id string
+
+	// init client
+	cfg := dctapi.NewConfiguration()
+	cfg.Host = os.Getenv("DCT_HOST")
+	cfg.Scheme = "https"
+	cfg.HTTPClient = &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}}
+	cfg.AddDefaultHeader("Authorization", "apk "+os.Getenv("DCT_KEY"))
+	client := dctapi.NewAPIClient(cfg)
+
+	// create vdb
+	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
+	provisionVDBBySnapshotParameters.SetAutoSelectRepository(true)
+	provisionVDBBySnapshotParameters.SetSourceDataId(os.Getenv("DATASOURCE_ID"))
+
+	vdb_req := client.VDBsApi.ProvisionVdbBySnapshot(context.Background())
+
+	vdb_res, vdb_http_res, vdb_err := vdb_req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	if diags := apiErrorResponseHelper(vdb_res, vdb_http_res, vdb_err); diags != nil {
+		println("An error occured during vdb creation: " + vdb_err.Error())
+		return "" // return empty config to indicate config error
 	}
-	`, bookmark_id)
+	vdb_id = *vdb_res.VdbId
+
+	// poll for vdb
+	vdb_job_res, vdb_job_err := PollJobStatus(*vdb_res.Job.Id, context.Background(), client)
+
+	if vdb_job_res == Failed || vdb_job_res == Canceled || vdb_job_res == Abandoned {
+		println("An error occured during vdb job polling " + vdb_job_err)
+		return ""
+	}
+
+	// for eventual consistency
+	time.Sleep(20 * time.Second)
+
+	//create bookmark
+	bookmark := dctapi.NewBookmarkWithDefaults()
+	bookmark.SetVdbIds([]string{vdb_id})
+	bookmark.SetName(acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
+
+	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).Bookmark(*bookmark)
+	bk_res, bk_http_res, bk_err := bookmark_req.Execute()
+
+	if diags := apiErrorResponseHelper(bk_res, bk_http_res, bk_err); diags != nil {
+		println("An error occured during bookmark creation: " + bk_err.Error())
+		return ""
+	}
+	bookmark_id = *bk_res.Bookmark.Id
+
+	// poll for bookmark
+	bk_job_res, bk_job_err := PollJobStatus(*bk_res.Job.Id, context.Background(), client)
+
+	if bk_job_res == Failed || bk_job_res == Canceled || bk_job_res == Abandoned {
+		println("An error occured during bookmark job polling: " + bk_job_err)
+		return "" // return empty config to indicate config error
+	}
+
+	// for eventual consistency
+	time.Sleep(20 * time.Second)
+
+	return fmt.Sprintf(`
+			resource "delphix_vdb" "vdb_bookmark" {
+			provision_type         = "bookmark"
+			auto_select_repository = true
+    		bookmark_id            = "%s"
+			}
+			`, bookmark_id)
+
 }
 
 func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
@@ -121,12 +181,12 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 	}
 }
 
-func testAccCheckDctVdbBookmarkResourceExists(n string) resource.TestCheckFunc {
+func testAccCheckDctVdbBookmarkResourceExists() resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[n]
+		rs, ok := s.RootModule().Resources["delphix_vdb.vdb_bookmark"]
 
 		if !ok {
-			return fmt.Errorf("Not found: %s", n)
+			return fmt.Errorf("Not found: delphix_vdb.vdb_bookmark")
 		}
 
 		vdbId := rs.Primary.ID
@@ -151,7 +211,7 @@ func testAccCheckDctVdbBookmarkResourceExists(n string) resource.TestCheckFunc {
 		sourceId := get_bookmark_response.GetVdbIds()[0]
 		parentId := get_vdb_reponse.GetParentId()
 		if parentId != sourceId {
-			return fmt.Errorf("parentId does not match sourceId")
+			return fmt.Errorf("Single-VDB Bookmark's parentId does not match newly created VDB's sourceId")
 		}
 
 		return nil
