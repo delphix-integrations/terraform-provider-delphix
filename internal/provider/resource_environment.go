@@ -25,7 +25,7 @@ func resourceEnvironment() *schema.Resource {
 				Optional: true,
 			},
 			"engine_id": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"os_name": {
@@ -234,7 +234,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*apiClient).client
 
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
-		int64(d.Get("engine_id").(int)),
+		d.Get("engine_id").(string),
 		d.Get("os_name").(string),
 		d.Get("hostname").(string),
 	)
@@ -355,7 +355,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetTags(toTagArray(v))
 	}
 
-	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
+	apiReq := client.EnvironmentsApi.CreateEnvironment(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
 	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {

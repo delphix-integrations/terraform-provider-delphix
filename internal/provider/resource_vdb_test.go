@@ -8,7 +8,6 @@ import (
 	"os"
 	"regexp"
 	"testing"
-	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/acctest"
@@ -46,11 +45,14 @@ func TestAccVdb_provision_positive(t *testing.T) {
 	})
 }
 
+var bookmark_id string
+var vdb_id string
+
 func TestAccVdb_bookmark_provision(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckVdbDestroy,
+		CheckDestroy: testAccCheckVdbDestroyBookmark,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCheckDctVDBBookmarkConfigBasic(),
@@ -79,8 +81,6 @@ func testAccCheckDctVDBConfigBasic() string {
 }
 
 func testAccCheckDctVDBBookmarkConfigBasic() string {
-	var bookmark_id, vdb_id string
-
 	// init client
 	cfg := dctapi.NewConfiguration()
 	cfg.Host = os.Getenv("DCT_HOST")
@@ -114,7 +114,9 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	}
 
 	// for eventual consistency
-	time.Sleep(20 * time.Second)
+	PollForObjectExistence(func() (interface{}, *http.Response, error) {
+		return client.VDBsApi.GetVdbById(context.Background(), vdb_id).Execute()
+	})
 
 	//create bookmark
 	bookmark := dctapi.NewBookmarkWithDefaults()
@@ -139,15 +141,21 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	}
 
 	// for eventual consistency
-	time.Sleep(20 * time.Second)
+	PollForObjectExistence(func() (interface{}, *http.Response, error) {
+		return client.BookmarksApi.GetBookmarkById(context.Background(), bookmark_id).Execute()
+	})
 
-	return fmt.Sprintf(`
-			resource "delphix_vdb" "vdb_bookmark" {
-			provision_type         = "bookmark"
-			auto_select_repository = true
-    		bookmark_id            = "%s"
-			}
-			`, bookmark_id)
+	resource := fmt.Sprintf(`
+	resource "delphix_vdb" "vdb_bookmark" {
+	provision_type         = "bookmark"
+	auto_select_repository = true
+	bookmark_id            = "%s"
+	}
+	`, bookmark_id)
+
+	print(resource)
+
+	return resource
 
 }
 
@@ -202,7 +210,7 @@ func testAccCheckDctVdbBookmarkResourceExists() resource.TestCheckFunc {
 			return get_vdb_error
 		}
 
-		get_bookmark_response, _, get_bookmark_error := client.BookmarksApi.GetBookmarkById(context.Background(), os.Getenv("DCT_BOOKMARK_ID")).Execute()
+		get_bookmark_response, _, get_bookmark_error := client.BookmarksApi.GetBookmarkById(context.Background(), bookmark_id).Execute()
 
 		if get_bookmark_error != nil {
 			return get_bookmark_error
@@ -241,6 +249,18 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 
 	return nil
 }
+
+func testAccCheckVdbDestroyBookmark(s *terraform.State) error {
+	client := testAccProvider.Meta().(*apiClient).client
+
+	print("Deleting parent vdb " + vdb_id)
+	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
+	deleteVdbParams.SetForce(false)
+	client.VDBsApi.DeleteVdb(context.Background(), vdb_id).DeleteVDBParameters(*deleteVdbParams).Execute()
+
+	return testAccCheckVdbDestroy(s)
+}
+
 func testAccUpdateNegative(value bool) string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`

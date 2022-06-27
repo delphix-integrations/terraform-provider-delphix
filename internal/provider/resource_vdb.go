@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go"
@@ -615,8 +614,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetSourceDataId(v.(string))
 	}
 	if v, has_v := d.GetOk("engine_id"); has_v {
-		eng_id, _ := strconv.Atoi(v.(string))
-		provisionVDBBySnapshotParameters.SetEngineId(int64(eng_id))
+		provisionVDBBySnapshotParameters.SetEngineId(v.(string))
 	}
 	if v, has_v := d.GetOk("target_group_id"); has_v {
 		provisionVDBBySnapshotParameters.SetTargetGroupId(v.(string))
@@ -806,8 +804,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	// Setters for provisionVDBByTimestampParameters
 	if v, has_v := d.GetOk("engine_id"); has_v {
 		// provisionVDBByTimestampParameters.SetEngineId(int64(v.(int)))
-		eng_id, _ := strconv.Atoi(v.(string))
-		provisionVDBByTimestampParameters.SetEngineId(int64(eng_id))
+		provisionVDBByTimestampParameters.SetEngineId(v.(string))
 	}
 	if v, has_v := d.GetOk("target_group_id"); has_v {
 		provisionVDBByTimestampParameters.SetTargetGroupId(v.(string))
