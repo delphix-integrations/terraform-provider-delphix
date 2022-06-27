@@ -67,7 +67,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * `database_name` - (Optional) The name of the database on the target environment. Defaults to vdb_name.
 
-* `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. This corresponds to a Source API object. When this is not set, a new vCDB will be provisioned.
+* `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. When this is not set, a new vCDB will be provisioned.
 
 * `cluster_node_ids` - (Optional) The cluster node ids, name or addresses for this provision operation (Oracle RAC Only).
 

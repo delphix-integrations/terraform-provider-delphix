@@ -204,7 +204,7 @@ func testAccCheckDctVdbBookmarkResourceExists() resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		get_vdb_reponse, _, get_vdb_error := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		get_vdb_response, _, get_vdb_error := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
 
 		if get_vdb_error != nil {
 			return get_vdb_error
@@ -217,7 +217,7 @@ func testAccCheckDctVdbBookmarkResourceExists() resource.TestCheckFunc {
 		}
 
 		sourceId := get_bookmark_response.GetVdbIds()[0]
-		parentId := get_vdb_reponse.GetParentId()
+		parentId := get_vdb_response.GetParentId()
 		if parentId != sourceId {
 			return fmt.Errorf("Single-VDB Bookmark's parentId does not match newly created VDB's sourceId")
 		}
