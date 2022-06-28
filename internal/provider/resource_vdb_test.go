@@ -113,11 +113,6 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 		return ""
 	}
 
-	// for eventual consistency
-	PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(context.Background(), vdb_id).Execute()
-	})
-
 	//create bookmark
 	bookmark := dctapi.NewBookmarkWithDefaults()
 	bookmark.SetVdbIds([]string{vdb_id})
@@ -139,11 +134,6 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 		println("An error occured during bookmark job polling: " + bk_job_err)
 		return "" // return empty config to indicate config error
 	}
-
-	// for eventual consistency
-	PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.BookmarksApi.GetBookmarkById(context.Background(), bookmark_id).Execute()
-	})
 
 	resource := fmt.Sprintf(`
 	resource "delphix_vdb" "vdb_bookmark" {
