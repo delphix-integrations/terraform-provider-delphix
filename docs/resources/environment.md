@@ -1,6 +1,6 @@
 # Resource: <resource name> delphix_environment
 
-In Delphix, an environment is either a single instance host or cluster of hosts that run database software. 
+In Delphix, an environment is either a single instance host or cluster of hosts that run database software.
 
 Environments can either be a source (where data comes from), staging (where data are prepared/masked) or target (where data are delivered and used by developers and testers).
 
@@ -46,7 +46,7 @@ resource "delphix_environment" "unixcluster" {
      hostname = "db.host.com"
      toolkit_path = "/home/delphix"
      name = "unixcluster"
-     description = "This is a unix target." 
+     description = "This is a unix target."
      is_cluster = true    
      cluster_home = "/u01/app/19.0.0.0/grid"
  }
