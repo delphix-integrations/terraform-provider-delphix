@@ -32,6 +32,15 @@ resource "delphix_vdb" "vdb_name2" {
   }
 }
 
+# Provision a VDB from a bookmark with a single VDB
+
+resource "delphix_vdb" "test_vdb" {
+  provision_type         = "bookmark"
+  auto_select_repository = true
+  bookmark_id            = "BOOKMARK_ID"
+  environment_id         = "ENV_ID"
+}
+
 # Provision a VDB using snapshot and pre refresh hooks
 
 resource "delphix_vdb" "vdb_name" {
@@ -48,9 +57,9 @@ resource "delphix_vdb" "vdb_name" {
 
 ## Argument Reference
 
-* `source_data_id` - (Required) The ID of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
+* `source_data_id` - (Optional) The ID or name of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
 
-* `engine_id` - (Optional) The ID of the Engine onto which to provision. If the source ID unambiguously identifies a source object, this parameter is unnecessary and ignored.
+* `engine_id` - (Optional) The ID or name of the Engine onto which to provision. If the source ID unambiguously identifies a source object, this parameter is unnecessary and ignored.
 
 * `target_group_id` - (Optional) The ID of the group into which the VDB will be provisioned. If unset, a group is selected randomly on the Engine.
 
@@ -58,13 +67,21 @@ resource "delphix_vdb" "vdb_name" {
 
 * `database_name` - (Optional) The name of the database on the target environment. Defaults to vdb_name.
 
+* `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. When this is not set, a new vCDB will be provisioned.
+
+* `cluster_node_ids` - (Optional) The cluster node ids, name or addresses for this provision operation (Oracle RAC Only).
+
 * `truncate_log_on_checkpoint` - (Optional) Whether to truncate log on checkpoint (ASE only).
 
-* `username` - (Optional) [Updatable] The name of the privileged user to run the provision operation (Oracle Only).
+* `os_username` - (Optional) The name of the privileged user to run the provision operation (Oracle Only).
 
-* `password` - (Optional) [Updatable] The password of the privileged user to run the provision operation (Oracle Only).
+* `os_password` - (Optional) The password of the privileged user to run the provision operation (Oracle Only).
 
-* `environment_id` - (Optional) The ID of the target environment where to provision the VDB. If repository_id unambigously identifies a repository, this is unnecessary and ignored. Otherwise, a compatible repository is randomly selected on the environment.
+* `db_username` - (Optional) [Updatable] The username of the database user (Oracle, ASE Only). Only for update.
+
+* `db_password` - (Optional) [Updatable] The password of the database user (Oracle, ASE Only). Only for update.
+
+* `environment_id` - (Optional) The ID or name of the target environment where to provision the VDB. If repository_id unambigously identifies a repository, this is unnecessary and ignored. Otherwise, a compatible repository is randomly selected on the environment.
 
 * `environment_user_id` - (Optional)[Updatable] The environment user ID to use to connect to the target environment.
 
@@ -72,62 +89,84 @@ resource "delphix_vdb" "vdb_name" {
 
 * `auto_select_repository` - (Optional) Option to automatically select a compatible environment and repository. Mutually exclusive with repository_id.
 
-* `pre_refresh` - (Optional) The commands to execute on the target environment before refreshing the VDB. This is a map of 3 parameters:
+* `pre_refresh` - (Optional) The commands to execute on the target environment before refreshing the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_refresh` - (Optional) The commands to execute on the target environment after refreshing the VDB. This is a map of 3 parameters:
+* `post_refresh` - (Optional) The commands to execute on the target environment after refreshing the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_rollback` - (Optional) The commands to execute on the target environment before rewinding the VDB. This is a map of 3 parameters:
+* `pre_rollback` - (Optional) The commands to execute on the target environment before rewinding the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_rollback` - (Optional) The commands to execute on the target environment after rewinding the VDB. This is a map of 3 parameters:
+* `post_rollback` - (Optional) The commands to execute on the target environment after rewinding the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `configure_clone` - (Optional) The commands to execute on the target environment when the VDB is created or refreshed. This is a map of 3 parameters:
+* `configure_clone` - (Optional) The commands to execute on the target environment when the VDB is created or refreshed. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_snapshot` - (Optional) The commands to execute on the target environment before snapshotting a virtual source. These commands can quiesce any data prior to snapshotting. This is a map of 3 parameters:
+* `pre_snapshot` - (Optional) The commands to execute on the target environment before snapshotting a virtual source. These commands can quiesce any data prior to snapshotting. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_snapshot` - (Optional) The commands to execute on the target environment after snapshotting a virtual source. This is a map of 3 parameters:
+* `post_snapshot` - (Optional) The commands to execute on the target environment after snapshotting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_start` - (Optional) The commands to execute on the target environment before starting a virtual source. This is a map of 3 parameters:
+* `pre_start` - (Optional) The commands to execute on the target environment before starting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
 
-* `post_start` - (Optional) The commands to execute on the target environment after starting a virtual source. This is a map of 3 parameters:
+* `post_start` - (Optional) The commands to execute on the target environment after starting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_stop` - (Optional) The commands to execute on the target environment before stopping a virtual source. This is a map of 3 parameters:
+* `pre_stop` - (Optional) The commands to execute on the target environment before stopping a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_stop` - (Optional) The commands to execute on the target environment after stopping a virtual source. This is a map of 3 parameters:
+* `post_stop` - (Optional) The commands to execute on the target environment after stopping a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` Default is `bash`
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
 
 * `vdb_restart` - (Optional) [Updatable] Indicates whether the Engine should automatically restart this virtual source when target host reboot is detected.
+
+* `auxiliary_template_id` - (Optional) The ID of the configuration template to apply to the auxiliary container database. This is only relevant when provisioning a Multitenant pluggable database into an existing CDB, i.e when the cdb_id property is set. (Oracle Only)
 
 * `template_id` - (Optional) [Updatable] The ID of the target VDB Template (Oracle Only).
 
@@ -136,6 +175,10 @@ resource "delphix_vdb" "vdb_name" {
 * `oracle_instance_name` - (Optional) Target VDB SID name (Oracle Only).
 
 * `unique_name` - (Optional) Target VDB db_unique_name (Oracle Only).
+
+* `vcdb_name` - (Optional) When provisioning an Oracle Multitenant vCDB (when the cdb_id property is not set), the name of the provisioned vCDB (Oracle Multitenant Only).
+
+* `vcdb_database_name` - (Optional) When provisioning an Oracle Multitenant vCDB (when the cdb_id property is not set), the database name of the provisioned vCDB. Defaults to the value of the vcdb_name property. (Oracle Multitenant Only).
 
 * `mount_point` - (Optional) Mount point for the VDB (Oracle, ASE Only).
 
@@ -172,7 +215,13 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 
 * `timestamp_in_database_timezone` - (Optional) The point in time from which to execute the operation, expressed as a date-time in the timezone of the source database. Mutually exclusive with timestamp.
 
-* `snapshot_id` - (Optional) The ID of the snapshot from which to execute the operation. If the snapshot_id is not, selects the latest snapshot.
+* `snapshot_id` - (Optional) The ID or name of the snapshot from which to execute the operation. If the snapshot_id is not, selects the latest snapshot.
+
+* `bookmark_id` - (Optional) The ID or name of the bookmark from which to execute the operation. The bookmark must contain only one VDB.
+
+* `tags` - (Optional) The tags to be created for VDB. This is a map of 2 parameters:
+  * `key` - (Required) Key of the tag
+  * `value` - (Required) Value of the tag
 
 
 ## Attribute Reference

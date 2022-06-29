@@ -28,10 +28,13 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	}
 
 	var i = 0
-	for res.GetStatus() == Running {
+	for res.GetStatus() == Pending || res.GetStatus() == Started {
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
 		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
 		if err != nil {
+			if httpRes == nil {
+				return "", "Received nil response for Job ID " + job_id
+			}
 			resBody, err := ResponseBodyToString(httpRes.Body)
 			if err != nil {
 				return "", err.Error()
@@ -126,4 +129,8 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 		return diags
 	}
 	return nil
+}
+
+func isJobTerminalFailure(job_status string) bool {
+	return job_status == Failed || job_status == Canceled || job_status == Abandoned
 }

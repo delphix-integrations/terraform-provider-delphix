@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     delphix = {
-      version = "1.0-beta"
+      version = "1.0.0-beta"
       source  = "delphix.com/dct/delphix"
     }
   }
@@ -24,6 +24,37 @@ resource "delphix_environment" "unixtgt" {
      name = "unixtgt"
      description = "This is a unix target."     
  } 
+
+/* Unix Standalone using Hashicorp vault 
+resource "delphix_environment" "unixtgt" {
+  engine_id = 1
+  os_name   = "UNIX"
+  hostname  = "xxx"
+
+  vault                        = "xxx"
+  hashicorp_vault_engine       = "xxx"
+  hashicorp_vault_secret_path  = "xxx"
+  hashicorp_vault_username_key = "xxx"
+  hashicorp_vault_secret_key   = "xxx"
+
+  toolkit_path = "/home/delphix_os/toolkit"
+  name         = "unixtgt"
+  description  = "This is a unix target."
+} */
+
+/* Unix Standalone using CyberArk vault 
+resource "delphix_environment" "unixtgt" {
+  engine_id = 1
+  os_name   = "UNIX"
+  hostname  = "xxx"
+
+  vault                        = "xxx"
+  cyberark_query_string        = "xxx"
+
+  toolkit_path = "/home/delphix_os/toolkit"
+  name         = "unixtgt"
+  description  = "This is a unix target."
+} */
 
  /* Win Standalone - Target*/
 /* resource "delphix_environment" "wintgt" {

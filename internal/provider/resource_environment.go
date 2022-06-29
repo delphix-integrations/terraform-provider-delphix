@@ -25,7 +25,7 @@ func resourceEnvironment() *schema.Resource {
 				Optional: true,
 			},
 			"engine_id": {
-				Type:     schema.TypeInt,
+				Type:     schema.TypeString,
 				Required: true,
 			},
 			"os_name": {
@@ -66,11 +66,71 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"username": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"password": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+			},
+			"vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"use_kerberos_authentication": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"use_engine_public_key": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"ase_db_vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ase_db_use_kerberos_authentication": {
+				Type:     schema.TypeBool,
+				Optional: true,
 			},
 			"nfs_addresses": {
 				Type:     schema.TypeList,
@@ -115,6 +175,22 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"tags": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"key": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
 			"namespace": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -158,7 +234,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*apiClient).client
 
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
-		int64(d.Get("engine_id").(int)),
+		d.Get("engine_id").(string),
 		d.Get("os_name").(string),
 		d.Get("hostname").(string),
 	)
@@ -206,6 +282,51 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("description"); has_v {
 		createEnvParams.SetDescription(v.(string))
 	}
+	if v, has_v := d.GetOk("vault"); has_v {
+		createEnvParams.SetVault(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_engine"); has_v {
+		createEnvParams.SetHashicorpVaultEngine(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_secret_path"); has_v {
+		createEnvParams.SetHashicorpVaultSecretPath(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_username_key"); has_v {
+		createEnvParams.SetHashicorpVaultUsernameKey(v.(string))
+	}
+	if v, has_v := d.GetOk("hashicorp_vault_secret_key"); has_v {
+		createEnvParams.SetHashicorpVaultSecretKey(v.(string))
+	}
+	if v, has_v := d.GetOk("cyberark_vault_query_string"); has_v {
+		createEnvParams.SetCyberarkVaultQueryString(v.(string))
+	}
+	if v, has_v := d.GetOk("use_kerberos_authentication"); has_v {
+		createEnvParams.SetUseKerberosAuthentication(v.(bool))
+	}
+	if v, has_v := d.GetOk("use_engine_public_key"); has_v {
+		createEnvParams.SetUseEnginePublicKey(v.(bool))
+	}
+	if v, has_v := d.GetOk("ase_db_vault"); has_v {
+		createEnvParams.SetAseDbVault(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_engine"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultEngine(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_secret_path"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultSecretPath(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_username_key"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultUsernameKey(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_hashicorp_vault_secret_key"); has_v {
+		createEnvParams.SetAseDbHashicorpVaultSecretKey(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_cyberark_vault_query_string"); has_v {
+		createEnvParams.SetAseDbCyberarkVaultQueryString(v.(string))
+	}
+	if v, has_v := d.GetOk("ase_db_use_kerberos_authentication"); has_v {
+		createEnvParams.SetAseDbUseKerberosAuthentication(v.(bool))
+	}
 
 	// Clusters
 	os_name := d.Get("os_name").(string)
@@ -230,8 +351,11 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("nfs_addresses"); has_v {
 		createEnvParams.SetNfsAddresses(toStringArray(v))
 	}
+	if v, has_v := d.GetOk("tags"); has_v {
+		createEnvParams.SetTags(toTagArray(v))
+	}
 
-	apiReq := client.EnvironmentsApi.CreateEnvironments(ctx)
+	apiReq := client.EnvironmentsApi.CreateEnvironment(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
 	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
@@ -239,15 +363,15 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	d.SetId(apiRes.GetEnvironmentId())
-	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
+	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 
 	if job_err != "" {
 		ErrorLog.Printf("Job Polling failed but continuing with env creation. Error: %v", job_err)
 	}
 
-	if job_status == Failed {
+	if isJobTerminalFailure(job_status) {
 		d.SetId("")
-		return diag.Errorf("[NOT OK] Env-Create failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
 	// Get environment info and store state.
 	readDiags := resourceEnvironmentRead(ctx, d, meta)
@@ -295,12 +419,12 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*apiRes.JobId, ctx, client)
+	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
 		ErrorLog.Printf("Job Polling failed but continuing with env deletion. Error: %v", job_err)
 	}
-	if job_status == Failed {
-		return diag.Errorf("[NOT OK] Env-Delete failed. JobId: %s / Error: %s", *apiRes.JobId, job_err)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
