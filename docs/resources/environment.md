@@ -200,6 +200,9 @@ resource "delphix_environment" "fc-tgt-cluster" {
 * `dsp_truststore_path` - (Optional) DSP truststore path.
 * `dsp_truststore_password` - (Optional) DSP truststore password.
 * `description` - (Optional) The environment description.
+* `tags` - (Optional) The tags to be created for this environment. This is a map of 2 parameters:
+  * `key` - (Required) Key of the tag
+  * `value` - (Required) Value of the tag
 
 ## Attribute Reference
 
