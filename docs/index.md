@@ -11,7 +11,7 @@ This provider leverages REST APIs available through the Delphix Data Control Tow
 
 To learn more about the Terraform Provider, webinar events, and other Delphix solutions, see our [Delphix Website](https://www.delphix.com/solutions/terraform). If you need technical guidance around Delphix and DCT, refer to the [Delphix Documentation](https://docs.delphix.com) and [DCT Documentation](https://docs.delphix.com/dct) websites. 
 
-Please [Contact us](mailto:ask-integrations@delphix.com) with any questions or submit one on our [Community Page](https://community.delphix.com/contactus).
+Please [Contact us](mailto:ask-integrations@delphix.com) with any questions or submit one on our [Delphix Community Portal](https://community.delphix.com/contactus).
 
 ## Example Usage
 
