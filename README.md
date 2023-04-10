@@ -24,7 +24,7 @@ This guide covers the following
 
 1. Install IDE [Visual Studio Code](https://code.visualstudio.com).
 
-2. Install guide for the [Golang](https://go.dev/dl/).
+2. Install guide for [Golang](https://go.dev/dl/).
 
 3. Install guide for [GoReleaser](https://goreleaser.com/install/).
 
