@@ -62,18 +62,18 @@ func ResponseBodyToString(body io.ReadCloser) (string, error) {
 	return string(bytes), nil
 }
 
-func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics, int) {
 	// Function to check if an object exists in the Delphix estate.
 	return PollForStatusCode(apiCall, http.StatusOK, 10)
 }
 
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics, int) {
 	// Function to check if an object does not exist in the Delphix estate.
 	return PollForStatusCode(apiCall, http.StatusNotFound, 10)
 }
 
 // poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics) {
+func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics,int) {
 	var diags diag.Diagnostics
 	var res interface{}
 	var httpRes *http.Response
@@ -81,13 +81,13 @@ func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), stat
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
 			InfoLog.Printf("[OK] Breaking poll - Status %d reached.", statusCode)
-			return res, nil
+			return res, nil, httpRes.StatusCode
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
 	diags = apiErrorResponseHelper(res, httpRes, err)
 	InfoLog.Printf("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
-	return nil, diags
+	return nil, diags, httpRes.StatusCode
 }
 
 func toStringArray(array interface{}) []string {
