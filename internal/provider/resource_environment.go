@@ -385,7 +385,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	apiRes, diags, _ := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
@@ -426,7 +426,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags, _ := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
