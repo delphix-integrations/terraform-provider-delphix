@@ -1213,24 +1213,25 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 	vdbId := d.Id()
 
-	res, diags, statusCode := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	if diags != nil {
-		_, diags, _ := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 			return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
-		if diags != nil{
-			ErrorLog.Printf("[NOT OK] Error in polling vdb")
-		}
-		// diags will be nill in case of successful poll for deletion logic aka 404
-		if diags == nil && statusCode==404{
-			ErrorLog.Printf("Error reading the VDB %s, removing from state.",vdbId)
+		if diags != nil {
+			ErrorLog.Printf("Error in polling of VDB for deletion.")
+		} else {
+			// diags will be nill in case of successful poll for deletion logic aka 404
+			ErrorLog.Printf("Error reading the VDB %s, removing from state.", vdbId)
 			d.SetId("")
 		}
-		
+
+		// Todo check with 1225 -> if terraform refresh
+
 		return nil
 	}
 
@@ -1403,7 +1404,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
-	_, diags, _ := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
 	})
 

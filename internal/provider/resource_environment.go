@@ -385,14 +385,21 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, diags, _ := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	apiRes, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
 	if diags != nil {
-		ErrorLog.Printf("Error Env-Read failed for EnvId:%s. Removing from state file.", envId)
-		d.SetId("")
-		return diags
+		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+			return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+		})
+		if diags != nil {
+			ErrorLog.Printf("Error in polling of environment for deletion.")
+		} else {
+			ErrorLog.Printf("Error Env-Read failed for EnvId:%s. Removing from state file.", envId)
+			d.SetId("")
+		}
+		return nil
 	}
 
 	envRes, _ := apiRes.(*dctapi.Environment)
@@ -426,7 +433,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
-	_, diags, _ := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
