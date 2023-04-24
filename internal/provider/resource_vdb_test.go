@@ -34,6 +34,7 @@ func TestAccVdb_provision_positive(t *testing.T) {
 					testAccCheckDctVdbResourceExists("delphix_vdb.new"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "name", "vdbu"),
 					resource.TestCheckResourceAttr("delphix_vdb.new", "vdb_restart", "true")),
+				ExpectNonEmptyPlan: true,
 			},
 			{
 				// negative update test case
