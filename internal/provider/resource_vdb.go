@@ -1218,9 +1218,19 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	})
 
 	if diags != nil {
-		ErrorLog.Printf("Error reading the VDB, removing from state.")
-		d.SetId("")
-		return diag.Errorf("[NOT OK] Error in polling vdb")
+		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+			return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		})
+		// This would imply error in poll for deletion so we just log and exit.
+		if diags != nil {
+			ErrorLog.Printf("Error in polling of VDB for deletion.")
+		} else {
+			// diags will be nill in case of successful poll for deletion logic aka 404
+			ErrorLog.Printf("Error reading the VDB %s, removing from state.", vdbId)
+			d.SetId("")
+		}
+
+		return nil
 	}
 
 	result, ok := res.(*dctapi.VDB)
