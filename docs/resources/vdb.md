@@ -63,9 +63,9 @@ resource "delphix_vdb" "vdb_name" {
 
 * `target_group_id` - (Optional) The ID of the group into which the VDB will be provisioned. If unset, a group is selected randomly on the Engine.
 
-* `vdb_name` - (Optional) The unique name of the provisioned VDB within a group. If unset, a name is randomly generated.
+* `name` - (Optional) The unique name of the provisioned VDB within a group. If unset, a name is randomly generated.
 
-* `database_name` - (Optional) The name of the database on the target environment. Defaults to vdb_name.
+* `database_name` - (Optional) The name of the database on the target environment. Defaults to name.
 
 * `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. When this is not set, a new vCDB will be provisioned.
 
