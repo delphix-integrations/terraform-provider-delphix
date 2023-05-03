@@ -113,11 +113,11 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	}
 
 	//create bookmark
-	bookmark := dctapi.NewBookmarkWithDefaults()
+	bookmark := dctapi.NewBookmarkCreateParametersWithDefaults()
 	bookmark.SetVdbIds([]string{vdb_id})
 	bookmark.SetName(acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
 
-	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).Bookmark(*bookmark)
+	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).BookmarkCreateParameters(*bookmark)
 	bk_res, bk_http_res, bk_err := bookmark_req.Execute()
 
 	if diags := apiErrorResponseHelper(bk_res, bk_http_res, bk_err); diags != nil {
