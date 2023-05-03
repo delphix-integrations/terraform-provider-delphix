@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -567,6 +568,14 @@ func resourceVdb() *schema.Resource {
 					},
 				},
 			},
+			"appdata_source_params": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"appdata_config_params": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -766,6 +775,16 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("tags"); has_v {
 		provisionVDBBySnapshotParameters.SetTags(toTagArray(v))
 	}
+	if v, has_v := d.GetOk("appdata_source_params"); has_v {
+		appdata_source_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_source_params)
+		provisionVDBBySnapshotParameters.SetAppdataSourceParams(appdata_source_params)
+	}
+	if v, has_v := d.GetOk("appdata_config_params"); has_v {
+		appdata_config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
+		provisionVDBBySnapshotParameters.SetAppdataConfigParams(appdata_config_params)
+	}
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
 
@@ -963,6 +982,16 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("tags"); has_v {
 		provisionVDBByTimestampParameters.SetTags(toTagArray(v))
 	}
+	if v, has_v := d.GetOk("appdata_source_params"); has_v {
+		appdata_source_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_source_params)
+		provisionVDBByTimestampParameters.SetAppdataSourceParams(appdata_source_params)
+	}
+	if v, has_v := d.GetOk("appdata_config_params"); has_v {
+		appdata_config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
+		provisionVDBByTimestampParameters.SetAppdataConfigParams(appdata_config_params)
+	}
 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
 
@@ -1144,6 +1173,16 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOk("tags"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostStop(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("appdata_source_params"); has_v {
+		appdata_source_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_source_params)
+		provisionVDBFromBookmarkParameters.SetAppdataSourceParams(appdata_source_params)
+	}
+	if v, has_v := d.GetOk("appdata_config_params"); has_v {
+		appdata_config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
+		provisionVDBFromBookmarkParameters.SetAppdataConfigParams(appdata_config_params)
 	}
 
 	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
