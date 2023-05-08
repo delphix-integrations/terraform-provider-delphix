@@ -1287,6 +1287,8 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("parent_id", result.GetParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("appdata_source_params", result.GetAppdataSourceParams())
+	d.Set("appdata_config_params", result.GetAppdataConfigParams())
 	d.Set("id", vdbId)
 
 	return diags
