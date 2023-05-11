@@ -114,6 +114,21 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 	return make([]interface{}, 0)
 }
 
+func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMountPoint) []interface{} {
+	if additional_mount_points != nil {
+		returned_additional_mount_points := make([]interface{}, len(additional_mount_points))
+		for i, additional_mount_point := range additional_mount_points {
+			returned_additional_mount_point := make(map[string]interface{})
+			returned_additional_mount_point["shared_path"] = additional_mount_point.GetSharedPath()
+			returned_additional_mount_point["mount_path"] = additional_mount_point.GetMountPath()
+			returned_additional_mount_point["environment_id"] = additional_mount_point.GetEnvironmentId()
+			returned_additional_mount_points[i] = returned_additional_mount_point
+		}
+		return returned_additional_mount_points
+	}
+	return make([]interface{}, 0)
+}
+
 func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
