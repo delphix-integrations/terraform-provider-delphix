@@ -1,3 +1,7 @@
+/**
+* Summary: This template showcases the properties available when provisioning a MSSQL database from a DCT bookmark.
+*/
+
 terraform {
   required_providers {
     delphix = {
@@ -37,11 +41,6 @@ resource "delphix_vdb" "example" {
   config_params jsonencode({
     processes = 150
   })
-  make_current_account_owner = true
-  tags {
-    key   = "key-1"
-    value = "value-1"
-  }
   post_snapshot {
     name            = "string"
     command         = "string"
@@ -132,5 +131,10 @@ resource "delphix_vdb" "example" {
     shell           = "bash"
     element_id      = "string"
     has_credentials = true
+  }
+  make_current_account_owner = true
+  tags {
+    key   = "key-1"
+    value = "value-1"
   }
 }
