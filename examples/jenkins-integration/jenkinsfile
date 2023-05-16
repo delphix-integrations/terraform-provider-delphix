@@ -1,0 +1,175 @@
+pipeline {
+    agent any
+
+    environment {
+        def provision_successful = false
+        def vdb_id = ""
+        def vdb_name = ""
+        def DCT_HOSTNAME = "<INSERT>"
+        def SOURCE_VDB = "<INSERT>"
+        test_error = 'false'
+    }
+
+    stages {
+
+        stage ('Build Application') {
+            steps {
+                echo ('Building...')
+                sleep (50)
+            }
+        }
+        
+        stage ('Stand Up Full Application') {
+            parallel {
+                stage ('Apply Application Install') {
+                    steps{
+                        echo ('Provisioning Test App...')
+                        sleep (30)
+                    }
+                }
+                stage ('Create Database w/ Terraform') {
+                    steps {
+                        script {
+                            echo ('Provisioning  VDB...')
+                            git branch: 'main', changelog: false, poll: false, url: 'https://github.com/nick-mathison/delphix-terraform-examples.git'
+                            // sh ('ls -R')
+                            sh ('terraform -chdir=simple-provision init')
+                            withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
+                                sh ('terraform -chdir=simple-provision apply -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
+                            }
+                            vdb_id = sh(script: 'terraform -chdir=simple-provision output vdb_id_1', returnStdout: true)
+                            vdb_id = vdb_id.replaceAll('\\"', "").trim()
+                            vdb_name = sh(script: 'terraform -chdir=simple-provision output vdb_name_1', returnStdout: true)
+                            echo ("vdb_id:" + vdb_id)
+                            echo ("vdb_name:" + vdb_name)
+                            provision_successful = true
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage ('Combine') {
+            steps {
+                echo ('Combining...')
+                sleep (10)
+            }
+        }
+
+        stage ('Run Tests') {
+            parallel {
+                stage ('UI') {
+                    stages {
+                        stage ('Run UI Tests') {
+                            steps{
+                                echo ('UI Tests...')
+                                sleep (150)
+                            }
+                        }
+                        stage ('Send UI Test Results') {
+                            steps{
+                                echo ('Send UI Test Results...')
+                                sleep (5)
+                            }
+                        }
+                    }
+                }
+                stage ('Unit') {
+                    stages {
+                        stage ('Run Unit Tests') {
+                            steps {
+                                script {
+                                    echo ('Unit Tests...')
+                                    sleep (70)
+                                    catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                                       echo ('Identified 7 failing Unit Tests!')
+                                        test_error = 'true';
+                                        sh "exit 1"
+                                    }
+                                }
+                            }
+                        }
+                        stage ('Send Unit Test Results') {
+                            steps{
+                                echo ('Send Unit Test Results...')
+                                sleep (6)
+                            }
+                        }
+                    }
+                }
+                stage ('Integ.') {
+                    stages {
+                        stage ('Run Integration Tests') {
+                            steps{
+                                echo ('UI Tests...')
+                                sleep (130)
+                            }
+                        }
+                        stage ('Send Integration Test Results') {
+                            steps{
+                                echo ('Send Integration Test Results...')
+                                sleep (4)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+         stage ('Bookmark Database') {
+            when {
+                equals expected: 'true', actual: test_error
+            }
+            steps{
+                script {
+                    echo ('Bookmark VDB... ')
+                    withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
+                        sh """
+                            curl -X 'POST' -k \
+                                'https://$DCT_HOSTNAME/v3/bookmarks' \
+                                -H 'accept: application/json' \
+                                -H 'Authorization: apk ${KEY}' \
+                                -H 'Content-Type: application/json' \
+                                -d '{
+                                    "name": "JKNS-BOOKMARK-$BUILD_NUMBER",
+                                    "vdb_ids": [
+                                        "${vdb_id}"
+                                    ],
+                                    "retain_forever": true,
+                                    "make_current_account_owner": true
+                                }'
+                        """
+                    }
+                }
+            }
+        }
+
+        stage ('Destroy Full Application') {
+            parallel {
+                stage ('Destroy Application') {
+                    steps {
+                        script {
+                            echo ('Destroying Application...')
+                            sleep (30)
+                        }
+                    }
+                }
+                stage ('Destroy Database w/ Terraform') {
+                    steps {
+                        script {
+                            if (provision_successful) {
+                                    sleep (60)
+                                    echo ('Destroying Test App and VDB...')
+                                    withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
+                                        sh ('terraform -chdir=simple-provision destroy -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
+                                    }
+                            } else {
+                                echo ('No App or VDB to destroy...')
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
