@@ -575,6 +575,100 @@ func resourceVdb() *schema.Resource {
 			"appdata_config_params": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+			},
+			"make_current_account_owner": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"config_params": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"additional_mount_points": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"shared_path": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"mount_path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"environment_id": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"vcdb_tde_key_identifier": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"cdb_tde_keystore_password": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"target_vcdb_tde_keystore_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"tde_key_identifier": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"tde_exported_key_file_secret": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"parent_tde_keystore_password": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"parent_tde_keystore_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"oracle_rac_custom_env_vars": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"node_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"value": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"oracle_rac_custom_env_files": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"node_id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"path_parameters": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
 			},
 		},
 	}
@@ -605,6 +699,47 @@ func toTagArray(array interface{}) []dctapi.Tag {
 		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
 
 		items = append(items, *tag_item)
+	}
+	return items
+}
+
+func toAdditionalMountPointsArray(array interface{}) []dctapi.AdditionalMountPoint {
+	items := []dctapi.AdditionalMountPoint{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		addMntPts := dctapi.NewAdditionalMountPoint()
+		addMntPts.SetEnvironmentId(item_map["environment_id"].(string))
+		addMntPts.SetMountPath(item_map["mount_path"].(string))
+		addMntPts.SetSharedPath(item_map["shared_path"].(string))
+
+		items = append(items, *addMntPts)
+	}
+	return items
+}
+
+func toOracleRacCustomEnvVars(array interface{}) []dctapi.OracleRacCustomEnvVar {
+	items := []dctapi.OracleRacCustomEnvVar{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		oracleRacCustomEnvVars := dctapi.NewOracleRacCustomEnvVar()
+		oracleRacCustomEnvVars.SetName(item_map["name"].(string))
+		oracleRacCustomEnvVars.SetNodeId(item_map["node_id"].(string))
+		oracleRacCustomEnvVars.SetValue(item_map["value"].(string))
+
+		items = append(items, *oracleRacCustomEnvVars)
+	}
+	return items
+}
+
+func toOracleRacCustomEnvFiles(array interface{}) []dctapi.OracleRacCustomEnvFile {
+	items := []dctapi.OracleRacCustomEnvFile{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		oracleRacCustomEnvFiles := dctapi.NewOracleRacCustomEnvFile()
+		oracleRacCustomEnvFiles.SetNodeId(item_map["node_id"].(string))
+		oracleRacCustomEnvFiles.SetPathParameters(item_map["path_parameters"].(string))
+
+		items = append(items, *oracleRacCustomEnvFiles)
 	}
 	return items
 }
@@ -784,6 +919,44 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		appdata_config_params := make(map[string]interface{})
 		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
 		provisionVDBBySnapshotParameters.SetAppdataConfigParams(appdata_config_params)
+	}
+	if v, has_v := d.GetOk("config_params"); has_v {
+		config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &config_params)
+		provisionVDBBySnapshotParameters.SetConfigParams(config_params)
+	}
+	if v, has_v := d.GetOk("make_current_account_owner"); has_v {
+		provisionVDBBySnapshotParameters.SetMakeCurrentAccountOwner(v.(bool))
+	}
+	if v, has_v := d.GetOk("vcdb_tde_key_identifier"); has_v {
+		provisionVDBBySnapshotParameters.SetVcdbTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("cdb_tde_keystore_password"); has_v {
+		provisionVDBBySnapshotParameters.SetCdbTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("target_vcdb_tde_keystore_path"); has_v {
+		provisionVDBBySnapshotParameters.SetTargetVcdbTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_key_identifier"); has_v {
+		provisionVDBBySnapshotParameters.SetTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_exported_key_file_secret"); has_v {
+		provisionVDBBySnapshotParameters.SetTdeExportedKeyFileSecret(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_password"); has_v {
+		provisionVDBBySnapshotParameters.SetParentTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_path"); has_v {
+		provisionVDBBySnapshotParameters.SetParentTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("additional_mount_points"); has_v {
+		provisionVDBBySnapshotParameters.SetAdditionalMountPoints(toAdditionalMountPointsArray(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_files"); has_v {
+		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvFiles(toOracleRacCustomEnvFiles(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
+		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
 	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
@@ -992,6 +1165,44 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
 		provisionVDBByTimestampParameters.SetAppdataConfigParams(appdata_config_params)
 	}
+	if v, has_v := d.GetOk("config_params"); has_v {
+		config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &config_params)
+		provisionVDBByTimestampParameters.SetConfigParams(config_params)
+	}
+	if v, has_v := d.GetOk("make_current_account_owner"); has_v {
+		provisionVDBByTimestampParameters.SetMakeCurrentAccountOwner(v.(bool))
+	}
+	if v, has_v := d.GetOk("vcdb_tde_key_identifier"); has_v {
+		provisionVDBByTimestampParameters.SetVcdbTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("cdb_tde_keystore_password"); has_v {
+		provisionVDBByTimestampParameters.SetCdbTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("target_vcdb_tde_keystore_path"); has_v {
+		provisionVDBByTimestampParameters.SetTargetVcdbTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_key_identifier"); has_v {
+		provisionVDBByTimestampParameters.SetTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_exported_key_file_secret"); has_v {
+		provisionVDBByTimestampParameters.SetTdeExportedKeyFileSecret(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_password"); has_v {
+		provisionVDBByTimestampParameters.SetParentTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_path"); has_v {
+		provisionVDBByTimestampParameters.SetParentTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("additional_mount_points"); has_v {
+		provisionVDBByTimestampParameters.SetAdditionalMountPoints(toAdditionalMountPointsArray(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_files"); has_v {
+		provisionVDBByTimestampParameters.SetOracleRacCustomEnvFiles(toOracleRacCustomEnvFiles(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
+		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
+	}
 
 	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
 
@@ -1184,6 +1395,44 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		json.Unmarshal([]byte(v.(string)), &appdata_config_params)
 		provisionVDBFromBookmarkParameters.SetAppdataConfigParams(appdata_config_params)
 	}
+	if v, has_v := d.GetOk("config_params"); has_v {
+		config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(v.(string)), &config_params)
+		provisionVDBFromBookmarkParameters.SetConfigParams(config_params)
+	}
+	if v, has_v := d.GetOk("make_current_account_owner"); has_v {
+		provisionVDBFromBookmarkParameters.SetMakeCurrentAccountOwner(v.(bool))
+	}
+	if v, has_v := d.GetOk("vcdb_tde_key_identifier"); has_v {
+		provisionVDBFromBookmarkParameters.SetVcdbTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("cdb_tde_keystore_password"); has_v {
+		provisionVDBFromBookmarkParameters.SetCdbTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("target_vcdb_tde_keystore_path"); has_v {
+		provisionVDBFromBookmarkParameters.SetTargetVcdbTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_key_identifier"); has_v {
+		provisionVDBFromBookmarkParameters.SetTdeKeyIdentifier(v.(string))
+	}
+	if v, has_v := d.GetOk("tde_exported_key_file_secret"); has_v {
+		provisionVDBFromBookmarkParameters.SetTdeExportedKeyFileSecret(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_password"); has_v {
+		provisionVDBFromBookmarkParameters.SetParentTdeKeystorePassword(v.(string))
+	}
+	if v, has_v := d.GetOk("parent_tde_keystore_path"); has_v {
+		provisionVDBFromBookmarkParameters.SetParentTdeKeystorePath(v.(string))
+	}
+	if v, has_v := d.GetOk("additional_mount_points"); has_v {
+		provisionVDBFromBookmarkParameters.SetAdditionalMountPoints(toAdditionalMountPointsArray(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_files"); has_v {
+		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvFiles(toOracleRacCustomEnvFiles(v))
+	}
+	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
+		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
+	}
 
 	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
 
@@ -1287,8 +1536,15 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("parent_id", result.GetParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
-	d.Set("appdata_source_params", result.GetAppdataSourceParams())
-	d.Set("appdata_config_params", result.GetAppdataConfigParams())
+
+	appdata_source_params, _ := json.Marshal(result.GetAppdataSourceParams())
+	d.Set("appdata_source_params", string(appdata_source_params))
+	appdata_config_params, _ := json.Marshal(result.GetAppdataConfigParams())
+	d.Set("appdata_config_params", string(appdata_config_params))
+	config_params, _ := json.Marshal(result.GetConfigParams())
+	d.Set("config_params", string(config_params))
+	d.Set("additional_mount_points", flattenAdditionalMountPoints(result.GetAdditionalMountPoints()))
+
 	d.Set("id", vdbId)
 
 	return diags
@@ -1395,6 +1651,39 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 	if d.HasChange("cdc_on_provision") {
 		updateVDBParam.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
+	}
+	if d.HasChange("additional_mount_points") {
+		updateVDBParam.SetAdditionalMountPoints(toAdditionalMountPointsArray(d.Get("additional_mount_points")))
+	}
+	if d.HasChange("parent_tde_keystore_path") {
+		updateVDBParam.SetParentTdeKeystorePath(d.Get("parent_tde_keystore_path").(string))
+	}
+	if d.HasChange("parent_tde_keystore_password") {
+		updateVDBParam.SetParentTdeKeystorePassword(d.Get("parent_tde_keystore_password").(string))
+	}
+	if d.HasChange("tde_key_identifier") {
+		updateVDBParam.SetTdeKeyIdentifier(d.Get("tde_key_identifier").(string))
+	}
+	if d.HasChange("target_vcdb_tde_keystore_path") {
+		updateVDBParam.SetTargetVcdbTdeKeystorePath(d.Get("target_vcdb_tde_keystore_path").(string))
+	}
+	if d.HasChange("cdb_tde_keystore_password") {
+		updateVDBParam.SetCdbTdeKeystorePassword(d.Get("cdb_tde_keystore_password").(string))
+	}
+	if d.HasChange("appdata_source_params") {
+		appdata_source_params := make(map[string]interface{})
+		json.Unmarshal([]byte(d.Get("appdata_source_params").(string)), &appdata_source_params)
+		updateVDBParam.SetAppdataSourceParams(appdata_source_params)
+	}
+	if d.HasChange("appdata_config_params") {
+		appdata_config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(d.Get("appdata_config_params").(string)), &appdata_config_params)
+		updateVDBParam.SetAppdataConfigParams(appdata_config_params)
+	}
+	if d.HasChange("config_params") {
+		config_params := make(map[string]interface{})
+		json.Unmarshal([]byte(d.Get("config_params").(string)), &config_params)
+		updateVDBParam.SetConfigParams(config_params)
 	}
 
 	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
