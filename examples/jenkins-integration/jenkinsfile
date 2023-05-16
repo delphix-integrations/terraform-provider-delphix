@@ -31,15 +31,15 @@ pipeline {
                     steps {
                         script {
                             echo ('Provisioning  VDB...')
-                            git branch: 'main', changelog: false, poll: false, url: 'https://github.com/nick-mathison/delphix-terraform-examples.git'
+                            git branch: 'main', changelog: false, poll: false, url: 'https://github.com/delphix-integrations/terraform-provider-delphix.git'
                             // sh ('ls -R')
-                            sh ('terraform -chdir=simple-provision init')
+                            sh ('terraform -chdir=examples/simple-provision init')
                             withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
-                                sh ('terraform -chdir=simple-provision apply -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
+                                sh ('terraform -chdir=examples/simple-provision apply -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
                             }
-                            vdb_id = sh(script: 'terraform -chdir=simple-provision output vdb_id_1', returnStdout: true)
+                            vdb_id = sh(script: 'terraform -chdir=examples/simple-provision output vdb_id_1', returnStdout: true)
                             vdb_id = vdb_id.replaceAll('\\"', "").trim()
-                            vdb_name = sh(script: 'terraform -chdir=simple-provision output vdb_name_1', returnStdout: true)
+                            vdb_name = sh(script: 'terraform -chdir=examples/simple-provision output vdb_name_1', returnStdout: true)
                             echo ("vdb_id:" + vdb_id)
                             echo ("vdb_name:" + vdb_name)
                             provision_successful = true
@@ -161,7 +161,7 @@ pipeline {
                                     sleep (60)
                                     echo ('Destroying Test App and VDB...')
                                     withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
-                                        sh ('terraform -chdir=simple-provision destroy -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
+                                        sh ('terraform -chdir=examples/simple-provision destroy -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
                                     }
                             } else {
                                 echo ('No App or VDB to destroy...')

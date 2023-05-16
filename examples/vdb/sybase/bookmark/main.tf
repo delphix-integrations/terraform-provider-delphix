@@ -1,3 +1,7 @@
+/**
+* Summary: This template showcases the properties available when provisioning a SYBASE database from a DCT bookmark.
+*/
+
 terraform {
   required_providers {
     delphix = {
@@ -36,86 +40,86 @@ resource "delphix_vdb" "example" {
   config_params jsonencode({
     processes = 150
   })
+  pre_snapshot {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  pre_stop {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  pre_refresh {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  post_start {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  post_snapshot {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  post_refresh {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  post_stop {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  post_rollback {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  pre_rollback {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  pre_start {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
+  configure_clone {
+    name            = "string",
+    command         = "string",
+    shell           = "bash",
+    element_id      = "string",
+    has_credentials = true
+  }
   make_current_account_owner = true
   tags {
     key   = "key-1"
     value = "value-1"
   }
-  pre_snapshot [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  pre_stop [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  pre_refresh [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  post_start [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  post_snapshot [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  post_refresh [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  post_stop [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  post_rollback [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  pre_rollback [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  pre_start [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
-  configure_clone [{
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
-  }]
 }

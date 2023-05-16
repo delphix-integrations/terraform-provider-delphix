@@ -1,3 +1,7 @@
+/**
+* Summary: This template showcases the properties available when provisioning an Oracle database from a DCT bookmark.
+*/
+
 terraform {
   required_providers {
     delphix = {
@@ -71,12 +75,7 @@ resource "delphix_vdb" "example" {
   config_params jsonencode({
     processes = 150
   })
-  tags {
-    key   = "key-1"
-    value = "value-1"
-  }
-  make_current_account_owner = true
-  pre_start {
+ pre_start {
     name            = "string",
     command         = "string",
     shell           = "bash",
@@ -153,4 +152,9 @@ resource "delphix_vdb" "example" {
     element_id      = "string"
     has_credentials = true
   }
+  tags {
+    key   = "key-1"
+    value = "value-1"
+  }
+  make_current_account_owner = true
 }

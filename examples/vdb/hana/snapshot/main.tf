@@ -1,3 +1,7 @@
+/**
+* Summary: This template showcases the properties available when provisioning a SAP Hana database from a DCT bookmark.
+*/
+
 terraform {
   required_providers {
     delphix = {
@@ -56,11 +60,6 @@ resource "delphix_vdb" "example" {
       mount_path = "/work",
       environment_id = "environment-123"
   }]
-  make_current_account_owner = true
-  tags {
-    key   = "key-1"
-    value = "value-1"
-  }
   post_snapshot {
     name            = "string"
     command         = "string"
@@ -138,4 +137,10 @@ resource "delphix_vdb" "example" {
     element_id      = "string"
     has_credentials = true
   }
+  make_current_account_owner = true
+  tags {
+    key   = "key-1"
+    value = "value-1"
+  }
+
 }
