@@ -47,8 +47,8 @@ resource "delphix_vdb" "example" {
         "sTenantServicePort" =  "xsengine:30052"
       }]
     tDatabaseName   = "tfbkmrk"
-    tSystemUserName = "SYSTEM"
-    tSystemUserPassword ="Delphix_123"
+    tSystemUserName = "<USERNAME>"
+    tSystemUserPassword ="<PASSWORD>"
   })
   config_params jsonencode({
     processes = 150
