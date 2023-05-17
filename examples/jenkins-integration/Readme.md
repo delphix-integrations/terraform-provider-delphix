@@ -6,7 +6,7 @@ The Jenkinsfile presents a simple CI/CD scenario where it provisions a VDB, runs
 2) Insert or reference the associated `Jenkinsfile` file.
     - Note: This Jenkinsfile also references the Terraform files in the `../simple-provision` folder. Feel free to fork, update, and modify those.
 3) Update the following values:
-    - DCT_HOSTNAME - Example: `10.134.0.1`
+    - DCT_HOSTNAME - Example: `123.0.0.0`
     - DCT_API_KEY - Example: `2.abc...`
         - [Manage this value through the Jenkins' Credentials plugin](https://docs.cloudbees.com/docs/cloudbees-ci/latest/cloud-secure-guide/injecting-secrets)
         - In a pinch, update it directly.
