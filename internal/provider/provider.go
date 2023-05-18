@@ -86,6 +86,7 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: d.Get("tls_insecure_skip").(bool)},
 		}}
 		cfg.AddDefaultHeader("Authorization", "apk "+d.Get("key").(string))
+		cfg.AddDefaultHeader("x-dct-client-name", "Terraform")
 
 		client := dctapi.NewAPIClient(cfg)
 
