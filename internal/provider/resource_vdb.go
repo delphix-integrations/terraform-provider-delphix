@@ -96,8 +96,11 @@ func resourceVdb() *schema.Resource {
 				Optional: true,
 			},
 			"cluster_node_ids": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
 				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 			"truncate_log_on_checkpoint": {
 				Type:     schema.TypeBool,
