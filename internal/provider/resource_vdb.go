@@ -574,6 +574,7 @@ func resourceVdb() *schema.Resource {
 			"appdata_source_params": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
