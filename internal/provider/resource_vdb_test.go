@@ -62,10 +62,39 @@ func TestAccVdb_bookmark_provision(t *testing.T) {
 	})
 }
 
+func TestAccVdb_appdata_provision(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccVdbAppDataPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckVdbDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctVDBConfigAppDataBasic(),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctAppDataVdbResourceExists("delphix_vdb.new_appdata"),
+					resource.TestCheckResourceAttr("delphix_vdb.new_appdata", "parent_id", os.Getenv("APPDATA_DATASOURCE_ID"))),
+			},
+		},
+	})
+}
+
 func testAccVdbPreCheck(t *testing.T) {
 	testAccPreCheck(t)
 	if err := os.Getenv("DATASOURCE_ID"); err == "" {
 		t.Fatal("DATASOURCE_ID must be set for vdb acceptance tests")
+	}
+}
+
+func testAccVdbAppDataPreCheck(t *testing.T) {
+	testAccPreCheck(t)
+	if err := os.Getenv("APPDATA_DATASOURCE_ID"); err == "" {
+		t.Fatal("DATASOURCE_ID must be set for vdb acceptance tests")
+	}
+	if err := os.Getenv("APPDATA_SOURCE_PARAMS"); err == "" {
+		t.Fatal("APPDATA_SOURCE_PARAMS must be set for vdb acceptance tests")
+	}
+	if err := os.Getenv("APPDATA_CONFIG_PARAMS"); err == "" {
+		t.Fatal("APPDATA_CONFIG_PARAMS must be set for vdb acceptance tests")
 	}
 }
 
@@ -77,6 +106,20 @@ func testAccCheckDctVDBConfigBasic() string {
     	source_data_id         = "%s"
 	}
 	`, datasource_id)
+}
+
+func testAccCheckDctVDBConfigAppDataBasic() string {
+	appdata_datasource_id := os.Getenv("APPDATA_DATASOURCE_ID")
+	appdata_source_params := os.Getenv("APPDATA_SOURCE_PARAMS")
+	appdata_config_params := os.Getenv("APPDATA_CONFIG_PARAMS")
+	return fmt.Sprintf(`
+	resource "delphix_vdb" "new_appdata" {
+		auto_select_repository = true
+    	source_data_id         = "%s"
+		appdata_source_params  = jsonencode(%s)
+		appdata_config_params  = jsonencode(%s)
+	}
+	`, appdata_datasource_id, appdata_source_params, appdata_config_params)
 }
 
 func testAccCheckDctVDBBookmarkConfigBasic() string {
@@ -113,11 +156,11 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	}
 
 	//create bookmark
-	bookmark := dctapi.NewBookmarkWithDefaults()
+	bookmark := dctapi.NewBookmarkCreateParametersWithDefaults()
 	bookmark.SetVdbIds([]string{vdb_id})
 	bookmark.SetName(acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
 
-	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).Bookmark(*bookmark)
+	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).BookmarkCreateParameters(*bookmark)
 	bk_res, bk_http_res, bk_err := bookmark_req.Execute()
 
 	if diags := apiErrorResponseHelper(bk_res, bk_http_res, bk_err); diags != nil {
@@ -172,6 +215,36 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 		parentId := res.GetParentId()
 		if parentId != os.Getenv("DATASOURCE_ID") {
 			return fmt.Errorf("parentId does not match DATASOURCE_ID")
+		}
+
+		return nil
+	}
+}
+
+func testAccCheckDctAppDataVdbResourceExists(n string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		vdbId := rs.Primary.ID
+		if vdbId == "" {
+			return fmt.Errorf("No VdbID set")
+		}
+
+		client := testAccProvider.Meta().(*apiClient).client
+
+		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+
+		if err != nil {
+			return err
+		}
+
+		parentId := res.GetParentId()
+		if parentId != os.Getenv("APPDATA_DATASOURCE_ID") {
+			return fmt.Errorf("parentId does not match APPDATA_DATASOURCE_ID")
 		}
 
 		return nil
