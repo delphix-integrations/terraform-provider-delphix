@@ -5,16 +5,16 @@
 terraform {
   required_providers {
     delphix = {
-      version = "2.0.4-beta"
-      source  = "delphix.com/local/delphix"
+      version = "VERSION"
+      source  = "delphix-integrations/delphix"
     }
   }
 }
 
 provider "delphix" {
   tls_insecure_skip = true
-  key               = "1.DRzz1XQVNDX36biMJ7mzVv5ANPu2QipYFF3MA6nDP0y9swwIpoxZaOkafZpkSYlS"
-  host              = "dct10.dlpxdc.co"
+  key               = "1.XXXX"
+  host              = "HOSTNAME"
 }
 
 resource "delphix_appdata_dsource" "test_app_data_dsource" {
