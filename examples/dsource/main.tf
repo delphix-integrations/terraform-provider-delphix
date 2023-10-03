@@ -18,34 +18,61 @@ provider "delphix" {
 }
 
 
+# resource "delphix_appdata_dsource" "test_app_data_dsource" {
+#   source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-6"
+#   group_id                   = "1-GROUP-1"
+#   log_sync_enabled           = false
+#   make_current_account_owner = true
+#   link_type                  = "AppDataStaged"
+#   name                       = "appdata_dsource"
+#   staging_mount_base         = ""
+#   environment_user           = "HOST_USER-2"
+#   staging_environment        = "1-UNIX_HOST_ENVIRONMENT-2"
+#   parameters = jsonencode({
+#     externalBackup : [],
+#     delphixInitiatedBackupFlag : true,
+#     delphixInitiatedBackup : [
+#       {
+#         userName : "delphix",
+#         postgresSourcePort : 5432,
+#         userPass : "delphix",
+#         sourceHostAddress : "rhel-86-7vgs-qar-105196-27a4593a.dlpxdc.co"
+#       }
+#     ],
+#     singleDatabaseIngestionFlag : false,
+#     singleDatabaseIngestion : [],
+#     stagingPushFlag : false,
+#     postgresPort : 5433,
+#     configSettingsStg : [],
+#     mountLocation : "/tmp/delphix_mnt"
+#   })
+#   sync_parameters = jsonencode({
+#     resync = true
+#   })
+# }
 
-resource "delphix_appdata_dsource" "test_app_data_dsource" {
-  source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-6"
-  group_id                   = "1-GROUP-1"
+resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
+  source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-7"
+  group_id                   = ""
   log_sync_enabled           = false
   make_current_account_owner = true
   link_type                  = "AppDataStaged"
-  name                       = "appdata_dsource"
+  name                       = "appdata_dsource_second"
   staging_mount_base         = ""
   environment_user           = "HOST_USER-2"
   staging_environment        = "1-UNIX_HOST_ENVIRONMENT-2"
   parameters = jsonencode({
-    externalBackup : [],
     delphixInitiatedBackupFlag : true,
     delphixInitiatedBackup : [
       {
-        userName : "delphix",
+        userName : "DELPHIX",
         postgresSourcePort : 5432,
-        userPass : "delphix",
-        sourceHostAddress : "rhel-86-7vgs-qar-105196-27a4593a.dlpxdc.co"
+        userPass : "PASS",
+        sourceHostAddress : "HOSTNAME"
       }
     ],
-    singleDatabaseIngestionFlag : false,
-    singleDatabaseIngestion : [],
-    stagingPushFlag : false,
     postgresPort : 5433,
-    configSettingsStg : [],
-    mountLocation : "/tmp/delphix_mnt"
+    mountLocation : "/tmp/delphix_mnt_second"
   })
   sync_parameters = jsonencode({
     resync = true
