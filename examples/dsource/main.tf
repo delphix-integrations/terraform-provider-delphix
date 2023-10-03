@@ -33,16 +33,16 @@ provider "delphix" {
 #     delphixInitiatedBackupFlag : true,
 #     delphixInitiatedBackup : [
 #       {
-#         userName : "delphix",
-#         postgresSourcePort : 5432,
-#         userPass : "delphix",
-#         sourceHostAddress : "rhel-86-7vgs-qar-105196-27a4593a.dlpxdc.co"
+#         userName : "XXXX",
+#         postgresSourcePort : XXXX,
+#         userPass : "XXXX",
+#         sourceHostAddress : "HOSTNAME"
 #       }
 #     ],
 #     singleDatabaseIngestionFlag : false,
 #     singleDatabaseIngestion : [],
 #     stagingPushFlag : false,
-#     postgresPort : 5433,
+#     postgresPort : XXXX,
 #     configSettingsStg : [],
 #     mountLocation : "/tmp/delphix_mnt"
 #   })
@@ -65,13 +65,13 @@ resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
     delphixInitiatedBackupFlag : true,
     delphixInitiatedBackup : [
       {
-        userName : "DELPHIX",
-        postgresSourcePort : 5432,
-        userPass : "PASS",
+        userName : "XXXX",
+        postgresSourcePort : XXXX,
+        userPass : "XXXX",
         sourceHostAddress : "HOSTNAME"
       }
     ],
-    postgresPort : 5433,
+    postgresPort : XXXX,
     mountLocation : "/tmp/delphix_mnt_second"
   })
   sync_parameters = jsonencode({
@@ -95,7 +95,7 @@ resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
 #                 dumpJobs: 2,
 #                 restoreJobs: 2,
 #                 databaseName: "abcd",
-#                 databaseUserPassword: "postgres",
+#                 databaseUserPassword: "xxxx",
 #                 dumpDir: "abcd",
 #                 sourceHost: "abcd",
 #                 postgresqlFile: "abcd"
@@ -104,9 +104,9 @@ resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
 
 # delphixInitiatedBackup : [
 #   {
-#     userName : "delphix",
-#     postgresSourcePort : 5432,
-#     userPass : "delphix",
-#     sourceHostAddress : "rhel-86-7vgs-qar-105196-27a4593a.dlpxdc.co"
+#     userName : "XXXX",
+#     postgresSourcePort : XXXX,
+#     userPass : "XXXX",
+#     sourceHostAddress : "HOSTNAME"
 #   }
 # ]
