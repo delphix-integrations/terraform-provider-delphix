@@ -83,12 +83,10 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
   make_current_account_owner = true
   link_type                  = "AppDataStaged"
   name                       = "%s"
-  staging_mount_base         = "200"
+  staging_mount_base         = ""
   environment_user           = "%s"
   staging_environment        = "%s"
-  parameters = jsonencode({
-    %s
-  })
+  parameters = jsonencode(%s)
   sync_parameters = jsonencode({
     resync = true
   })
@@ -105,12 +103,10 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
   make_current_account_owner = true
   link_type                  = "AppDataStaged"
   name                       = "%s"
-  staging_mount_base         = "200"
+  staging_mount_base         = ""
   environment_user           = "%s"
   staging_environment        = "%s"
-  parameters = jsonencode({
-    %s
-  })
+  parameters = jsonencode(%s)
   sync_parameters = jsonencode({
     resync = true
   })
