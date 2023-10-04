@@ -1,17 +1,17 @@
 # Resource: <resource name> delphix_appdata_dsource
 
-In Delphix terminology, a dSource is a database that the Delphix Virtualization Engine uses to create and update virtual copies of your database. 
+In Delphix terminology, a dSource is a database that the Delphix Continuous Data Engine uses to create and update virtual copies of your database. 
 A dSource is created and managed by the Delphix Continuous Data Engine.
 
 
-The dSource resource allows terraform to CREATE, READ and DELETE dSources. 
-Update operation is not supported. The supported parameters are listed below.
+The dSource resource allows Terraform to apply and destroy Delphix dSources. 
+Modification of existing dSource resources is not supported. All supported parameters are listed below
 
 ## Example Usage
-dSource Linking can be done in 3 methods , the parametes for these methods wary based on choice.
+dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanisum to be used. 
 
 ```hcl
-# Link dSource using external backup.
+# Link dSource using external backup. 
 
 resource "delphix_appdata_dsource" "dsource_name" {
   source_id                  = SOURCE_ID
@@ -39,7 +39,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
   })
 }
 
-# Link dSource using delphix Initiated Backup.
+# Link dSource using Delphix Initiated Backup.
 
 resource "delphix_appdata_dsource" "dsource_name" {
   source_id                  = SOURCE_ID
@@ -69,7 +69,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
   })
 }
 
-# Link dSource using single Database Ingestion.
+# Link dSource using Single Database Ingestion.
 
 resource "delphix_appdata_dsource" "dsource_name" {
   source_id                  = SOURCE_ID
