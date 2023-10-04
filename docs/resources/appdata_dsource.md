@@ -8,7 +8,7 @@ The dSource resource allows Terraform to apply and destroy Delphix dSources.
 Modification of existing dSource resources is not supported. All supported parameters are listed below
 
 ## Example Usage
-dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanisum to be used. 
+dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanism to be used. 
 
 ```hcl
 # Link dSource using external backup. 
@@ -152,7 +152,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
         * `azure_vault_secret_key` - Azure vault key in the key-value store.
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
     
-* `ops_pre_sync` - (Optional) Operations to perform after syncing a created dSource.
+* `ops_post_sync` - (Optional) Operations to perform after syncing a created dSource.
     * `name` - Name of the hook
     * `command` - (Required)Command to be executed
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
