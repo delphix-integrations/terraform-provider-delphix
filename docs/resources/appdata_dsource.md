@@ -11,6 +11,7 @@ The dSource resource allows Terraform to create and delete Delphix dSources. Thi
 * The dSource Resource does not support Oracle, SQL Server, or SAP ASE. The below examples are shown from the PostgreSQL context. The parameters values can be updated for other connectors (i.e. AppData), such as SAP HANA, IBM Db2, etc.
 
 ## Example Usage
+
 The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show working examples.
 
 ```hcl
