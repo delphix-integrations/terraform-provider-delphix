@@ -71,7 +71,7 @@ resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
         sourceHostAddress : "HOSTNAME"
       }
     ],
-    postgresPort : 5433,
+    postgresPort : XXX,
     mountLocation : "/tmp/delphix_mnt_second"
   })
   sync_parameters = jsonencode({
