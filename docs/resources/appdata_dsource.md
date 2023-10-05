@@ -4,11 +4,11 @@ In Delphix terminology, a dSource is a database that the Delphix Continuous Data
 A dSource is created and managed by the Delphix Continuous Data Engine.
 
 
-The dSource resource allows Terraform to apply and destroy Delphix dSources. 
-Modification of existing dSource resources is not supported. All supported parameters are listed below
+The appdata dSource resource allows Terraform to apply and destroy Delphix dSources. 
+Modification of existing appdata dSource resources is not supported. All supported parameters are listed below
 
 ## Example Usage
-dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanism to be used. 
+Appdata dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanism to be used. 
 
 ```hcl
 # Link dSource using external backup. 
@@ -109,7 +109,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `source_id` - (Required) Id of the source to link.
 
-* `group_id` - (Optional)  Id of the dataset group where this dSource should belong to.
+* `group_id` - (Required)  Id of the dataset group where this dSource should belong to.
 
 * `log_sync_enabled` - (Required) True if LogSync should run for this database.
 
@@ -170,6 +170,8 @@ resource "delphix_appdata_dsource" "dsource_name" {
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
 
 * `excludes` - (Optional) List of subdirectories in the source to exclude when syncing data.These paths are relative to the root of the source directory. [AppDataDirect only]
+
+* `follow_symlinks` - (Optional) List of symlinks in the source to follow when syncing data.These paths are relative to the root of the source directory. All other symlinks are preserved. [AppDataDirect only]
 
 * `parameters` - (Optional) The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated.
 

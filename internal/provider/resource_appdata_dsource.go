@@ -13,7 +13,7 @@ import (
 func resourceAppdataDsource() *schema.Resource {
 	return &schema.Resource{
 		// This description is used by the documentation generator and the language server.
-		Description: "Resource for app data dsource creation.",
+		Description: "Resource for appdata dSource creation.",
 
 		CreateContext: resourceAppdataDsourceCreate,
 		ReadContext:   resourceAppdataDsourceRead,
@@ -331,7 +331,9 @@ func toSourceOperationArray(array interface{}) []dctapi.SourceOperation {
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
 		sourceOperation := dctapi.NewSourceOperation(item_map["name"].(string), item_map["command"].(string))
-		sourceOperation.SetShell(item_map["shell"].(string))
+		if item_map["shell"].(string) != "" {
+			sourceOperation.SetShell(item_map["shell"].(string))
+		}
 		sourceOperation.SetCredentialsEnvVars(toCredentialsEnvVariableArray(item_map["credentials_env_vars"]))
 		items = append(items, *sourceOperation)
 	}
@@ -342,17 +344,38 @@ func toCredentialsEnvVariableArray(array interface{}) []dctapi.CredentialsEnvVar
 	items := []dctapi.CredentialsEnvVariable{}
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
+
 		credentialsEnvVariable_item := dctapi.NewCredentialsEnvVariable(item_map["base_var_name"].(string))
-		credentialsEnvVariable_item.SetPassword(item_map["password"].(string))
-		credentialsEnvVariable_item.SetVault(item_map["vault"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_engine"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_secret_path"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_username_key"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_secret_key"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["azure_vault_name"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["azure_vault_username_key"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["azure_vault_secret_key"].(string))
-		credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["cyberark_vault_query_string"].(string))
+		if item_map["password"].(string) != "" {
+			credentialsEnvVariable_item.SetPassword(item_map["password"].(string))
+		}
+		if item_map["vault"].(string) != "" {
+			credentialsEnvVariable_item.SetVault(item_map["vault"].(string))
+		}
+		if item_map["hashicorp_vault_engine"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_engine"].(string))
+		}
+		if item_map["hashicorp_vault_secret_path"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretPath(item_map["hashicorp_vault_secret_path"].(string))
+		}
+		if item_map["hashicorp_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultUsernameKey(item_map["hashicorp_vault_username_key"].(string))
+		}
+		if item_map["hashicorp_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretKey(item_map["hashicorp_vault_secret_key"].(string))
+		}
+		if item_map["azure_vault_name"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultName(item_map["azure_vault_name"].(string))
+		}
+		if item_map["azure_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultUsernameKey(item_map["azure_vault_username_key"].(string))
+		}
+		if item_map["azure_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultSecretKey(item_map["azure_vault_secret_key"].(string))
+		}
+		if item_map["cyberark_vault_query_string"].(string) != "" {
+			credentialsEnvVariable_item.SetCyberarkVaultQueryString(item_map["cyberark_vault_query_string"].(string))
+		}
 		items = append(items, *credentialsEnvVariable_item)
 	}
 	return items
@@ -470,10 +493,10 @@ func resourceAppdataDsourceRead(ctx context.Context, d *schema.ResourceData, met
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
-			ErrorLog.Printf("Error in polling of Dsource for deletion.")
+			ErrorLog.Printf("Error in polling of appdata dSource for deletion.")
 		} else {
 			// diags will be nill in case of successful poll for deletion logic aka 404
-			ErrorLog.Printf("Error reading the Dsource %s, removing from state.", dsource_id)
+			ErrorLog.Printf("Error reading the appdata dSource %s, removing from state.", dsource_id)
 			d.SetId("")
 		}
 
@@ -519,7 +542,7 @@ func resourceAppdataDsourceUpdate(ctx context.Context, d *schema.ResourceData, m
 		d.Set(key, old)
 	}
 
-	return diag.Errorf("not implemented")
+	return diag.Errorf("Action update not implemented for resource : appdata dsource")
 }
 
 func resourceAppdataDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -542,7 +565,7 @@ func resourceAppdataDsourceDelete(ctx context.Context, d *schema.ResourceData, m
 	}
 	InfoLog.Printf("Job result is %s", job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Dsource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
+		return diag.Errorf("[NOT OK] Appdata dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
 	}
 
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {

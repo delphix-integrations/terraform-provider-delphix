@@ -53,7 +53,7 @@ provider "delphix" {
 
 resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
   source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-7"
-  group_id                   = ""
+  group_id                   = "1-GROUP-1"
   log_sync_enabled           = false
   make_current_account_owner = true
   link_type                  = "AppDataStaged"
@@ -71,13 +71,32 @@ resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
         sourceHostAddress : "HOSTNAME"
       }
     ],
-    postgresPort : XXXX,
+    postgresPort : 5433,
     mountLocation : "/tmp/delphix_mnt_second"
   })
   sync_parameters = jsonencode({
     resync = true
   })
+  ops_pre_sync {
+    name    = "key-1"
+    command = "echo \"hello world\""
+    shell   = "shell"
+    credentials_env_vars {
+      base_var_name = "XXXX"
+      password      = "XXXX"
+    }
+  }
+  ops_post_sync {
+    name    = "key-2"
+    command = "echo \"hello world\""
+    shell   = "shell"
+    credentials_env_vars {
+      base_var_name = "XXXX"
+      password      = "XXXX"
+    }
+  }
 }
+
 
 # Below are the 3 ways to link dsource with params , use any one of them
 #  externalBackup: [
