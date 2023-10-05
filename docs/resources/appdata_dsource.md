@@ -177,6 +177,6 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `follow_symlinks` - (Optional) List of symlinks in the source to follow when syncing data.These paths are relative to the root of the source directory. All other symlinks are preserved. [AppDataDirect only]
 
-* `parameters` - (Optional) The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated.
+* `parameters` - (Optional) The JSON payload is based on the type of dSource being created. Different data sources require different parameters.
 
 * `sync_parameters` - (Optional) The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
