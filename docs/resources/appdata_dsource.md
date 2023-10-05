@@ -3,9 +3,7 @@
 In Delphix terminology, a dSource is a database that the Delphix Continuous Data Engine uses to create and update virtual copies of your database. 
 A dSource is created and managed by the Delphix Continuous Data Engine.
 
-
-The appdata dSource resource allows Terraform to CREATE,READ and DELETE dSources. 
-Modification of existing appdata dSource resources is not supported. All supported parameters are listed below
+The dSource resource allows Terraform to create and delete Delphix dSources. This specifically enables the apply and destroy Terraform commands. Modification of existing dSource resources via the apply command is not supported. All supported parameters are listed below.
 
 ## Example Usage
 Appdata dSource linking can be done in 3 methods,the parameters for these methods wary based on the linking mechanism to be used. 
