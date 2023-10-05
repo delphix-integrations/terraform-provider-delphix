@@ -457,7 +457,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
-		ErrorLog.Printf("Job Polling failed but continuing with provisioning. Error: %s", job_err)
+		ErrorLog.Printf("Job Polling failed but continuing with dSource creation. Error: %s", job_err)
 	}
 
 	InfoLog.Printf("Job result is %s", job_res)
@@ -535,7 +535,6 @@ func resourceAppdataDsourceUpdate(ctx context.Context, d *schema.ResourceData, m
 			changedKeys = append(changedKeys, k)
 		}
 	}
-
 	// revert and set the old value to the changed keys
 	for _, key := range changedKeys {
 		old, _ := d.GetChange(key)

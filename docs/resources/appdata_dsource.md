@@ -4,11 +4,11 @@ In Delphix terminology, a dSource is a database that the Delphix Continuous Data
 A dSource is created and managed by the Delphix Continuous Data Engine.
 
 
-The appdata dSource resource allows Terraform to apply and destroy Delphix dSources. 
+The appdata dSource resource allows Terraform to CREATE,READ and DELETE dSources. 
 Modification of existing appdata dSource resources is not supported. All supported parameters are listed below
 
 ## Example Usage
-Appdata dSource linking can be done in 3 methods , the parameters for these methods wary based on the linking mechanism to be used. 
+Appdata dSource linking can be done in 3 methods,the parameters for these methods wary based on the linking mechanism to be used. 
 
 ```hcl
 # Link dSource using external backup. 
@@ -137,7 +137,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `ops_pre_sync` - (Optional) Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing
     * `name` - Name of the hook
-    * `command` - (Required)Command to be executed
+    * `command` - Command to be executed
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
     * `credentials_env_vars` - List of environment variables that will contain credentials for this operation
         * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set.
@@ -154,7 +154,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
     
 * `ops_post_sync` - (Optional) Operations to perform after syncing a created dSource.
     * `name` - Name of the hook
-    * `command` - (Required)Command to be executed
+    * `command` - Command to be executed
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
     * `credentials_env_vars` - List of environment variables that will contain credentials for this operation
         * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set.

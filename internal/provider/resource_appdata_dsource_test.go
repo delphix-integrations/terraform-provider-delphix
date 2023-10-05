@@ -27,10 +27,7 @@ func TestDsource_create_positive(t *testing.T) {
 		CheckDestroy: testDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, ""),
-				// Check: resource.ComposeTestCheckFunc(
-				// 	testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
-				// 	resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId)),
+				Config:      testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, ""),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 			{
@@ -41,9 +38,7 @@ func TestDsource_create_positive(t *testing.T) {
 			},
 			{
 				Config: testDsourceUpdate(sourceId, groupId, "update_same_dsource", environmentUser, stagingEnvironment, postgresPort),
-				// Check: resource.ComposeTestCheckFunc(
-				// 	testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId)),
-				Check: resource.ComposeAggregateTestCheckFunc(
+				Check:  resource.ComposeAggregateTestCheckFunc(
 				// irrelevant
 				),
 				ExpectError: regexp.MustCompile(`.*`),
