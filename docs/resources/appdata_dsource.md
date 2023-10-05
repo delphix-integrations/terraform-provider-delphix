@@ -5,8 +5,13 @@ A dSource is created and managed by the Delphix Continuous Data Engine.
 
 The dSource resource allows Terraform to create and delete Delphix dSources. This specifically enables the apply and destroy Terraform commands. Modification of existing dSource resources via the apply command is not supported. All supported parameters are listed below.
 
+## System Requirements
+
+* Data Control Tower v10.0.1+ is required for dSource management. Lower versions are not supported.
+* The dSource Resource does not support Oracle, SQL Server, or SAP ASE. The below examples are shown from the PostgreSQL context. The parameters values can be updated for other connectors (i.e. AppData), such as SAP HANA, IBM Db2, etc.
+
 ## Example Usage
-Appdata dSource linking can be done in 3 methods,the parameters for these methods wary based on the linking mechanism to be used. 
+The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show working examples.
 
 ```hcl
 # Link dSource using external backup. 
