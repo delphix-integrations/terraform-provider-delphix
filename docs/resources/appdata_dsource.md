@@ -111,7 +111,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 ## Argument Reference
 
-* `source_id` - (Required) Id of the source to link.
+* `source_value` - (Required) Id or Name of the source to link.
 
 * `group_id` - (Required)  Id of the dataset group where this dSource should belong to.
 
