@@ -33,7 +33,7 @@ pipeline {
                             echo ('Provisioning  VDB...')
                             git branch: 'main', changelog: false, poll: false, url: 'https://github.com/delphix-integrations/terraform-provider-delphix.git'
                             // sh ('ls -R')
-                            sh ('terraform -chdir=examples/simple-provision init')
+                            sh ('terraform -chdir=examples/simple-provision init -upgrade')
                             withCredentials([string(credentialsId: 'DCT_API_KEY', variable: 'KEY')]) {
                                 sh ('terraform -chdir=examples/simple-provision apply -var="source_data_id_1=$SOURCE_VDB" -var="dct_hostname=$DCT_HOSTNAME" -var="dct_api_key=$KEY" -auto-approve')
                             }

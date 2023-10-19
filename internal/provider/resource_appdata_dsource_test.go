@@ -72,7 +72,7 @@ func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name str
 func testDsourceBasic(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, postgresPort string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
-  source_id                  = "%s"
+  source_value                  = "%s"
   group_id                   = "%s"
   log_sync_enabled           = false
   make_current_account_owner = true
@@ -92,7 +92,7 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
 func testDsourceUpdate(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, postgresPort string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
-  source_id                  = "%s"
+  source_value                  = "%s"
   group_id                   = "%s"
   log_sync_enabled           = false
   make_current_account_owner = true
