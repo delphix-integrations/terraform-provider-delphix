@@ -18,7 +18,7 @@ The linking of a dSource can be configured through various ingestion approaches.
 # Link dSource using external backup. 
 
 resource "delphix_appdata_dsource" "dsource_name" {
-  source_id                  = SOURCE_ID
+  source_value                  = SOURCE_VALUE
   group_id                   = GROUP_ID
   log_sync_enabled           = false
   make_current_account_owner = true
@@ -46,7 +46,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 # Link dSource using Delphix Initiated Backup.
 
 resource "delphix_appdata_dsource" "dsource_name" {
-  source_id                  = SOURCE_ID
+  source_value                  = SOURCE_VALUE
   group_id                   = GROUP_ID
   log_sync_enabled           = false
   make_current_account_owner = true
@@ -76,7 +76,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 # Link dSource using Single Database Ingestion.
 
 resource "delphix_appdata_dsource" "dsource_name" {
-  source_id                  = SOURCE_ID
+  source_value                  = SOURCE_VALUE
   group_id                   = GROUP_ID
   log_sync_enabled           = false
   make_current_account_owner = true
@@ -111,7 +111,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 ## Argument Reference
 
-* `source_id` - (Required) Id of the source to link.
+* `source_value` - (Required) Id or Name of the source to link.
 
 * `group_id` - (Required)  Id of the dataset group where this dSource should belong to.
 
