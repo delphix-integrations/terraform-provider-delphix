@@ -25,7 +25,7 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"source_id": {
+			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -250,6 +250,10 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"source_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"database_type": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -390,7 +394,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("name"); has_v {
 		appDataDSourceLinkSourceParameters.SetName(v.(string))
 	}
-	if v, has_v := d.GetOk("source_id"); has_v {
+	if v, has_v := d.GetOk("source_value"); has_v {
 		appDataDSourceLinkSourceParameters.SetSourceId(v.(string))
 	}
 	if v, has_v := d.GetOk("group_id"); has_v {

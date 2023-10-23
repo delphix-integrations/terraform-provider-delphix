@@ -19,7 +19,7 @@ provider "delphix" {
 
 
 # resource "delphix_appdata_dsource" "test_app_data_dsource" {
-#   source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-6"
+#   source_value                  = "1-APPDATA_STAGED_SOURCE_CONFIG-6"
 #   group_id                   = "1-GROUP-1"
 #   log_sync_enabled           = false
 #   make_current_account_owner = true
@@ -52,7 +52,7 @@ provider "delphix" {
 # }
 
 resource "delphix_appdata_dsource" "test_app_data_dsource_second" {
-  source_id                  = "1-APPDATA_STAGED_SOURCE_CONFIG-7"
+  source_value               = "1-APPDATA_STAGED_SOURCE_CONFIG-7"
   group_id                   = "1-GROUP-1"
   log_sync_enabled           = false
   make_current_account_owner = true
