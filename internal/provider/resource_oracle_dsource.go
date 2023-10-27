@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go/v10"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -15,16 +14,16 @@ func resourceOracleDsource() *schema.Resource {
 		Description: "Resource for Oracle dSource creation.",
 
 		CreateContext: resourceOracleDsourceCreate,
-		ReadContext:   resourceOracleDsourceRead,
-		UpdateContext: resourceOracleDsourceUpdate,
-		DeleteContext: resourceOracleDsourceDelete,
+		ReadContext:   resourceDsourceRead,
+		UpdateContext: resourceDsourceUpdate,
+		DeleteContext: resourceDsourceDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"source_id": {
+			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -204,11 +203,11 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"external_file_path": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"environment_user_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"backup_level_enabled": {
 				Type:     schema.TypeBool,
@@ -220,16 +219,242 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"files_per_set": {
 				Type:     schema.TypeInt,
-				Required: true,
+				Optional: true,
 			},
 			"check_logical": {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			////////////////////////////TODO ADD REMAINING INPUTS/////
+			"encrypted_linking_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"compressed_linking_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"bandwidth_limit": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"number_of_connections": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"diagnose_no_logging_faults": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"pre_provisioning_enabled": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"link_now": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"force_full_backup": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"double_sync": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"skip_space_check": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"do_not_resume": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"files_for_full_backup": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+			},
+			"log_sync_mode": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 
+			"log_sync_interval": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+
+			"non_sys_username": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"non_sys_password": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"non_sys_vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"non_sys_hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+
+			"non_sys_hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_azure_vault_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_azure_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_azure_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"non_sys_cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_username": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_password": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_vault": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_hashicorp_vault_engine": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_hashicorp_vault_secret_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_hashicorp_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_hashicorp_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_azure_vault_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_azure_vault_username_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_azure_vault_secret_key": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"fallback_cyberark_vault_query_string": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"ops_pre_log_sync": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"command": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"shell": {
+							Type:     schema.TypeString,
+							Optional: true,
+						}, "credentials_env_vars": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"base_var_name": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"password": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"vault": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"hashicorp_vault_engine": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"hashicorp_vault_secret_path": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"hashicorp_vault_username_key": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"hashicorp_vault_secret_key": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"azure_vault_name": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"azure_vault_username_key": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"azure_vault_secret_key": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"cyberark_vault_query_string": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 			// Output
 			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"source_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -318,7 +543,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if v, has_v := d.GetOk("name"); has_v {
 		oracleDSourceLinkSourceParameters.SetName(v.(string))
 	}
-	if v, has_v := d.GetOk("source_id"); has_v {
+	if v, has_v := d.GetOk("source_value"); has_v {
 		oracleDSourceLinkSourceParameters.SetSourceId(v.(string))
 	}
 	if v, has_v := d.GetOk("group_id"); has_v {
@@ -352,10 +577,10 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		oracleDSourceLinkSourceParameters.SetBackupLevelEnabled(v.(bool))
 	}
 	if v, has_v := d.GetOk("rman_channels"); has_v {
-		oracleDSourceLinkSourceParameters.SetRmanChannels(v.(int32))
+		oracleDSourceLinkSourceParameters.SetRmanChannels(int32(v.(int)))
 	}
 	if v, has_v := d.GetOk("files_per_set"); has_v {
-		oracleDSourceLinkSourceParameters.SetFilesPerSet(v.(int32))
+		oracleDSourceLinkSourceParameters.SetFilesPerSet(int32(v.(int)))
 	}
 	if v, has_v := d.GetOkExists("check_logical"); has_v {
 		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
@@ -367,10 +592,10 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		oracleDSourceLinkSourceParameters.SetCompressedLinkingEnabled(v.(bool))
 	}
 	if v, has_v := d.GetOk("bandwidth_limit"); has_v {
-		oracleDSourceLinkSourceParameters.SetBandwidthLimit(v.(int32))
+		oracleDSourceLinkSourceParameters.SetBandwidthLimit(int32(v.(int)))
 	}
 	if v, has_v := d.GetOk("number_of_connections"); has_v {
-		oracleDSourceLinkSourceParameters.SetNumberOfConnections(v.(int32))
+		oracleDSourceLinkSourceParameters.SetNumberOfConnections(int32(v.(int)))
 	}
 	if v, has_v := d.GetOkExists("diagnose_no_logging_faults"); has_v {
 		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
@@ -400,7 +625,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		oracleDSourceLinkSourceParameters.SetLogSyncMode(v.(string))
 	}
 	if v, has_v := d.GetOk("log_sync_interval"); has_v {
-		oracleDSourceLinkSourceParameters.SetLogSyncInterval(v.(int32))
+		oracleDSourceLinkSourceParameters.SetLogSyncInterval(int32(v.(int)))
 	}
 	if v, has_v := d.GetOk("non_sys_username"); has_v {
 		oracleDSourceLinkSourceParameters.SetNonSysUsername(v.(string))
@@ -500,7 +725,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
-	readDiags := resourceOracleDsourceRead(ctx, d, meta)
+	readDiags := resourceDsourceRead(ctx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -512,104 +737,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 func toIntArray(array interface{}) []int32 {
 	items := []int32{}
 	for _, item := range array.([]interface{}) {
-		items = append(items, item.(int32))
+		items = append(items, int32(item.(int)))
 	}
 	return items
-}
-
-func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
-	client := meta.(*apiClient).client
-
-	dsource_id := d.Id()
-
-	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
-		return client.DSourcesApi.GetDsourceById(ctx, dsource_id).Execute()
-	})
-
-	if diags != nil {
-		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-			return client.DSourcesApi.GetDsourceById(ctx, dsource_id).Execute()
-		})
-		// This would imply error in poll for deletion so we just log and exit.
-		if diags != nil {
-			ErrorLog.Printf("Error in polling of appdata dSource for deletion.")
-		} else {
-			// diags will be nill in case of successful poll for deletion logic aka 404
-			ErrorLog.Printf("Error reading the appdata dSource %s, removing from state.", dsource_id)
-			d.SetId("")
-		}
-
-		return nil
-	}
-
-	result, ok := res.(*dctapi.DSource)
-	if !ok {
-		return diag.Errorf("Error occured in type casting.")
-	}
-
-	d.Set("id", result.GetId())
-	d.Set("database_type", result.GetDatabaseType())
-	d.Set("name", result.GetName())
-	d.Set("is_replica", result.GetIsReplica())
-	d.Set("storage_size", result.GetStorageSize())
-	d.Set("plugin_version", result.GetPluginVersion())
-	d.Set("creation_date", result.GetCreationDate().String())
-	d.Set("group_name", result.GetGroupName())
-	d.Set("enabled", result.GetEnabled())
-	d.Set("engine_id", result.GetEngineId())
-	d.Set("source_id", result.GetSourceId())
-	d.Set("status", result.GetStatus())
-	d.Set("engine_name", result.GetEngineName())
-	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
-	d.Set("is_appdata", result.GetIsAppdata())
-
-	return diags
-}
-
-func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// get the changed keys
-	changedKeys := make([]string, 0, len(d.State().Attributes))
-	for k := range d.State().Attributes {
-		if d.HasChange(k) {
-			changedKeys = append(changedKeys, k)
-		}
-	}
-	// revert and set the old value to the changed keys
-	for _, key := range changedKeys {
-		old, _ := d.GetChange(key)
-		d.Set(key, old)
-	}
-
-	return diag.Errorf("Action update not implemented for resource : appdata dsource")
-}
-
-func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	client := meta.(*apiClient).client
-
-	dsourceId := d.Id()
-
-	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
-	deleteDsourceParams.SetForce(false)
-
-	res, httpRes, err := client.DSourcesApi.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
-
-	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
-		return diags
-	}
-
-	job_status, job_err := PollJobStatus(*res.Id, ctx, client)
-	if job_err != "" {
-		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
-	}
-	InfoLog.Printf("Job result is %s", job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Appdata dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
-	}
-
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
-		return client.DSourcesApi.GetDsourceById(ctx, dsourceId).Execute()
-	})
-
-	return diags
 }
