@@ -3,21 +3,19 @@
 In Delphix terminology, a dSource is a database that the Delphix Continuous Data Engine uses to create and update virtual copies of your database. 
 A dSource is created and managed by the Delphix Continuous Data Engine.
 
-The dSource resource allows Terraform to create and delete Delphix dSources. This specifically enables the apply and destroy Terraform commands. Modification of existing dSource resources via the apply command is not supported. All supported parameters are listed below.
+The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the apply and destroy Terraform commands. Modification of existing dSource resources via the apply command is not supported. All supported parameters are listed below.
 
 ## System Requirements
 
 * Data Control Tower v10.0.1+ is required for dSource management. Lower versions are not supported.
-* The dSource Resource does not support SQL Server, or SAP ASE. The below examples are shown from the Oracle context.
+* This Oracle dSource Resource only supports Oracle. See the AppData dSource Resource for the support of other connectors (i.e. AppData), such as PostgreSQL and SAP HANA. The Delphix Provider does not support SQL Server or SAP ASE.
 
 ## Example Usage
 
-The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show working examples.
-
 ```hcl
-# Link dSource 
+# Link Oracle dSource
 
-resource "delphix_oracle_dsource" "test_oracle_dsource_second" {
+resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "test2"
   source_value               = "DBOMSRB331B3"
   group_id                   = "3-GROUP-1"

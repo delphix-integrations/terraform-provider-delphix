@@ -545,7 +545,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		d.Set(key, old)
 	}
 
-	return diag.Errorf("Action update not implemented for resource : dsource")
+	return diag.Errorf("Action update not implemented for resource : dSource")
 }
 
 func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

@@ -19,7 +19,7 @@ provider "delphix" {
 
 
 
-resource "delphix_oracle_dsource" "test_oracle_dsource_second" {
+resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "test2"
   source_value               = "DBOMSRB331B3"
   group_id                   = "3-GROUP-1"
