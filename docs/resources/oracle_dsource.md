@@ -12,6 +12,8 @@ The Oracle dSource resource allows Terraform to create and delete Oracle dSource
 
 ## Example Usage
 
+* The linking of a dSource can be performed via direct ingestion as shown in the example below
+
 ```hcl
 # Link Oracle dSource
 
