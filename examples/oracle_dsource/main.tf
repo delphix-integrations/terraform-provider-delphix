@@ -22,7 +22,7 @@ provider "delphix" {
 resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "test2"
   source_value               = "DBOMSRB331B3"
-  group_id                   = "3-GROUP-1"
+  group_id                   = "4-GROUP-1"
   log_sync_enabled           = false
   make_current_account_owner = true
   environment_user_id        = "HOST_USER-1"
@@ -43,6 +43,33 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
   files_for_full_backup      = []
   log_sync_mode              = "UNDEFINED"
   log_sync_interval          = 5
+  ops_pre_sync {
+    name    = "key-1"
+    command = "echo \"hello world\""
+    shell   = "shell"
+    credentials_env_vars {
+      base_var_name = "XXXX"
+      password      = "XXXX"
+    }
+  }
+  ops_post_sync {
+    name    = "key-2"
+    command = "echo \"hello world\""
+    shell   = "shell"
+    credentials_env_vars {
+      base_var_name = "XXXX"
+      password      = "XXXX"
+    }
+  }
+  ops_pre_log_sync {
+    name    = "key-2"
+    command = "echo \"hello world\""
+    shell   = "shell"
+    credentials_env_vars {
+      base_var_name = "XXXX"
+      password      = "XXXX"
+    }
+  }
 }
 
 
