@@ -16,9 +16,9 @@ func resourceAppdataDsource() *schema.Resource {
 		Description: "Resource for appdata dSource creation.",
 
 		CreateContext: resourceAppdataDsourceCreate,
-		ReadContext:   resourceAppdataDsourceRead,
-		UpdateContext: resourceAppdataDsourceUpdate,
-		DeleteContext: resourceAppdataDsourceDelete,
+		ReadContext:   resourceDsourceRead,
+		UpdateContext: resourceDsourceUpdate,
+		DeleteContext: resourceDsourceDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -472,7 +472,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
-	readDiags := resourceAppdataDsourceRead(ctx, d, meta)
+	readDiags := resourceDsourceRead(ctx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -481,7 +481,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	return diags
 }
 
-func resourceAppdataDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
 
@@ -497,10 +497,10 @@ func resourceAppdataDsourceRead(ctx context.Context, d *schema.ResourceData, met
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
-			ErrorLog.Printf("Error in polling of appdata dSource for deletion.")
+			ErrorLog.Printf("Error in polling of dSource for deletion.")
 		} else {
 			// diags will be nill in case of successful poll for deletion logic aka 404
-			ErrorLog.Printf("Error reading the appdata dSource %s, removing from state.", dsource_id)
+			ErrorLog.Printf("Error reading the dSource %s, removing from state.", dsource_id)
 			d.SetId("")
 		}
 
@@ -531,7 +531,7 @@ func resourceAppdataDsourceRead(ctx context.Context, d *schema.ResourceData, met
 	return diags
 }
 
-func resourceAppdataDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
@@ -545,10 +545,10 @@ func resourceAppdataDsourceUpdate(ctx context.Context, d *schema.ResourceData, m
 		d.Set(key, old)
 	}
 
-	return diag.Errorf("Action update not implemented for resource : appdata dsource")
+	return diag.Errorf("Action update not implemented for resource : dSource")
 }
 
-func resourceAppdataDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
 	dsourceId := d.Id()
@@ -568,7 +568,7 @@ func resourceAppdataDsourceDelete(ctx context.Context, d *schema.ResourceData, m
 	}
 	InfoLog.Printf("Job result is %s", job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Appdata dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
 	}
 
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
