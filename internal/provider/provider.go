@@ -64,7 +64,6 @@ func Provider(version string) func() *schema.Provider {
 				"delphix_environment":     resourceEnvironment(),
 				"delphix_appdata_dsource": resourceAppdataDsource(),
 				"delphix_oracle_dsource":  resourceOracleDsource(),
-				"delphix_source":          resourceSource(),
 			},
 		}
 
