@@ -1,10 +1,10 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=delphix.com
-NAMESPACE=dct
+NAMESPACE=local
 NAME=delphix
 BINARY=terraform-provider-${NAME}
-VERSION=3.1.0
-OS_ARCH=darwin_amd64
+VERSION=2.0.4-beta
+OS_ARCH=darwin_arm64
 
 default: install
 

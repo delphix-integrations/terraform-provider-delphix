@@ -223,6 +223,34 @@ func resourceEnvironment() *schema.Resource {
 					},
 				},
 			},
+			"repositories": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"database_type": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"allow_provisioning": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"is_staging": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -406,6 +434,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("namespace", envRes.GetNamespace())
 	d.Set("enabled", envRes.GetEnabled())
 	d.Set("hosts", flattenHosts(envRes.GetHosts()))
+	d.Set("repositories", flattenHostRepositories(envRes.GetRepositories()))
 	return diags
 }
 
