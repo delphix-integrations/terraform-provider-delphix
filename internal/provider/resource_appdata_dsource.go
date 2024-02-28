@@ -326,6 +326,16 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
+			"wait_time": {
+				Type:     schema.TypeInt,
+				Default:  3,
+				Optional: true,
+			},
+			"skip_wait_for_snapshot_creation": {
+				Type:     schema.TypeBool,
+				Default:  false,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -471,6 +481,8 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		ErrorLog.Printf("Job %s %s!", job_res, *apiRes.Job.Id)
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
+
+	PollSnapshotStatus(d, ctx, client)
 
 	readDiags := resourceDsourceRead(ctx, d, meta)
 
