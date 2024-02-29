@@ -608,25 +608,25 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		oracleDSourceLinkSourceParameters.SetNumberOfConnections(int32(v.(int)))
 	}
 	if v, has_v := d.GetOkExists("diagnose_no_logging_faults"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetDiagnoseNoLoggingFaults(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("pre_provisioning_enabled"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetPreProvisioningEnabled(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("link_now"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetLinkNow(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("force_full_backup"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetForceFullBackup(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("double_sync"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetDoubleSync(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("skip_space_check"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetSkipSpaceCheck(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("do_not_resume"); has_v {
-		oracleDSourceLinkSourceParameters.SetCheckLogical(v.(bool))
+		oracleDSourceLinkSourceParameters.SetDoNotResume(v.(bool))
 	}
 	if v, has_v := d.GetOk("files_for_full_backup"); has_v {
 		oracleDSourceLinkSourceParameters.SetFilesForFullBackup(toIntArray(v))

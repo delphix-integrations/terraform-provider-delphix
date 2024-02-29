@@ -177,7 +177,7 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 	if !skip.(bool) {
 		var snapshotRes *dctapi.ListSnapshotsResponse
 		var api_err error
-		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / 20))
+		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
 		for attempt := 1; attempt <= maxAttempts; attempt++ {
 			snapshotRes, _, api_err = client.DSourcesApi.GetDsourceSnapshots(ctx, d.Id()).Execute()
 			if api_err != nil {
@@ -190,7 +190,7 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 			}
 			InfoLog.Printf("Attempt %d: Waiting for snapshots to become available...", attempt)
 			if attempt < maxAttempts {
-				time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second) // Wait before retrying
+				time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second) // Wait before retrying
 			}
 		}
 
