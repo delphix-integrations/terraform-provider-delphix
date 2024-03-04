@@ -4,65 +4,61 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func Test_create_source_positive(t *testing.T) {
+func Test_source_create_positive(t *testing.T) {
+	name := os.Getenv("SOURCE_NAME")
+	repository_id := os.Getenv("REPOSITORY_VALUE")
+
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
+		PreCheck: func() {
+			testsourcePreCheck(t, repository_id, name)
+		},
 		Providers:    testAccProviders,
 		CheckDestroy: testSourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testCReateSourceBasic(),
+				Config:      testsourceBasic("", name),
+				ExpectError: regexp.MustCompile(`.*`),
+			},
+			{
+				Config: testsourceBasic(repository_id, name),
 				Check: resource.ComposeTestCheckFunc(
-					testSourceExists("delphix_vdb.new")),
+					testSourceExists("delphix_source.new_dsource", name),
+					resource.TestCheckResourceAttr("delphix_source.new_dsource", "name", name)),
+			},
+			{
+				Config: testsourceUpdate(repository_id, "update_name"),
+				Check: resource.ComposeTestCheckFunc(
+					testSourceExists("delphix_source.new_dsource", "update_name"),
+					resource.TestCheckResourceAttr("delphix_source.new_dsource", "name", "update_name")),
 			},
 		},
 	})
 }
 
-func testCReateSourceBasic() string {
-	name := os.Getenv("SOURCE_NAME")
-	repository_id := os.Getenv("REPOSITORY_ID")
-	return fmt.Sprintf(`
-	resource "delphix_source" "new" {
-		name = "%s"
-		repository_value         = "%s"
+func testsourcePreCheck(t *testing.T, repo_value string, name string) {
+	testAccPreCheck(t)
+	if repo_value == "" {
+		t.Fatal("REPOSITORY_VALUE must be set for env acceptance tests")
 	}
-	`, name, repository_id)
+	if name == "" {
+		t.Fatal("SOURCE_NAME must be set for env acceptance tests")
+	}
 }
 
-func testSourceExists(source string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		source, ok := s.RootModule().Resources[source]
-		if !ok {
-			return fmt.Errorf("Not found: %s", source)
-		}
-
-		sourceID := source.Primary.ID
-		if sourceID == "" {
-			return fmt.Errorf("No sourceID set")
-		}
-
-		client := testAccProvider.Meta().(*apiClient).client
-
-		res, _, err := client.SourcesApi.GetSourceById(context.Background(), sourceID).Execute()
-		if err != nil {
-			return err
-		}
-
-		sourceids := res.GetId()
-		if !reflect.DeepEqual(sourceids, []string{sourceID}) {
-			return fmt.Errorf("Expected the vdb_id in VDB Group vdb_ids property")
-		}
-
-		return nil
-	}
+func testsourceBasic(repo_value string, name string) string {
+	return fmt.Sprintf(`
+resource "delphix_source" "new_dsource" {
+  repository_value                  = "%s"
+  name                       = "%s"
+}
+	`, repo_value, name)
 }
 
 func testSourceDestroy(s *terraform.State) error {
@@ -86,4 +82,41 @@ func testSourceDestroy(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func testsourceUpdate(repo_value string, name string) string {
+	return fmt.Sprintf(`
+resource "delphix_source" "new_dsource" {
+  repository_value                  = "%s"
+  name                       = "%s"
+}
+	`, repo_value, name)
+}
+
+func testSourceExists(n string, name string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+
+		if !ok {
+			return fmt.Errorf("Not found: %s", n)
+		}
+
+		sourceId := rs.Primary.ID
+		if sourceId == "" {
+			return fmt.Errorf("No sourceId set")
+		}
+
+		client := testAccProvider.Meta().(*apiClient).client
+		res, _, err := client.SourcesApi.GetSourceById(context.Background(), sourceId).Execute()
+		if err != nil {
+			return err
+		}
+
+		resSourceId := res.GetName()
+		if resSourceId != name {
+			return fmt.Errorf("SourceId mismatch")
+		}
+
+		return nil
+	}
 }
