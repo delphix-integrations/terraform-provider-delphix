@@ -21,9 +21,9 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 
 	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
 	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return "", err.Error()
+		resBody, resBodyErr := ResponseBodyToString(httpRes.Body)
+		if resBodyErr != nil {
+			return "", resBodyErr.Error()
 		}
 		ErrorLog.Print(err.Error())
 		return "", resBody
@@ -37,9 +37,9 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			if httpRes == nil {
 				return "", "Received nil response for Job ID " + job_id
 			}
-			resBody, err := ResponseBodyToString(httpRes.Body)
-			if err != nil {
-				return "", err.Error()
+			resBody, resBodyErr := ResponseBodyToString(httpRes.Body)
+			if resBodyErr != nil {
+				return "", resBodyErr.Error()
 			}
 			ErrorLog.Print(err.Error())
 			return "", resBody

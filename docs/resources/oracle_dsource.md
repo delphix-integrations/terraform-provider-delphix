@@ -195,3 +195,6 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
         * `azure_vault_secret_key` - Azure vault key in the key-value store.
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
 
+* `skip_wait_for_snapshot_creation` - (Optional) By default this resource waits for snapshot to be created post dsource creation , default behaviour can be skipped by setting this parameter to true.
+
+* `wait_time` - (Optional) By default this resource waits for snapshot to be created for 3 minuites , this pameter can be used to set the wait_time in minutes as per need.

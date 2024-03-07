@@ -17,10 +17,10 @@ provider "delphix" {
   host              = "HOSTNAME"
 }
 
-resource "delphix_source" "source" {
-  name             = "test"
-  repository_value = "REPO-1"
-  engine_value = "2"
+resource "delphix_database_postgresql" "source" {
+  name              = "test"
+  repository_value  = "REPO-1"
+  engine_value      = "2"
   environment_value = "ENV-1"
 }
 

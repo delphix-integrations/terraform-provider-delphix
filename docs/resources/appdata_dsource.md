@@ -180,3 +180,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
 * `parameters` - (Optional) The JSON payload is based on the type of dSource being created. Different data sources require different parameters.
 
 * `sync_parameters` - (Optional) The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
+
+* `skip_wait_for_snapshot_creation` - (Optional) By default this resource waits for snapshot to be created post dsource creation , default behaviour can be skipped by setting this parameter to true.
+
+* `wait_time` - (Optional) By default this resource waits for snapshot to be created for 3 minuites , this pameter can be used to set the wait_time in minutes as per need.

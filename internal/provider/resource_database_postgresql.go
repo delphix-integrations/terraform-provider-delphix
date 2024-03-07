@@ -14,10 +14,10 @@ func resourceSource() *schema.Resource {
 		// This description is used by the documentation generator and the language server.
 		Description: "Resource for Source creation.",
 
-		CreateContext: resourceSourceCreate,
-		ReadContext:   resourceSourceRead,
-		UpdateContext: resourceSourceUpdate,
-		DeleteContext: resourceSourceDelete,
+		CreateContext: resourceDatabasePostgressqlCreate,
+		ReadContext:   resourceDatabasePostgressqlRead,
+		UpdateContext: resourceDatabasePostgressqlUpdate,
+		DeleteContext: resourceDatabasePostgressqlDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -134,7 +134,7 @@ func resourceSource() *schema.Resource {
 	}
 }
 
-func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
@@ -175,7 +175,7 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
-	readDiags := resourceSourceRead(ctx, d, meta)
+	readDiags := resourceDatabasePostgressqlRead(ctx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -184,7 +184,7 @@ func resourceSourceCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	return diags
 }
 
-func resourceSourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
 
@@ -239,7 +239,7 @@ func resourceSourceRead(ctx context.Context, d *schema.ResourceData, meta interf
 	return diags
 }
 
-func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
@@ -294,7 +294,7 @@ func resourceSourceUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	return diags
 }
 
-func resourceSourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
 	source_id := d.Id()

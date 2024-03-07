@@ -54,7 +54,7 @@ func testsourcePreCheck(t *testing.T, repo_value string, name string) {
 
 func testsourceBasic(repo_value string, name string) string {
 	return fmt.Sprintf(`
-resource "delphix_source" "new_dsource" {
+resource "delphix_database_postgresql" "new_dsource" {
   repository_value                  = "%s"
   name                       = "%s"
 }
@@ -86,7 +86,7 @@ func testSourceDestroy(s *terraform.State) error {
 
 func testsourceUpdate(repo_value string, name string) string {
 	return fmt.Sprintf(`
-resource "delphix_source" "new_dsource" {
+resource "delphix_database_postgresql" "new_dsource" {
   repository_value                  = "%s"
   name                       = "%s"
 }

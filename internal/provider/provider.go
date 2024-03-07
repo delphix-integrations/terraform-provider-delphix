@@ -59,12 +59,12 @@ func Provider(version string) func() *schema.Provider {
 				},
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"delphix_vdb":             resourceVdb(),
-				"delphix_vdb_group":       resourceVdbGroup(),
-				"delphix_environment":     resourceEnvironment(),
-				"delphix_appdata_dsource": resourceAppdataDsource(),
-				"delphix_oracle_dsource":  resourceOracleDsource(),
-				"delphix_source":          resourceSource(),
+				"delphix_vdb":                 resourceVdb(),
+				"delphix_vdb_group":           resourceVdbGroup(),
+				"delphix_environment":         resourceEnvironment(),
+				"delphix_appdata_dsource":     resourceAppdataDsource(),
+				"delphix_oracle_dsource":      resourceOracleDsource(),
+				"delphix_database_postgresql": resourceSource(),
 			},
 		}
 
