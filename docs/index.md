@@ -18,6 +18,10 @@ Customers who are entitled to Data Control Tower may also send support issues th
 
 Note: The DCT version above guarantees full provider support. However, each  resource might support older versions. Refer to the specific resource documentation page for more information.
 
+## Release Notes
+
+The Delphix Provider's complete release notes can be found in the [Delphix Ecosystem Documentation](https://ecosystem.delphix.com/docs/main/release-notes-terraform).
+
 ## Connectivity and Authentication
 
 All communication is performed through HTTPS. The Delphix Provider uses Data Control Tower (DCT) APIs to communicate with Delphix Continuous Data Engines. 
