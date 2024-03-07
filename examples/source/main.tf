@@ -12,9 +12,8 @@ terraform {
 }
 
 provider "delphix" {
-  tls_insecure_skip = true
-  key               = "1.XXXX"
-  host              = "HOSTNAME"
+  key  = "1.XXXX"
+  host = "HOSTNAME"
 }
 
 resource "delphix_database_postgresql" "source" {
