@@ -23,6 +23,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	if err != nil {
 		resBody, resBodyErr := ResponseBodyToString(httpRes.Body)
 		if resBodyErr != nil {
+			ErrorLog.Print(resBodyErr.Error())
 			return "", resBodyErr.Error()
 		}
 		ErrorLog.Print(err.Error())
@@ -39,6 +40,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			}
 			resBody, resBodyErr := ResponseBodyToString(httpRes.Body)
 			if resBodyErr != nil {
+				ErrorLog.Print(resBodyErr.Error())
 				return "", resBodyErr.Error()
 			}
 			ErrorLog.Print(err.Error())
