@@ -102,14 +102,6 @@ func resourceSource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"recovery_model": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"mssql_source_type": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"appdata_source_type": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -232,8 +224,6 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 	d.Set("toolkit_id", result.GetToolkitId())
 	d.Set("is_dsource", result.GetIsDsource())
 	d.Set("repository", result.GetRepository())
-	d.Set("recovery_model", result.GetRecoveryModel())
-	d.Set("mssql_source_type", result.GetMssqlSourceType())
 	d.Set("appdata_source_type", result.GetAppdataSourceType())
 
 	return diags

@@ -1,11 +1,11 @@
 # Resource: <resource name> delphix_database_postgresql
 
-In Delphix, a databsae/source is required in the environment using which a dsource can be created.
+In the Delphix Platform, a Database (or Source Config) identifies the environment's location from which a specific source dataset can be ingested from. dSources are then created from these Databases.
 
 ## System Requirements
 
-* Data Control Tower v14.0.1+ is required for dSource management. Lower versions are not supported.
-* This Databse PostgresSql Resource only supports POSTGRES , This resource does not support Oracle, SQL Server, or SAP ASE.
+* Data Control Tower v14.0.1+ is required for database management. Lower versions are not supported.
+* The Database PostgreSQL resource only supports the Delphix PostgreSQL database type (POSTGRES). This resource does not support Oracle, SQL Server, or SAP ASE.
 
 ## Example Usage
 
@@ -27,13 +27,9 @@ resource "delphix_database_postgresql" "source" {
 
 * `repository_value` - (Required)  The Id or Name of the Repository onto which the source will be created..
 
-* `environment_value` - (Required) The Id or Name of the environment to create the source on.
+* `environment_value` - (Optional) The Id or Name of the environment to create the source on.
 
-* `engine_value` - (Required) The Id or Name of the engine to create the source on.
-
-* `id` - The Source object entity ID.
-
-* `database_type` - The type of this source database.
+* `engine_value` - (Optional) The Id or Name of the engine to create the source on.
 
 * `id` - The Source object entity ID.
 
@@ -65,12 +61,8 @@ resource "delphix_database_postgresql" "source" {
 
 * `repository` - The repository id for this source.
 
-* `recovery_model` - Recovery model of the source database (MSSql Only).
-
-* `mssql_source_type` - The type of this mssql source database (MSSql Only).
-
 * `appdata_source_type` - The type of this appdata source database (Appdata Only).
 
-* `tags` -  The tags to be created for dSource. This is a map of 2 parameters:
+* `tags` -  The tags to be created for database. This is a map of 2 parameters:
     * `key` - Key of the tag
     * `value` - Value of the tag
