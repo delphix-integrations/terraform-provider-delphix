@@ -301,7 +301,7 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 	}
 	InfoLog.Printf("Job result is %s", job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] Source-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
 	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
