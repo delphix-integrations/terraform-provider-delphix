@@ -29,14 +29,14 @@ func Test_source_create_positive(t *testing.T) {
 			{
 				Config: testsourceBasic(repository_id, name),
 				Check: resource.ComposeTestCheckFunc(
-					testSourceExists("delphix_source.new_dsource", name),
-					resource.TestCheckResourceAttr("delphix_source.new_dsource", "name", name)),
+					testSourceExists("delphix_database_postgresql.new_dsource", name),
+					resource.TestCheckResourceAttr("delphix_database_postgresql.new_dsource", "name", name)),
 			},
 			{
 				Config: testsourceUpdate(repository_id, "update_name"),
 				Check: resource.ComposeTestCheckFunc(
-					testSourceExists("delphix_source.new_dsource", "update_name"),
-					resource.TestCheckResourceAttr("delphix_source.new_dsource", "name", "update_name")),
+					testSourceExists("delphix_database_postgresql.new_dsource", "update_name"),
+					resource.TestCheckResourceAttr("delphix_database_postgresql.new_dsource", "name", "update_name")),
 			},
 		},
 	})
@@ -65,7 +65,7 @@ func testSourceDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*apiClient).client
 
 	for _, rs := range s.RootModule().Resources {
-		if rs.Type != "delphix_source" {
+		if rs.Type != "delphix_database_postgresql" {
 			continue
 		}
 

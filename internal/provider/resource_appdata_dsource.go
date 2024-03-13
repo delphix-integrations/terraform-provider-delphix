@@ -511,7 +511,7 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 		if diags != nil {
 			ErrorLog.Printf("Error in polling of dSource for deletion.")
 		} else {
-			// diags will be nill in case of successful poll for deletion logic aka 404
+			// diags will be nil in case of successful poll for deletion logic aka 404
 			ErrorLog.Printf("Error reading the dSource %s, removing from state.", dsource_id)
 			d.SetId("")
 		}
