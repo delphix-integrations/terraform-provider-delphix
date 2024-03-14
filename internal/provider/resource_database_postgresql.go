@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -148,7 +149,7 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 	req := client.SourcesApi.CreatePostgresSource(ctx)
 
 	apiRes, httpRes, err := req.PostgresSourceCreateParameters(*sourceCreateParameters).Execute()
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -156,14 +157,14 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
-		ErrorLog.Printf("Job Polling failed but continuing with Source creation. Error: %s", job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with Source creation. Error: "+job_err)
 	}
 
-	InfoLog.Printf("Job result is %s", job_res)
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 		d.SetId("")
-		ErrorLog.Printf("Job %s %s!", job_res, *apiRes.Job.Id)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id)
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
@@ -182,20 +183,20 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 
 	source_id := d.Id()
 
-	res, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
 		return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
 	})
 
 	if diags != nil {
-		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
-			ErrorLog.Printf("Error in polling of source for deletion.")
+			tflog.Error(ctx, DLPX+ERROR+"Error in polling of source for deletion.")
 		} else {
 			// diags will be nill in case of successful poll for deletion logic aka 404
-			ErrorLog.Printf("Error reading the source %s, removing from state.", source_id)
+			tflog.Error(ctx, DLPX+ERROR+"Error reading the source "+source_id+", removing from state.")
 			d.SetId("")
 		}
 
@@ -263,7 +264,7 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 
 	res, httpRes, err := client.SourcesApi.UpdatePostgresSourceById(ctx, d.Get("id").(string)).PostgresSourceUpdateParameters(*updateSourceParam).Execute()
 
-	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
 		for _, key := range changedKeys {
 			old, _ := d.GetChange(key)
@@ -274,9 +275,9 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 
 	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
 	if job_err != "" {
-		WarnLog.Printf("Source Update Job Polling failed but continuing with update. Error :%v", job_err)
+		tflog.Warn(ctx, DLPX+WARN+"Source Update Job Polling failed but continuing with update. Error :"+job_err)
 	}
-	InfoLog.Printf("Job result is %s", job_status)
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Source-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
@@ -291,20 +292,20 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 
 	res, httpRes, err := client.SourcesApi.DeleteSource(ctx, source_id).Execute()
 
-	if diags := apiErrorResponseHelper(res, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
 	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
 	if job_err != "" {
-		WarnLog.Printf("Job Polling failed but continuing with deletion. Error :%v", job_err)
+		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
-	InfoLog.Printf("Job result is %s", job_status)
+	tflog.Info(ctx, DLPX+INFO+" Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Source-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
 	})
 

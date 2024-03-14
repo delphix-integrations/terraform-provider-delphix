@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -716,7 +717,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	req := client.DSourcesApi.LinkOracleDatabase(ctx)
 
 	apiRes, httpRes, err := req.OracleDSourceLinkSourceParameters(*oracleDSourceLinkSourceParameters).Execute()
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -724,14 +725,14 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 
 	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
-		ErrorLog.Printf("Job Polling failed but continuing with dSource creation. Error: %s", job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
 	}
 
-	InfoLog.Printf("Job result is %s", job_res)
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 		d.SetId("")
-		ErrorLog.Printf("Job %s %s!", job_res, *apiRes.Job.Id)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 

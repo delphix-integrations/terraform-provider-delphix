@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -48,7 +49,7 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -69,10 +70,10 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 	var diags diag.Diagnostics
 
 	vdbGroupId := d.Id()
-	InfoLog.Printf("VdbGroupId: %s", vdbGroupId)
+	tflog.Info(ctx, DLPX+INFO+"VdbGroupId: "+vdbGroupId)
 	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -98,11 +99,11 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 
 	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()
 
-	if diags := apiErrorResponseHelper(nil, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		return diags
 	}
 	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
+		resBody, err := ResponseBodyToString(ctx, httpRes.Body)
 		if err != nil {
 			return diag.FromErr(err)
 		}
