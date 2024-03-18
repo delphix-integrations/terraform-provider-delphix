@@ -1,13 +1,14 @@
 # <provider> Delphix Provider
 
-The Terraform Provider for Delphix enables customers to natively manage data-as-code along with their infrastructure.
-With Terraform and Delphix, customers can now automatically provision, manage, and teardown any number of ephemeral data environments to drive enterprise DevOps workflows, such as test data management.
+The Terraform Provider for Delphix enables you to natively manage data-as-code along with your infrastructure.
+
+With Terraform and Delphix, you can now automatically provision, manage, and teardown any number of ephemeral data environments to drive enterprise DevOps workflows, such as test data management.
 
 This provider communicates directly with Data Control Tower (DCT) to generated virtual database and other objects. Therefore, DCT must be registered with one or more Delphix Continuous Data Engines.
 
 To learn more about Delphix and DCT APIs, refer to [Delphix Documentation](https://documentation.delphix.com/docs/) and [DCT Documentation](https://dct.delphix.com/docs/latest/) respectively. Please [Contact us](ask-integrations@delphix.com) (ask-integrations@delphix.com) with any questions. 
 
-Customers who are entitled to Data Control Tower may also send support issues through the [Delphix Support Portal](https://support.delphix.com/).
+If you are entitled to Data Control Tower then you may also send support issues through the [Delphix Support Portal](https://support.delphix.com/).
 
 ## System Requirements
 
@@ -46,7 +47,7 @@ terraform {
 provider "delphix" {
   host = "dct_hostname"
   key = "dct_api_key"
-  tls_insecure_skip = true
+  tls_insecure_skip = false
 }
 
 # Provision a VDB
@@ -60,7 +61,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * __host__: The hostname for DCT.
 * __key__ : The API Key which is used to authenticate with DCT. (Example `apk 2.abc123...`).
-* __tls_insecure_skip__: (Optional) A boolean value which determines whether to skip the SSL/TLS check. The dfault value is `false`. Skipping any SSL/TLS check is not recommended for production environments. 
+* __tls_insecure_skip__: (Optional) A boolean value which determines whether to skip the SSL/TLS check. The default value is `false`. Skipping any SSL/TLS check is not recommended for production environments. 
 * __host_scheme__: (Optional) Determines the configured host URL's scheme. The default value is `https`.
 
 Consult the documentation's Resources section for details on individual resources, such as VDB, dSource, and Environment.
