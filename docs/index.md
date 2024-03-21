@@ -63,5 +63,17 @@ resource "delphix_vdb" "vdb_name" {
 * __key__ : The API Key which is used to authenticate with DCT. (Example `apk 2.abc123...`).
 * __tls_insecure_skip__: (Optional) A boolean value which determines whether to skip the SSL/TLS check. The default value is `false`. Skipping any SSL/TLS check is not recommended for production environments. 
 * __host_scheme__: (Optional) Determines the configured host URL's scheme. The default value is `https`.
-
+  
 Consult the documentation's Resources section for details on individual resources, such as VDB, dSource, and Environment.
+
+## Support Matrix
+
+Feature/Product | Provider Version | DCT version 
+--- |------------------| --- | 
+delphix_vdb | v 1.0.0          | v 2.0.0 
+delphix_vdb_group | v 1.0.0          | v 2.0.0 
+delphix_environment | v 1.0.0          | v 2.0.0 
+delphix_appdata_dsource | v 2.1.0          | v 10.0.0 
+delphix_oracle_dsource | v 3.1.0          | v 10.0.0 
+delphix_database_postgresql | v 3.2.0          | v 14.0.0 
+

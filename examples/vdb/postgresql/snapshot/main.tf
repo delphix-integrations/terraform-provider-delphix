@@ -42,10 +42,10 @@ resource "delphix_vdb" "example" {
     postgresPort        = 5434
     configSettingsStg   = [{ propertyName: "timezone", value:"GMT", commentProperty:false}]
   })
-  config_params jsonencode({
+  config_params = jsonencode({
     processes = 150
   })
-  appdata_config_params jsonencode({
+  appdata_config_params = jsonencode({
     param = "value"
   })
   additional_mount_points = [{

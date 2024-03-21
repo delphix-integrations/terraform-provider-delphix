@@ -210,3 +210,4 @@ resource "delphix_environment" "fc-tgt-cluster" {
 * `engine_id` - A reference to the Engine that this Environment connection is associated with.
 * `enabled` - True if this environment is enabled.
 * `hosts` - The hosts that are part of this environment.
+* `repositories` - The repositories that are part of this environment.
