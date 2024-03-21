@@ -49,3 +49,14 @@ For generation of the API key, please refer to [Authentication](https://docs.del
 * __host__: The host name for where DCT APIGW is running.
 * __tls_insecure_skip__: This takes a boolean value which determines whether to skip the TLS check. tls_insecure_skip is really unsafe to set it to true. By default it is `false`.
 * __host_scheme__: Determines the host scheme configured. By default it is `https`.
+
+## Support Matrix
+
+Feature/Product | Provider Version | DCT version 
+--- | --- | --- | 
+delphix_vdb | v 1.0.0 | v 2.0.0 
+delphix_vdb_group | v 1.0.0 | v 2.0.0 
+delphix_environment | v 1.0.0 | v 2.0.0 
+delphix_appdata_dsource | v 2.1.0 | v 10.0.0 
+delphix_oracle_dsource | v 3.0.0 | v 10.0.0 
+delphix_database_postgresql | v 3.2.0 | v 14.0.0 
