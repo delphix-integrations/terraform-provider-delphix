@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v10"
+	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -223,6 +224,34 @@ func resourceEnvironment() *schema.Resource {
 					},
 				},
 			},
+			"repositories": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"database_type": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"allow_provisioning": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+						"is_staging": {
+							Type:     schema.TypeBool,
+							Required: true,
+						},
+					},
+				},
+			},
 		},
 	}
 }
@@ -358,7 +387,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	apiReq := client.EnvironmentsApi.CreateEnvironment(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
@@ -366,7 +395,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 
 	if job_err != "" {
-		ErrorLog.Printf("Job Polling failed but continuing with env creation. Error: %v", job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env creation. Error: "+job_err)
 	}
 
 	if isJobTerminalFailure(job_status) {
@@ -385,18 +414,18 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, diags := PollForObjectExistence(func() (interface{}, *http.Response, error) {
+	apiRes, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 
 	if diags != nil {
-		_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 		})
 		if diags != nil {
-			ErrorLog.Printf("Error in polling of environment for deletion.")
+			tflog.Error(ctx, DLPX+ERROR+"Error in polling of environment for deletion.")
 		} else {
-			ErrorLog.Printf("Error Env-Read failed for EnvId:%s. Removing from state file.", envId)
+			tflog.Error(ctx, DLPX+ERROR+"Error Env-Read failed for EnvId: "+envId+". Removing from state file.")
 			d.SetId("")
 		}
 		return nil
@@ -406,11 +435,12 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("namespace", envRes.GetNamespace())
 	d.Set("enabled", envRes.GetEnabled())
 	d.Set("hosts", flattenHosts(envRes.GetHosts()))
+	d.Set("repositories", flattenHostRepositories(envRes.GetRepositories()))
 	return diags
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	InfoLog.Printf("Not Implemented: resourceEnvironmentUpdate")
+	tflog.Info(ctx, DLPX+INFO+"Not Implemented: resourceEnvironmentUpdate")
 	var diags diag.Diagnostics
 	return diags
 }
@@ -422,18 +452,18 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
 
-	if diags := apiErrorResponseHelper(apiRes, httpRes, err); diags != nil {
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
 	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
 	if job_err != "" {
-		ErrorLog.Printf("Job Polling failed but continuing with env deletion. Error: %v", job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env deletion. Error: "+job_err)
 	}
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
-	_, diags := PollForObjectDeletion(func() (interface{}, *http.Response, error) {
+	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
 	})
 

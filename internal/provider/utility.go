@@ -3,11 +3,15 @@ package provider
 import (
 	"context"
 	"io"
+	"math"
 	"net/http"
+	"strconv"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v10"
+	dctapi "github.com/delphix/dct-sdk-go/v14"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 var SLEEP_TIME = 10
@@ -19,11 +23,12 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 
 	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
 	if err != nil {
-		resBody, err := ResponseBodyToString(httpRes.Body)
-		if err != nil {
-			return "", err.Error()
+		resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
+		if resBodyErr != nil {
+			tflog.Error(ctx, DLPX+ERROR+resBodyErr.Error())
+			return "", resBodyErr.Error()
 		}
-		ErrorLog.Print(err.Error())
+		tflog.Error(ctx, DLPX+ERROR+err.Error())
 		return "", resBody
 	}
 
@@ -35,15 +40,16 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			if httpRes == nil {
 				return "", "Received nil response for Job ID " + job_id
 			}
-			resBody, err := ResponseBodyToString(httpRes.Body)
-			if err != nil {
-				return "", err.Error()
+			resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
+			if resBodyErr != nil {
+				tflog.Error(ctx, DLPX+ERROR+resBodyErr.Error())
+				return "", resBodyErr.Error()
 			}
-			ErrorLog.Print(err.Error())
+			tflog.Error(ctx, DLPX+ERROR+err.Error())
 			return "", resBody
 		}
 		i++
-		InfoLog.Printf("DCT-JobId:%s has Status:%s", job_id, res.GetStatus())
+		tflog.Info(ctx, DLPX+INFO+"DCT-JobId:"+job_id+" has Status:"+res.GetStatus())
 	}
 
 	return res.GetStatus(), res.GetErrorDetails()
@@ -53,40 +59,40 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 // displaying to user in case of any error.
 // INPUT: body of any http response.
 // OUTPUT: Body of the response in string format and Error object that may occur during the conversion.
-func ResponseBodyToString(body io.ReadCloser) (string, error) {
+func ResponseBodyToString(ctx context.Context, body io.ReadCloser) (string, error) {
 	bytes, err := io.ReadAll(body)
 	if err != nil {
-		ErrorLog.Print("Error occured in reading body of the response.")
+		tflog.Error(ctx, DLPX+ERROR+"Error occurred in reading body of the response.")
 		return "", err
 	}
 	return string(bytes), nil
 }
 
-func PollForObjectExistence(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+func PollForObjectExistence(ctx context.Context, apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
 	// Function to check if an object exists in the Delphix estate.
-	return PollForStatusCode(apiCall, http.StatusOK, 10)
+	return PollForStatusCode(ctx, apiCall, http.StatusOK, 10)
 }
 
-func PollForObjectDeletion(apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
+func PollForObjectDeletion(ctx context.Context, apiCall func() (interface{}, *http.Response, error)) (interface{}, diag.Diagnostics) {
 	// Function to check if an object does not exist in the Delphix estate.
-	return PollForStatusCode(apiCall, http.StatusNotFound, 10)
+	return PollForStatusCode(ctx, apiCall, http.StatusNotFound, 10)
 }
 
 // poll counter is the retry counter for which an api call should be retried.
-func PollForStatusCode(apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics) {
+func PollForStatusCode(ctx context.Context, apiCall func() (interface{}, *http.Response, error), statusCode int, maxRetry int) (interface{}, diag.Diagnostics) {
 	var diags diag.Diagnostics
 	var res interface{}
 	var httpRes *http.Response
 	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
 		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
-			InfoLog.Printf("[OK] Breaking poll - Status %d reached.", statusCode)
+			tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
 			return res, nil
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
-	diags = apiErrorResponseHelper(res, httpRes, err)
-	InfoLog.Printf("[NOT OK] Breaking poll - Retry exhausted for status %d", statusCode)
+	diags = apiErrorResponseHelper(ctx, res, httpRes, err)
+	tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Retry exhausted for status "+strconv.Itoa(statusCode))
 	return nil, diags
 }
 
@@ -114,6 +120,23 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 	return make([]interface{}, 0)
 }
 
+func flattenHostRepositories(repos []dctapi.Repository) []interface{} {
+	if repos != nil {
+		returnedRepos := make([]interface{}, len(repos))
+		for i, host := range repos {
+			returnedRepo := make(map[string]interface{})
+			returnedRepo["id"] = host.GetId()
+			returnedRepo["name"] = host.GetName()
+			returnedRepo["database_type"] = host.GetDatabaseType()
+			returnedRepo["allow_provisioning"] = host.GetAllowProvisioning()
+			returnedRepo["is_staging"] = host.GetIsStaging()
+			returnedRepos[i] = returnedRepo
+		}
+		return returnedRepos
+	}
+	return make([]interface{}, 0)
+}
+
 func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMountPoint) []interface{} {
 	if additional_mount_points != nil {
 		returned_additional_mount_points := make([]interface{}, len(additional_mount_points))
@@ -129,14 +152,14 @@ func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMou
 	return make([]interface{}, 0)
 }
 
-func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
+func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
 	var diags diag.Diagnostics
 	if err != nil {
-		resBody, nerr := ResponseBodyToString(httpRes.Body)
+		resBody, nerr := ResponseBodyToString(ctx, httpRes.Body)
 		if nerr != nil {
-			ErrorLog.Printf("An error occured: %v", err)
+			tflog.Error(ctx, DLPX+ERROR+"An error occurred: "+nerr.Error())
 			diags = diag.FromErr(nerr)
 		} else {
 			diags = diag.Errorf(resBody)
@@ -148,4 +171,39 @@ func apiErrorResponseHelper(res interface{}, httpRes *http.Response, err error) 
 
 func isJobTerminalFailure(job_status string) bool {
 	return job_status == Failed || job_status == Canceled || job_status == Abandoned
+}
+
+// Poll the /dsources/{dsourceId}/snapshots API till atleast one snapshot is created
+func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dctapi.APIClient) {
+	skip := d.Get("skip_wait_for_snapshot_creation") // default false
+	wait_time := d.Get("wait_time")                  // default 3 mins
+
+	if !skip.(bool) {
+		var snapshotRes *dctapi.ListSnapshotsResponse
+		var api_err error
+		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
+		for attempt := 1; attempt <= maxAttempts; attempt++ {
+			snapshotRes, _, api_err = client.DSourcesApi.GetDsourceSnapshots(ctx, d.Id()).Execute()
+			if api_err != nil {
+				tflog.Error(ctx, DLPX+ERROR+"Error fetching dSource snapshots: "+api_err.Error())
+				break // Exit the loop on error to avoid unnecessary retries
+			}
+			if len(snapshotRes.GetItems()) > 0 {
+				tflog.Info(ctx, DLPX+INFO+"Snapshots are now available.")
+				break // Snapshots found, exit the loop
+			}
+			tflog.Info(ctx, DLPX+INFO+"Attempt "+strconv.Itoa(attempt)+": Waiting for snapshots to become available...")
+
+			if attempt < maxAttempts {
+				time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second) // Wait before retrying
+			}
+		}
+
+		// After the loop, check for errors or absence of snapshots
+		if api_err != nil {
+			tflog.Error(ctx, DLPX+ERROR+"Failed to fetch dSource snapshots due to an error.")
+		} else if len(snapshotRes.GetItems()) == 0 {
+			tflog.Info(ctx, DLPX+INFO+"Maximum attempts reached. Snapshots are not available.")
+		}
+	}
 }

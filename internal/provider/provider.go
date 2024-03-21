@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v10"
+	dctapi "github.com/delphix/dct-sdk-go/v14"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -59,11 +59,12 @@ func Provider(version string) func() *schema.Provider {
 				},
 			},
 			ResourcesMap: map[string]*schema.Resource{
-				"delphix_vdb":             resourceVdb(),
-				"delphix_vdb_group":       resourceVdbGroup(),
-				"delphix_environment":     resourceEnvironment(),
-				"delphix_appdata_dsource": resourceAppdataDsource(),
-				"delphix_oracle_dsource":  resourceOracleDsource(),
+				"delphix_vdb":                 resourceVdb(),
+				"delphix_vdb_group":           resourceVdbGroup(),
+				"delphix_environment":         resourceEnvironment(),
+				"delphix_appdata_dsource":     resourceAppdataDsource(),
+				"delphix_oracle_dsource":      resourceOracleDsource(),
+				"delphix_database_postgresql": resourceSource(),
 			},
 		}
 

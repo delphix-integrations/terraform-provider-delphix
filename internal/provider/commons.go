@@ -10,4 +10,8 @@ const (
 	Abandoned              string = "ABANDONED"
 	JOB_STATUS_SLEEP_TIME  int    = 5
 	STATUS_POLL_SLEEP_TIME int    = 20
+	DLPX                   string = "[DELPHIX] "
+	INFO                   string = "[INFO] "
+	WARN                   string = "[WARN] "
+	ERROR                  string = "[ERROR] "
 )
