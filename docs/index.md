@@ -53,10 +53,10 @@ For generation of the API key, please refer to [Authentication](https://docs.del
 ## Support Matrix
 
 Feature/Product | Provider Version | DCT version 
---- | --- | --- | 
-delphix_vdb | v 1.0.0 | v 2.0.0 
-delphix_vdb_group | v 1.0.0 | v 2.0.0 
-delphix_environment | v 1.0.0 | v 2.0.0 
-delphix_appdata_dsource | v 2.1.0 | v 10.0.0 
-delphix_oracle_dsource | v 3.0.0 | v 10.0.0 
-delphix_database_postgresql | v 3.2.0 | v 14.0.0 
+--- |------------------| --- | 
+delphix_vdb | v 1.0.0          | v 2.0.0 
+delphix_vdb_group | v 1.0.0          | v 2.0.0 
+delphix_environment | v 1.0.0          | v 2.0.0 
+delphix_appdata_dsource | v 2.1.0          | v 10.0.0 
+delphix_oracle_dsource | v 3.1.0          | v 10.0.0 
+delphix_database_postgresql | v 3.2.0          | v 14.0.0 
