@@ -557,12 +557,6 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		d.Set(key, old)
 	}
 
-	//if d.HasChanges("wait_time", "skip_wait_for_snapshot_creation") {
-	//	d.Set("wait_time", 3)
-	//	d.Set("skip_wait_for_snapshot_creation", false)
-	//	return diag.Diagnostics{}
-	//}
-
 	return diag.Errorf("Action update not implemented for resource : dSource")
 }
 
