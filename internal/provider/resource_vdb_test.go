@@ -141,8 +141,8 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	vdb_req := client.VDBsApi.ProvisionVdbBySnapshot(context.Background())
 
 	vdb_res, vdb_http_res, vdb_err := vdb_req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
-	if diags := apiErrorResponseHelper(vdb_res, vdb_http_res, vdb_err); diags != nil {
-		println("An error occured during vdb creation: " + vdb_err.Error())
+	if diags := apiErrorResponseHelper(context.Background(), vdb_res, vdb_http_res, vdb_err); diags != nil {
+		println("An error occurred during vdb creation: " + vdb_err.Error())
 		return "" // return empty config to indicate config error
 	}
 	vdb_id = *vdb_res.VdbId
@@ -163,8 +163,8 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).BookmarkCreateParameters(*bookmark)
 	bk_res, bk_http_res, bk_err := bookmark_req.Execute()
 
-	if diags := apiErrorResponseHelper(bk_res, bk_http_res, bk_err); diags != nil {
-		println("An error occured during bookmark creation: " + bk_err.Error())
+	if diags := apiErrorResponseHelper(context.Background(), bk_res, bk_http_res, bk_err); diags != nil {
+		println("An error occurred during bookmark creation: " + bk_err.Error())
 		return ""
 	}
 	bookmark_id = *bk_res.Bookmark.Id
@@ -173,7 +173,7 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	bk_job_res, bk_job_err := PollJobStatus(*bk_res.Job.Id, context.Background(), client)
 
 	if bk_job_res == Failed || bk_job_res == Canceled || bk_job_res == Abandoned {
-		println("An error occured during bookmark job polling: " + bk_job_err)
+		println("An error occurred during bookmark job polling: " + bk_job_err)
 		return "" // return empty config to indicate config error
 	}
 
