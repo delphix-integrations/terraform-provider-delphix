@@ -533,7 +533,6 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"wait_time": {
 				Type:     schema.TypeInt,
-				Default:  3,
 				Optional: true,
 			},
 			"skip_wait_for_snapshot_creation": {
