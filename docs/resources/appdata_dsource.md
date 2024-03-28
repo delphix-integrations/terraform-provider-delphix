@@ -13,6 +13,9 @@ The Appdata dSource resource allows Terraform to create and delete AppData dSour
 ## Upgrade Guide
 * Any new dSource created post Version>=3.2.1 can set `wait_time` to wait for snapshot creation , dSources created prior to this version will not support this capability 
 
+## Note
+* `status` and `enabled` are subject to change in the tfstate file based on the dSource state.
+
 ## Example Usage
 
 The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show working examples.
