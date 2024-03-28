@@ -8,7 +8,10 @@ The Appdata dSource resource allows Terraform to create and delete AppData dSour
 ## System Requirements
 
 * Data Control Tower v10.0.1+ is required for dSource management. Lower versions are not supported.
-* This Appdata dSource Resource only supports Appdata based datasources , such as POSTGRES,SAP HANA, IBM Db2, etc.The below examples are shown from the PostgreSQL context. See the Oracle dSource Resource for the support of Oracle. The Delphix Provider does not support Oracle, SQL Server, or SAP ASE.
+* This Appdata dSource Resource only supports Appdata based datasource's , such as POSTGRES,SAP HANA, IBM Db2, etc.The below examples are shown from the PostgreSQL context. See the Oracle dSource Resource for the support of Oracle. The Delphix Provider does not support Oracle, SQL Server, or SAP ASE.
+
+## Upgrade Guide
+* Any new dSource created post Version>=3.2.1 can set `wait_time` to wait for snapshot creation , dSources created prior to this version will not support this capability 
 
 ## Example Usage
 
@@ -183,4 +186,4 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `skip_wait_for_snapshot_creation` - (Optional) By default this resource will wait for a snapshot to be created post-dSource creation. This ensure a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`.
 
-* `wait_time` - (Optional) By default this resource waits 3 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
+* `wait_time` - (Optional) By default this resource waits 0 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
