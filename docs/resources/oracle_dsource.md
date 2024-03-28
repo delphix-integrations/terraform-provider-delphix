@@ -10,6 +10,12 @@ The Oracle dSource resource allows Terraform to create and delete Oracle dSource
 * Data Control Tower v10.0.1+ is required for dSource management. Lower versions are not supported.
 * This Oracle dSource Resource only supports Oracle. See the AppData dSource Resource for the support of other connectors (i.e. AppData), such as PostgreSQL and SAP HANA. The Delphix Provider does not support SQL Server or SAP ASE.
 
+## Upgrade Guide
+* Any new dSource created post Version>=3.2.1 can set `wait_time` to wait for snapshot creation , dSources created prior to this version will not support this capability
+
+## Note
+* `status` and `enabled` are subject to change in the state file based on the dSource state.
+
 ## Example Usage
 
 * The linking of a dSource can be performed via direct ingestion as shown in the example below
