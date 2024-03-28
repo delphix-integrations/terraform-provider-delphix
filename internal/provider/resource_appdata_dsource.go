@@ -283,10 +283,6 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"storage_size": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"plugin_version": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -529,7 +525,6 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
 	d.Set("is_replica", result.GetIsReplica())
-	d.Set("storage_size", result.GetStorageSize())
 	d.Set("plugin_version", result.GetPluginVersion())
 	d.Set("creation_date", result.GetCreationDate().String())
 	d.Set("group_name", result.GetGroupName())

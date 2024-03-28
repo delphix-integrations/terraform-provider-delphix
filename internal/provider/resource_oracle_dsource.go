@@ -487,10 +487,6 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"storage_size": {
-				Type:     schema.TypeInt,
-				Computed: true,
-			},
 			"plugin_version": {
 				Type:     schema.TypeString,
 				Computed: true,
