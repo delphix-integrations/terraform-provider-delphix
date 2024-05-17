@@ -2,10 +2,12 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
@@ -109,10 +111,17 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 		returnedHosts := make([]interface{}, len(hosts))
 		for i, host := range hosts {
 			returnedHost := make(map[string]interface{})
+			returnedHost["id"] = host.GetId()
 			returnedHost["hostname"] = host.GetHostname()
 			returnedHost["os_name"] = host.GetOsName()
 			returnedHost["os_version"] = host.GetOsVersion()
 			returnedHost["memory_size"] = host.GetMemorySize()
+			// returnedHost["ssh_port"] = host.GetSshPort()
+			// returnedHost["toolkit_path"] = host.GetToolkitPath()
+			// returnedHost["processor_type"] = host.GetProcessorType()
+			// returnedHost["timezone"] = host.GetTimezone()
+			// returnedHost["available"] = host.GetAvailable()
+			// returnedHost["nfs_addresses"] = host.GetNfsAddresses()
 			returnedHosts[i] = returnedHost
 		}
 		return returnedHosts
@@ -207,3 +216,118 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		}
 	}
 }
+
+func filterVDBs(ctx context.Context, client *dctapi.APIClient, envId string) ([]dctapi.VDB, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter VBDs by envId "+envId)
+	vdbSearchExpr := dctapi.NewSearchBody()
+	vdbSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
+
+	apiReq := client.VDBsApi.SearchVdbs(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*vdbSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Disable VDB "+vdbId)
+	disableVDBParam := dctapi.NewDisableVDBParameters()
+	apiRes, httpRes, err := client.VDBsApi.DisableVdb(ctx, vdbId).DisableVDBParameters(*disableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB disable Job Polling failed. Error: "+job_err)
+		//return here
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit
+
+func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Enable VDB "+vdbId)
+	enableVDBParam := dctapi.NewEnableVDBParameters()
+	apiRes, httpRes, err := client.VDBsApi.EnableVdb(ctx, vdbId).EnableVDBParameters(*enableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB enable Job Polling failed. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit
+
+func filterSources(ctx context.Context, client *dctapi.APIClient, envId string) ([]dctapi.Source, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter Sources by envId "+envId)
+	sourceSearchExpr := dctapi.NewSearchBody()
+	sourceSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
+	apiReq := client.SourcesApi.SearchSources(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*sourceSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func filterdSources(ctx context.Context, client *dctapi.APIClient, sourceIds []string) ([]dctapi.DSource, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter dSources by SourceIds "+strings.Join(sourceIds, ", "))
+	dsourceSearchExpr := dctapi.NewSearchBody()
+	dsourceSearchExpr.SetFilterExpression(fmt.Sprintf("source_id in ['%s']", strings.Join(sourceIds, "', '")))
+	tflog.Info(ctx, DLPX+INFO+"Filter dSources by SourceIds "+dsourceSearchExpr.GetFilterExpression())
+	apiReq := client.DSourcesApi.SearchDsources(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*dsourceSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func disabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Disable dSource "+dsourceId)
+	disableDsourceParam := dctapi.NewDisableDsourceParameters()
+	apiRes, httpRes, err := client.DSourcesApi.DisableDsource(ctx, dsourceId).DisableDsourceParameters(*disableDsourceParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"dSource disable Job Polling failed. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit
+
+func enabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Enable dSource "+dsourceId)
+	enableDsourceParam := dctapi.NewEnableDsourceParameters()
+	apiRes, httpRes, err := client.DSourcesApi.EnableDsource(ctx, dsourceId).EnableDsourceParameters(*enableDsourceParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"dSource enable Job Polling failed. Error: "+job_res)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit

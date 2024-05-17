@@ -3,9 +3,10 @@ package provider
 import (
 	"context"
 	"encoding/json"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -1585,21 +1586,9 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"database_name",
 		"truncate_log_on_checkpoint",
 		"repository_id",
-		"pre_refresh",
-		"post_refresh",
-		"pre_rollback",
-		"post_rollback",
-		"configure_clone",
-		"pre_snapshot",
-		"post_snapshot",
-		"pre_start",
-		"post_start",
-		"pre_stop",
-		"post_stop",
 		"file_mapping_rules",
 		"oracle_instance_name",
 		"unique_name",
-		"mount_point",
 		"open_reset_logs",
 		"snapshot_policy_id",
 		"retention_policy_id",
@@ -1609,8 +1598,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"os_username",
 		"os_password",
 		"archive_log",
-		"custom_env_vars",
-		"custom_env_files",
 		"timestamp",
 		"timestamp_in_database_timezone",
 		"snapshot_id") {
@@ -1622,6 +1609,124 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 
 		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	}
+
+	nvdh := dctapi.NewVirtualDatasetHooks()
+
+	if d.HasChange("pre_refresh") {
+		if v, has_v := d.GetOk("pre_refresh"); has_v {
+			nvdh.SetPreRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPreRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_refresh") {
+		if v, has_v := d.GetOk("post_refresh"); has_v {
+			nvdh.SetPostRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPostRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_rollback") {
+		if v, has_v := d.GetOk("pre_rollback"); has_v {
+			nvdh.SetPreRollback(toHookArray(v))
+		} else {
+			nvdh.SetPreRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_rollback") {
+		if v, has_v := d.GetOk("post_rollback"); has_v {
+			nvdh.SetPostRollback(toHookArray(v))
+		} else {
+			nvdh.SetPostRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("configure_clone") {
+		if v, has_v := d.GetOk("configure_clone"); has_v {
+			nvdh.SetConfigureClone(toHookArray(v))
+		} else {
+			nvdh.SetConfigureClone([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_snapshot") {
+		if v, has_v := d.GetOk("pre_snapshot"); has_v {
+			nvdh.SetPreSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPreSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_snapshot") {
+		if v, has_v := d.GetOk("post_snapshot"); has_v {
+			nvdh.SetPostSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPostSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_start") {
+		if v, has_v := d.GetOk("pre_start"); has_v {
+			nvdh.SetPreStart(toHookArray(v))
+		} else {
+			nvdh.SetPreStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_start") {
+		if v, has_v := d.GetOk("post_start"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_stop") {
+		if v, has_v := d.GetOk("pre_stop"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_stop") {
+		if v, has_v := d.GetOk("post_stop"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if nvdh != nil {
+		updateVDBParam.SetHooks(*nvdh)
+	}
+
+	if d.HasChange("mount_point") {
+		updateVDBParam.SetMountPoint(d.Get("mount_point").(string))
+	}
+
+	if d.HasChange("custom_env_files") {
+		if v, has_v := d.GetOk("custom_env_files"); has_v {
+			updateVDBParam.SetCustomEnvFiles(toStringArray(v))
+		} else {
+			updateVDBParam.SetCustomEnvFiles([]string{})
+		}
+	}
+	if d.HasChange("custom_env_vars") {
+		if v, has_v := d.GetOk("custom_env_vars"); has_v {
+			custom_env_vars := make(map[string]string)
+
+			for k, v := range v.(map[string]interface{}) {
+				custom_env_vars[k] = v.(string)
+			}
+			updateVDBParam.SetCustomEnvVars(custom_env_vars)
+		} else {
+			updateVDBParam.SetCustomEnvVars(map[string]string{})
+		}
 	}
 
 	if d.HasChange("template_id") {
@@ -1691,6 +1796,11 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 
+	if diags := disableVDB(ctx, client, d.Get("id").(string)); diags != nil {
+		revertChanges(d, changedKeys)
+		return diags //if failure should we enable
+	}
+
 	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
@@ -1711,9 +1821,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
+	if diags := enableVDB(ctx, client, d.Get("id").(string)); diags != nil {
+		return diags //if failure should we enable
+	}
+
 	return diags
 }
-
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
