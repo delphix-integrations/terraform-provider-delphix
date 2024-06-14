@@ -202,6 +202,9 @@ resource "delphix_vdb" "vdb_name" {
 
 * `new_dbid` - (Optional) [Updatable] Option to generate a new DB ID for the created VDB (Oracle Only).
 
+* `masked` - (Optional) Option to create a Masked VDB. Note: You should define a `configure_clone` script in the Hooks step to mask the dataset. The selection of the "Mask this VDB" option will cause the data to be marked as masked, whether you have defined a script to do so or not.
+If you do not define a script to mask the dataset, the data will not be masked unless there is a masking job associated with the source dataset.
+
 * `listener_ids` - (Optional) [Updatable] The listener IDs for this provision operation (Oracle Only). This is a list of listener ids. For eg: [ "listener-123", "listener-456" ]
 
 * `custom_env_vars` - (Optional) 
