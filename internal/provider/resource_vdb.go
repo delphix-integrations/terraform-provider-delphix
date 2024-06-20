@@ -3,11 +3,11 @@ package provider
 import (
 	"context"
 	"encoding/json"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
 	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go/v14"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -519,6 +519,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"masked": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"listener_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -861,6 +865,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
 	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
+	}
 	if v, has_v := d.GetOkExists("listener_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
 	}
@@ -1098,6 +1105,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBByTimestampParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
@@ -1340,6 +1350,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
 	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
+	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
 	}
@@ -1549,7 +1562,6 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	config_params, _ := json.Marshal(result.GetConfigParams())
 	d.Set("config_params", string(config_params))
 	d.Set("additional_mount_points", flattenAdditionalMountPoints(result.GetAdditionalMountPoints()))
-
 	d.Set("id", vdbId)
 
 	return diags
