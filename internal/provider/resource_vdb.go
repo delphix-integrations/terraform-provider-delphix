@@ -1612,6 +1612,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		"oracle_instance_name",
 		"unique_name",
 		"mount_point",
+		"masked",
 		"open_reset_logs",
 		"snapshot_policy_id",
 		"retention_policy_id",
