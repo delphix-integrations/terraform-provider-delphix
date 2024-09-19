@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -23,7 +23,7 @@ var SLEEP_TIME = 10
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
 
-	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
+	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
 		resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
 		if resBodyErr != nil {
@@ -37,7 +37,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	var i = 0
 	for res.GetStatus() == Pending || res.GetStatus() == Started {
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
-		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
+		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
 				return "", "Received nil response for Job ID " + job_id
@@ -116,12 +116,15 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 			returnedHost["os_name"] = host.GetOsName()
 			returnedHost["os_version"] = host.GetOsVersion()
 			returnedHost["memory_size"] = host.GetMemorySize()
-			// returnedHost["ssh_port"] = host.GetSshPort()
-			// returnedHost["toolkit_path"] = host.GetToolkitPath()
-			// returnedHost["processor_type"] = host.GetProcessorType()
-			// returnedHost["timezone"] = host.GetTimezone()
-			// returnedHost["available"] = host.GetAvailable()
-			// returnedHost["nfs_addresses"] = host.GetNfsAddresses()
+			returnedHost["ssh_port"] = host.GetSshPort()
+			returnedHost["toolkit_path"] = host.GetToolkitPath()
+			returnedHost["processor_type"] = host.GetProcessorType()
+			returnedHost["timezone"] = host.GetTimezone()
+			returnedHost["available"] = host.GetAvailable()
+			returnedHost["nfs_addresses"] = host.GetNfsAddresses()
+			returnedHost["java_home"] = host.GetJavaHome()
+			returnedHost["oracle_tde_keystores_root_path"] = host.GetOracleTdeKeystoresRootPath()
+
 			returnedHosts[i] = returnedHost
 		}
 		return returnedHosts
@@ -139,6 +142,8 @@ func flattenHostRepositories(repos []dctapi.Repository) []interface{} {
 			returnedRepo["database_type"] = host.GetDatabaseType()
 			returnedRepo["allow_provisioning"] = host.GetAllowProvisioning()
 			returnedRepo["is_staging"] = host.GetIsStaging()
+			returnedRepo["oracle_base"] = host.GetOracleBase()
+			returnedRepo["bits"] = host.GetBits()
 			returnedRepos[i] = returnedRepo
 		}
 		return returnedRepos
@@ -192,7 +197,7 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		var api_err error
 		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
 		for attempt := 1; attempt <= maxAttempts; attempt++ {
-			snapshotRes, _, api_err = client.DSourcesApi.GetDsourceSnapshots(ctx, d.Id()).Execute()
+			snapshotRes, _, api_err = client.DSourcesAPI.GetDsourceSnapshots(ctx, d.Id()).Execute()
 			if api_err != nil {
 				tflog.Error(ctx, DLPX+ERROR+"Error fetching dSource snapshots: "+api_err.Error())
 				break // Exit the loop on error to avoid unnecessary retries
@@ -222,7 +227,7 @@ func filterVDBs(ctx context.Context, client *dctapi.APIClient, envId string) ([]
 	vdbSearchExpr := dctapi.NewSearchBody()
 	vdbSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
 
-	apiReq := client.VDBsApi.SearchVdbs(ctx)
+	apiReq := client.VDBsAPI.SearchVdbs(ctx)
 	apiRes, httpRes, err := apiReq.SearchBody(*vdbSearchExpr).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return nil, diags
@@ -233,7 +238,7 @@ func filterVDBs(ctx context.Context, client *dctapi.APIClient, envId string) ([]
 func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
 	tflog.Info(ctx, DLPX+INFO+"Disable VDB "+vdbId)
 	disableVDBParam := dctapi.NewDisableVDBParameters()
-	apiRes, httpRes, err := client.VDBsApi.DisableVdb(ctx, vdbId).DisableVDBParameters(*disableVDBParam).Execute()
+	apiRes, httpRes, err := client.VDBsAPI.DisableVdb(ctx, vdbId).DisableVDBParameters(*disableVDBParam).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -253,7 +258,7 @@ func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) dia
 func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
 	tflog.Info(ctx, DLPX+INFO+"Enable VDB "+vdbId)
 	enableVDBParam := dctapi.NewEnableVDBParameters()
-	apiRes, httpRes, err := client.VDBsApi.EnableVdb(ctx, vdbId).EnableVDBParameters(*enableVDBParam).Execute()
+	apiRes, httpRes, err := client.VDBsAPI.EnableVdb(ctx, vdbId).EnableVDBParameters(*enableVDBParam).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -273,7 +278,7 @@ func filterSources(ctx context.Context, client *dctapi.APIClient, envId string) 
 	tflog.Info(ctx, DLPX+INFO+"Filter Sources by envId "+envId)
 	sourceSearchExpr := dctapi.NewSearchBody()
 	sourceSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
-	apiReq := client.SourcesApi.SearchSources(ctx)
+	apiReq := client.SourcesAPI.SearchSources(ctx)
 	apiRes, httpRes, err := apiReq.SearchBody(*sourceSearchExpr).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return nil, diags
@@ -286,7 +291,7 @@ func filterdSources(ctx context.Context, client *dctapi.APIClient, sourceIds []s
 	dsourceSearchExpr := dctapi.NewSearchBody()
 	dsourceSearchExpr.SetFilterExpression(fmt.Sprintf("source_id in ['%s']", strings.Join(sourceIds, "', '")))
 	tflog.Info(ctx, DLPX+INFO+"Filter dSources by SourceIds "+dsourceSearchExpr.GetFilterExpression())
-	apiReq := client.DSourcesApi.SearchDsources(ctx)
+	apiReq := client.DSourcesAPI.SearchDsources(ctx)
 	apiRes, httpRes, err := apiReq.SearchBody(*dsourceSearchExpr).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return nil, diags
@@ -297,7 +302,7 @@ func filterdSources(ctx context.Context, client *dctapi.APIClient, sourceIds []s
 func disabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
 	tflog.Info(ctx, DLPX+INFO+"Disable dSource "+dsourceId)
 	disableDsourceParam := dctapi.NewDisableDsourceParameters()
-	apiRes, httpRes, err := client.DSourcesApi.DisableDsource(ctx, dsourceId).DisableDsourceParameters(*disableDsourceParam).Execute()
+	apiRes, httpRes, err := client.DSourcesAPI.DisableDsource(ctx, dsourceId).DisableDsourceParameters(*disableDsourceParam).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -316,7 +321,7 @@ func disabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId str
 func enabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
 	tflog.Info(ctx, DLPX+INFO+"Enable dSource "+dsourceId)
 	enableDsourceParam := dctapi.NewEnableDsourceParameters()
-	apiRes, httpRes, err := client.DSourcesApi.EnableDsource(ctx, dsourceId).EnableDsourceParameters(*enableDsourceParam).Execute()
+	apiRes, httpRes, err := client.DSourcesAPI.EnableDsource(ctx, dsourceId).EnableDsourceParameters(*enableDsourceParam).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}

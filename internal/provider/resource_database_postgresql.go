@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -124,6 +124,9 @@ func resourceSource() *schema.Resource {
 				},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -146,7 +149,7 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 		sourceCreateParameters.SetEngineId(v.(string))
 	}
 
-	req := client.SourcesApi.CreatePostgresSource(ctx)
+	req := client.SourcesAPI.CreatePostgresSource(ctx)
 
 	apiRes, httpRes, err := req.PostgresSourceCreateParameters(*sourceCreateParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -184,12 +187,12 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 	source_id := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
+		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
 	})
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
+			return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -262,7 +265,7 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		updateSourceParam.SetName(d.Get("name").(string))
 	}
 
-	res, httpRes, err := client.SourcesApi.UpdatePostgresSourceById(ctx, d.Get("id").(string)).PostgresSourceUpdateParameters(*updateSourceParam).Execute()
+	res, httpRes, err := client.SourcesAPI.UpdatePostgresSourceById(ctx, d.Get("id").(string)).PostgresSourceUpdateParameters(*updateSourceParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
@@ -290,7 +293,7 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 
 	source_id := d.Id()
 
-	res, httpRes, err := client.SourcesApi.DeleteSource(ctx, source_id).Execute()
+	res, httpRes, err := client.SourcesAPI.DeleteSource(ctx, source_id).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
@@ -306,7 +309,7 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.SourcesApi.GetSourceById(ctx, source_id).Execute()
+		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
 	})
 
 	return diags

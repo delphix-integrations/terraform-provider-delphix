@@ -105,7 +105,7 @@ func testOracleDsourceExists(n string, sourceValue string) resource.TestCheckFun
 		}
 
 		client := testAccProvider.Meta().(*apiClient).client
-		res, _, err := client.DSourcesApi.GetDsourceById(context.Background(), dsourceId).Execute()
+		res, _, err := client.DSourcesAPI.GetDsourceById(context.Background(), dsourceId).Execute()
 		if err != nil {
 			return err
 		}
@@ -129,7 +129,7 @@ func testOracleDsourceDestroy(s *terraform.State) error {
 
 		dsourceId := rs.Primary.ID
 
-		_, httpResp, _ := client.DSourcesApi.GetDsourceById(context.Background(), dsourceId).Execute()
+		_, httpResp, _ := client.DSourcesAPI.GetDsourceById(context.Background(), dsourceId).Execute()
 		if httpResp == nil {
 			return fmt.Errorf("Dsource has not been deleted")
 		}

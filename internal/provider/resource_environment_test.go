@@ -86,7 +86,7 @@ func testAccCheckDctEnvResourceExists(n string, hostname string) resource.TestCh
 		}
 
 		client := testAccProvider.Meta().(*apiClient).client
-		res, _, err := client.EnvironmentsApi.GetEnvironmentById(context.Background(), EnvId).Execute()
+		res, _, err := client.EnvironmentsAPI.GetEnvironmentById(context.Background(), EnvId).Execute()
 		if err != nil {
 			return err
 		}
@@ -110,7 +110,7 @@ func testAccCheckEnvDestroy(s *terraform.State) error {
 
 		EnvId := rs.Primary.ID
 
-		_, httpResp, _ := client.EnvironmentsApi.GetEnvironmentById(context.Background(), EnvId).Execute()
+		_, httpResp, _ := client.EnvironmentsAPI.GetEnvironmentById(context.Background(), EnvId).Execute()
 		if httpResp == nil {
 			return fmt.Errorf("Environment has not been deleted")
 		}
