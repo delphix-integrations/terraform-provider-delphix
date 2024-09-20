@@ -34,5 +34,26 @@ var updatableEnvKeys = map[string]bool{
 	"oracle_base":                    true,
 	"bits":                           true,
 	"oracle_tde_keystores_root_path": true,
-	"tag":                            true,
+	"tags":                           true,
+}
+
+var isDestructiveUpdate = map[string]bool{
+	"name":                           false,
+	"cluster_home":                   true,
+	"connector_port":                 true,
+	"username":                       true,
+	"password":                       true,
+	"java_home":                      false,
+	"description":                    false,
+	"hostname":                       true,
+	"ssh_port":                       true,
+	"toolkit_path":                   true,
+	"nfs_address":                    true,
+	"allow_provisioning":             false,
+	"is_staging":                     false,
+	"version":                        false,
+	"oracle_base":                    false,
+	"bits":                           false,
+	"oracle_tde_keystores_root_path": true,
+	"tags":                           false,
 }
