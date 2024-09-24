@@ -151,6 +151,20 @@ func flattenHostRepositories(repos []dctapi.Repository) []interface{} {
 	return make([]interface{}, 0)
 }
 
+func flattenTags(tags []dctapi.Tag) []interface{} {
+	if tags != nil {
+		returnedTags := make([]interface{}, len(tags))
+		for i, tag := range tags {
+			returnedTag := make(map[string]interface{})
+			returnedTag["id"] = tag.GetKey()
+			returnedTag["name"] = tag.GetValue()
+			returnedTags[i] = returnedTag
+		}
+		return returnedTags
+	}
+	return make([]interface{}, 0)
+}
+
 func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMountPoint) []interface{} {
 	if additional_mount_points != nil {
 		returned_additional_mount_points := make([]interface{}, len(additional_mount_points))
@@ -318,7 +332,7 @@ func disabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId str
 	return nil
 } //decide if continue or exit
 
-func enabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
+func enableDsource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
 	tflog.Info(ctx, DLPX+INFO+"Enable dSource "+dsourceId)
 	enableDsourceParam := dctapi.NewEnableDsourceParameters()
 	apiRes, httpRes, err := client.DSourcesAPI.EnableDsource(ctx, dsourceId).EnableDsourceParameters(*enableDsourceParam).Execute()
