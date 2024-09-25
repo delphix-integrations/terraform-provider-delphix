@@ -156,8 +156,8 @@ func flattenTags(tags []dctapi.Tag) []interface{} {
 		returnedTags := make([]interface{}, len(tags))
 		for i, tag := range tags {
 			returnedTag := make(map[string]interface{})
-			returnedTag["id"] = tag.GetKey()
-			returnedTag["name"] = tag.GetValue()
+			returnedTag["key"] = tag.GetKey()
+			returnedTag["value"] = tag.GetValue()
 			returnedTags[i] = returnedTag
 		}
 		return returnedTags
