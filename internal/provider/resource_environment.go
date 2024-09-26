@@ -343,6 +343,10 @@ func resourceEnvironment() *schema.Resource {
 					},
 				},
 			},
+			"user_ref": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 		},
 	}
 }
@@ -717,12 +721,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		tflog.Info(ctx, "envUser")
 		// envUser Update
 		envUserUpdateParam := dctapi.NewEnvironmentUserParams()
-		if d.HasChange("username") {
+		if d.HasChange("username") || d.HasChange("password") {
 			if v, has_v := d.GetOk("username"); has_v {
 				envUserUpdateParam.SetUsername(v.(string))
 			}
-		}
-		if d.HasChange("password") {
 			if v, has_v := d.GetOk("password"); has_v {
 				envUserUpdateParam.SetPassword(v.(string))
 			}
