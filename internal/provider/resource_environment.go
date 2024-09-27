@@ -862,20 +862,25 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if d.HasChange("tags") {
 			// delete old tag
 			tflog.Info(ctx, ">>>>>>>>>>>>delete tags")
-			_, newTag := d.GetChange("tags")
-			deleteTag := *dctapi.NewDeleteTag()
-			tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
-			tflog.Info(ctx, ">>DELETE TAG RESP: "+tagDelResp.Status)
-			if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
-				revertChanges(d, changedKeys)
-				return diags
+			oldTag, newTag := d.GetChange("tags")
+			if len(toTagArray(oldTag)) != 0 {
+				tflog.Info(ctx, "&&&&&&&&&&&>>>>>>>>>>>>delete tags"+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
+				tflog.Info(ctx, ">>DELETE TAG RESP: "+tagDelResp.Status)
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
 			}
 			// create tag
-			tflog.Info(ctx, ">>>>>>>>>>>>create tags")
-			_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
-			if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
-				revertChanges(d, changedKeys)
-				return diags
+			if len(toTagArray(newTag)) != 0 {
+				tflog.Info(ctx, ">>>>>>>>>>>>create tags")
+				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
 			}
 		}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -26,9 +27,63 @@ func TestAccEnvironment_positive(t *testing.T) {
 			{
 				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
 				Check: resource.ComposeTestCheckFunc(
-					// TODO: hostname isn't not set yet?
 					testAccCheckDctEnvResourceExists("delphix_environment.new_env", hostname),
 					resource.TestCheckResourceAttr("delphix_environment.new_env", "hostname", hostname)),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_update_positive(t *testing.T) {
+	engineId := os.Getenv("ACC_ENV_ENGINE_ID")
+	username := os.Getenv("ACC_ENV_USERNAME")
+	password := os.Getenv("ACC_ENV_PASSWORD")
+	hostname := os.Getenv("ACC_ENV_HOSTNAME")
+	toolkitPath := os.Getenv("ACC_ENV_TOOLKIT_PATH")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccEnvPreCheck(t, engineId, username, password, hostname, toolkitPath) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckEnvDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctEnvResourceExists("delphix_environment.new_env", hostname),
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "hostname", hostname)),
+			},
+			{
+				// positive env update case
+				Config: testAccEnvUpdatePositive(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "name", "updated-name")),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_update_negative(t *testing.T) {
+	engineId := os.Getenv("ACC_ENV_ENGINE_ID")
+	username := os.Getenv("ACC_ENV_USERNAME")
+	password := os.Getenv("ACC_ENV_PASSWORD")
+	hostname := os.Getenv("ACC_ENV_HOSTNAME")
+	toolkitPath := os.Getenv("ACC_ENV_TOOLKIT_PATH")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccEnvPreCheck(t, engineId, username, password, hostname, toolkitPath) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckEnvDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctEnvResourceExists("delphix_environment.new_env", hostname),
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "hostname", hostname)),
+			},
+			{
+				// negative update test case
+				Config:      testAccEnvUpdateNegative(engineId, username, password, "updated-hostname", toolkitPath),
+				ExpectError: regexp.MustCompile("Error running apply: exit status 1"),
 			},
 		},
 	})
@@ -121,4 +176,32 @@ func testAccCheckEnvDestroy(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func testAccEnvUpdatePositive(engineId string, username string, password string, hostname string, toolkitPath string) string {
+	return fmt.Sprintf(`
+	resource "delphix_environment" "new_env" {
+		engine_id = %s
+		os_name = "UNIX"
+		username = "%s"
+		password = "%s"
+		hostname = "%s"
+		toolkit_path = "%s"
+		name = "updated-name"
+	}
+	`, engineId, escape(username), escape(password), escape(hostname), escape(toolkitPath))
+}
+
+func testAccEnvUpdateNegative(engineId string, username string, password string, hostname string, toolkitPath string) string {
+	return fmt.Sprintf(`
+	resource "delphix_environment" "new_env" {
+		engine_id = %s
+		os_name = "UNIX"
+		username = "%s"
+		password = "%s"
+		hostname = "%s"
+		toolkit_path = "%s"
+		name = "test-acc-name"
+	}
+	`, engineId, escape(username), escape(password), escape(hostname), escape(toolkitPath))
 }
