@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -1562,54 +1563,127 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
+	vdbId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "pre_refresh") {
+			k = "pre_refresh"
+		}
+		if strings.Contains(k, "post_refresh") {
+			k = "post_refresh"
+		}
+		if strings.Contains(k, "configure_clone") {
+			k = "configure_clone"
+		}
+		if strings.Contains(k, "pre_snapshot") {
+			k = "pre_snapshot"
+		}
+		if strings.Contains(k, "post_snapshot") {
+			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_start") {
+			k = "pre_start"
+		}
+		if strings.Contains(k, "post_start") {
+			k = "post_start"
+		}
+		if strings.Contains(k, "pre_stop") {
+			k = "pre_stop"
+		}
+		if strings.Contains(k, "post_stop") {
+			k = "post_stop"
+		}
 		if d.HasChange(k) {
+			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
-
-	if d.HasChanges(
-		"auto_select_repository",
-		"source_data_id",
-		"id",
-		"database_type",
-		"database_version",
-		"status",
-		"ip_address",
-		"fqdn",
-		"parent_id",
-		"group_name",
-		"creation_date",
-		"target_group_id",
-		"database_name",
-		"truncate_log_on_checkpoint",
-		"repository_id",
-		"file_mapping_rules",
-		"oracle_instance_name",
-		"unique_name",
-		"open_reset_logs",
-		"snapshot_policy_id",
-		"retention_policy_id",
-		"recovery_model",
-		"online_log_groups",
-		"online_log_size",
-		"os_username",
-		"os_password",
-		"archive_log",
-		"timestamp",
-		"timestamp_in_database_timezone",
-		"snapshot_id") {
-
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
-
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	for _, ck := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+ck)
 	}
+
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
+
+	// var vdbs []dctapi.VDB
+	// var vdbDiags diag.Diagnostics
+
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+key)
+		if !updatableVdbKeys[key] {
+			updateFailure = true
+			tflog.Info(ctx, ">>>>>!!!<<<<<<"+key)
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
+	}
+
+	if updateFailure {
+		tflog.Info(ctx, "######updatefailure")
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveVdbUpdate[key] {
+			tflog.Info(ctx, "######isDestructiveUpdate"+key)
+			destructiveUpdate = true
+		}
+	}
+	if destructiveUpdate {
+		if diags := disableVDB(ctx, client, vdbId); diags != nil {
+			tflog.Error(ctx, "failure in disabling vdbs")
+			//disableVdbFailure = true
+			revertChanges(d, changedKeys)
+			return diags
+		}
+	}
+	// if d.HasChanges(
+	// 	"auto_select_repository",
+	// 	"source_data_id",
+	// 	"id",
+	// 	"database_type",
+	// 	"database_version",
+	// 	"status",
+	// 	"ip_address",
+	// 	"fqdn",
+	// 	"parent_id",
+	// 	"group_name",
+	// 	"creation_date",
+	// 	"target_group_id",
+	// 	"database_name",
+	// 	"truncate_log_on_checkpoint",
+	// 	"repository_id",
+	// 	"file_mapping_rules",
+	// 	"oracle_instance_name",
+	// 	"unique_name",
+	// 	"open_reset_logs",
+	// 	"snapshot_policy_id",
+	// 	"retention_policy_id",
+	// 	"recovery_model",
+	// 	"online_log_groups",
+	// 	"online_log_size",
+	// 	"os_username",
+	// 	"os_password",
+	// 	"archive_log",
+	// 	"timestamp",
+	// 	"timestamp_in_database_timezone",
+	// 	"snapshot_id") {
+
+	// 	// revert and set the old value to the changed keys
+	// 	for _, key := range changedKeys {
+	// 		old, _ := d.GetChange(key)
+	// 		d.Set(key, old)
+	// 	}
+
+	// 	return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	// }
 
 	nvdh := dctapi.NewVirtualDatasetHooks()
 
@@ -1794,11 +1868,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		config_params := make(map[string]interface{})
 		json.Unmarshal([]byte(d.Get("config_params").(string)), &config_params)
 		updateVDBParam.SetConfigParams(config_params)
-	}
-
-	if diags := disableVDB(ctx, client, d.Get("id").(string)); diags != nil {
-		revertChanges(d, changedKeys)
-		return diags //if failure should we enable
 	}
 
 	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()

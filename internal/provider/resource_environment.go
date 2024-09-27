@@ -604,7 +604,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	// find if destructive update
 	for _, key := range changedKeys {
-		if isDestructiveUpdate[key] {
+		if isDestructiveEnvUpdate[key] {
 			tflog.Info(ctx, "######isDestructiveUpdate"+key)
 			destructiveUpdate = true
 		}
