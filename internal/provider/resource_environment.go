@@ -48,6 +48,17 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"nfs_addresses": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"oracle_tde_keystores_root_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"staging_environment": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -571,6 +582,9 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
 			k = "tags"
 		}
+		if strings.Contains(k, "nfs_addresses") { // this is because the changed keys are of the form tag.0.keydi
+			k = "nfs_addresses"
+		}
 		if d.HasChange(k) {
 			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
@@ -672,6 +686,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			}
 		}
 	}
+	var failureEvents []string
 	// if no disable failures, proceed to updateen
 	if d.HasChanges(
 		"name",
@@ -700,7 +715,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(ctx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
 		if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 			revertChanges(d, changedKeys)
-			return diags
+			updateFailure = true
+			failureEvents = append(failureEvents, httpRes.Body.Close().Error())
 		}
 
 		job_res, job_err := PollJobStatus(*res.Job.Id, ctx, client)
@@ -711,7 +727,9 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*res.Job.Id+"!")
 			revertChanges(d, changedKeys)
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+			updateFailure = true
+			failureEvents = append(failureEvents, job_err)
+			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
 		}
 	}
 	if d.HasChanges(
@@ -761,7 +779,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
 		if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
 			revertChanges(d, changedKeys)
-			return diags
+			updateFailure = true
+			failureEvents = append(failureEvents, httpResEnvUser.Body.Close().Error())
 		}
 
 		job_res, job_err := PollJobStatus(*resEnvUser.Job.Id, ctx, client)
@@ -772,7 +791,9 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*resEnvUser.Job.Id+"!")
 			revertChanges(d, changedKeys)
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
+			updateFailure = true
+			failureEvents = append(failureEvents, job_err)
+			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
 		}
 	}
 	if d.HasChanges(
@@ -781,7 +802,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		"hostname",
 		"ssh_port",
 		"toolkit_path",
-		"nfs_address",
+		"nfs_addresses",
 		"oracle_tde_keystores_root_path",
 	) {
 		tflog.Info(ctx, "host")
@@ -840,7 +861,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostID).HostUpdateParameters(*hostUpdateParam).Execute()
 		if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
 			revertChanges(d, changedKeys)
-			return diags
+			updateFailure = true
+			failureEvents = append(failureEvents, hostHttpRes.Body.Close().Error())
 		}
 
 		job_res, job_err := PollJobStatus(*hostUpdateRes.Job.Id, ctx, client)
@@ -851,7 +873,9 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*hostUpdateRes.Job.Id+"!")
 			revertChanges(d, changedKeys)
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+			updateFailure = true
+			failureEvents = append(failureEvents, job_err)
+			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
 		}
 
 	}
@@ -870,7 +894,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				tflog.Info(ctx, ">>DELETE TAG RESP: "+tagDelResp.Status)
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
-					return diags
+					updateFailure = true
+					failureEvents = append(failureEvents, tagDelResp.Body.Close().Error())
 				}
 			}
 			// create tag
@@ -899,6 +924,12 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				return diags
 			}
 		}
+	}
+
+	// return the error back
+	if updateFailure {
+		tflog.Error(ctx, "??????ERPRORORRRRRRRR???")
+		return diag.Errorf("[NOT OK] Update failed with error %s", failureEvents)
 	}
 	// ========================Old=============================
 	// if d.HasChanges(

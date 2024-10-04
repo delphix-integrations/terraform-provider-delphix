@@ -1599,12 +1599,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			k = "post_stop"
 		}
 		if d.HasChange(k) {
-			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
+			tflog.Info(ctx, ">>>>>@@@VDB<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
 	for _, ck := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+ck)
+		tflog.Info(ctx, "!!!!!!!VDB!!!!!!!!"+ck)
 	}
 
 	var updateFailure, destructiveUpdate bool = false, false
@@ -1615,16 +1615,16 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// if changedKeys contains non updatable field set a flag
 	for _, key := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+key)
+		tflog.Info(ctx, "!!!!!!!!VDB!!!!!!!"+key)
 		if !updatableVdbKeys[key] {
 			updateFailure = true
-			tflog.Info(ctx, ">>>>>!!!<<<<<<"+key)
+			tflog.Info(ctx, ">>>>>!!!VDB<<<<<<"+key)
 			nonUpdatableField = append(nonUpdatableField, key)
 		}
 	}
 
 	if updateFailure {
-		tflog.Info(ctx, "######updatefailure")
+		tflog.Info(ctx, "######updateVDBfailure")
 		revertChanges(d, changedKeys)
 		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
 	}
@@ -1632,7 +1632,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// find if destructive update
 	for _, key := range changedKeys {
 		if isDestructiveVdbUpdate[key] {
-			tflog.Info(ctx, "######isDestructiveUpdate"+key)
+			tflog.Info(ctx, "######isDestructiveVDBUpdate"+key)
 			destructiveUpdate = true
 		}
 	}
@@ -1874,10 +1874,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
+		revertChanges(d, changedKeys)
 		return diags
 	}
 
