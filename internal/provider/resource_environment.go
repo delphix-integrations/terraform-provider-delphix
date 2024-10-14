@@ -813,7 +813,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		// retrieving new params for the update
 		newHost := newHosts.([]interface{})
 		newHostName := newHost[0].(map[string]interface{})["hostname"].(string)
-		newSshPort := newHost[0].(map[string]interface{})["ssh_port"].(int64)
+		newSshPort := int64(newHost[0].(map[string]interface{})["ssh_port"].(int))
 		newToolkitPath := newHost[0].(map[string]interface{})["toolkit_path"].(string)
 		newJavaHome := newHost[0].(map[string]interface{})["java_home"].(string)
 		newNfsAddress := newHost[0].(map[string]interface{})["nfs_addresses"]
