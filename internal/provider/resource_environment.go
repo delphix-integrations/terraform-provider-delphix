@@ -32,30 +32,11 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
-			"os_name": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
 			"is_cluster": {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
 			"cluster_home": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"hostname": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"nfs_addresses": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-			"oracle_tde_keystores_root_path": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -69,10 +50,6 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"is_target": {
 				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"ssh_port": {
-				Type:     schema.TypeInt,
 				Optional: true,
 			},
 			"toolkit_path": {
@@ -152,10 +129,6 @@ func resourceEnvironment() *schema.Resource {
 				Optional: true,
 			},
 			"ase_db_password": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"java_home": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -253,7 +226,7 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"hosts": {
 				Type:     schema.TypeList,
-				Computed: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"hostname": {
@@ -264,36 +237,12 @@ func resourceEnvironment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"os_version": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"memory_size": {
-							Type:     schema.TypeInt,
-							Required: true,
-						},
-						"id": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
 						"ssh_port": {
 							Type:     schema.TypeInt,
 							Optional: true,
 						},
 						"toolkit_path": {
 							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"processor_type": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"timezone": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"available": {
-							Type:     schema.TypeBool,
 							Optional: true,
 						},
 						"oracle_tde_keystores_root_path": {
@@ -310,6 +259,30 @@ func resourceEnvironment() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
+						},
+						"os_version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"memory_size": {
+							Type:     schema.TypeInt,
+							Computed: true,
+						},
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"processor_type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"timezone": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"available": {
+							Type:     schema.TypeBool,
+							Computed: true,
 						},
 					},
 				},
@@ -368,10 +341,30 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
+	var hostname, os_name, toolkit_path, java_home string
+	var ssh_port int
+	var nfs_addresses interface{}
+	// process hosts
+	if v, has_v := d.GetOk("hosts"); has_v {
+		hosts := v.([]interface{})
+		if len(hosts) > 0 {
+			host := hosts[0].(map[string]interface{}) // Cast host to a map
+			os_name = host["os_name"].(string)
+			// oracle_tde_keystores_root_path = host["oracle_tde_keystores_root_path"].(string)
+			hostname = host["hostname"].(string)
+			toolkit_path = host["toolkit_path"].(string)
+			if val, ok := host["ssh_port"]; ok {
+				ssh_port = val.(int)
+			}
+			java_home = host["java_home"].(string)
+			nfs_addresses = host["nfs_addresses"]
+		}
+	}
+
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
 		d.Get("engine_id").(string),
-		d.Get("os_name").(string),
-		d.Get("hostname").(string),
+		os_name,
+		hostname,
 	)
 
 	//General
@@ -384,11 +377,14 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("name"); has_v {
 		createEnvParams.SetName(v.(string))
 	}
-	if v, has_v := d.GetOk("toolkit_path"); has_v {
-		createEnvParams.SetToolkitPath(v.(string))
+	if toolkit_path != "" {
+		createEnvParams.SetToolkitPath(toolkit_path)
 	}
-	if v, has_v := d.GetOk("ssh_port"); has_v {
-		createEnvParams.SetSshPort(int64(v.(int)))
+	if ssh_port != 0 {
+		createEnvParams.SetSshPort(int64(ssh_port))
+	}
+	if java_home != "" {
+		createEnvParams.SetJavaHome(java_home)
 	}
 	if v, has_v := d.GetOk("ase_db_username"); has_v {
 		createEnvParams.SetAseDbUsername(v.(string))
@@ -396,9 +392,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("ase_db_password"); has_v {
 		createEnvParams.SetAseDbPassword(v.(string))
 	}
-	if v, has_v := d.GetOk("java_home"); has_v {
-		createEnvParams.SetJavaHome(v.(string))
-	}
+
 	if v, has_v := d.GetOk("dsp_keystore_path"); has_v {
 		createEnvParams.SetDspKeystorePath(v.(string))
 	}
@@ -464,7 +458,6 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	// Clusters
-	os_name := d.Get("os_name").(string)
 	if v := d.Get("is_cluster"); v.(bool) {
 		createEnvParams.SetIsCluster(v.(bool))
 		if os_name == "WINDOWS" {
@@ -483,8 +476,8 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("staging_environment"); has_v {
 		createEnvParams.SetStagingEnvironment(v.(string))
 	}
-	if v, has_v := d.GetOk("nfs_addresses"); has_v {
-		createEnvParams.SetNfsAddresses(toStringArray(v))
+	if nfs_addresses != nil {
+		createEnvParams.SetNfsAddresses(toStringArray(nfs_addresses))
 	}
 	if v, has_v := d.GetOk("tags"); has_v {
 		createEnvParams.SetTags(toTagArray(v))
@@ -582,8 +575,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
 			k = "tags"
 		}
-		if strings.Contains(k, "nfs_addresses") { // this is because the changed keys are of the form tag.0.keydi
-			k = "nfs_addresses"
+		if strings.Contains(k, "hosts") { // this is because the changed keys are of the form tag.0.keydi
+			k = "hosts"
 		}
 		if d.HasChange(k) {
 			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
@@ -797,85 +790,100 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 	if d.HasChanges(
+		"hosts",
 		"connector_port",
-		"java_home",
-		"hostname",
-		"ssh_port",
-		"toolkit_path",
-		"nfs_addresses",
-		"oracle_tde_keystores_root_path",
+		// "java_home",
+		// "hostname",
+		// "ssh_port",
+		// "toolkit_path",
+		// "nfs_addresses",
+		// "oracle_tde_keystores_root_path",
 	) {
-		tflog.Info(ctx, "host")
+		tflog.Info(ctx, "hosts")
 		// host update
+		var hostId string
+
+		// get changes
+		oldHosts, newHosts := d.GetChange("hosts")
+
+		// signifies the hostname that will be updated
+		oldHost := oldHosts.([]interface{})
+		oldHostName := oldHost[0].(map[string]interface{})["hostname"].(string)
+
+		// retrieving new params for the update
+		newHost := newHosts.([]interface{})
+		newHostName := newHost[0].(map[string]interface{})["hostname"].(string)
+		newSshPort := newHost[0].(map[string]interface{})["ssh_port"].(int64)
+		newToolkitPath := newHost[0].(map[string]interface{})["toolkit_path"].(string)
+		newJavaHome := newHost[0].(map[string]interface{})["java_home"].(string)
+		newNfsAddress := newHost[0].(map[string]interface{})["nfs_addresses"]
+
+		// get the hosts list
 		hostsList := d.Get("hosts").([]interface{})
-		firstHostMap, ok := hostsList[0].(map[string]interface{})
-		if !ok {
-			return diag.Errorf("Unexpected data type for first host element")
-		}
 
-		hostID, ok := firstHostMap["id"].(string)
-		if !ok {
-			return diag.Errorf("Error getting 'id' attribute from first host")
-		}
-
-		tflog.Info(ctx, DLPX+INFO+" hostID "+hostID)
-		tflog.Info(ctx, DLPX+INFO+" environmentId "+environmentId)
-
-		hostUpdateParam := dctapi.NewHostUpdateParameters()
-		if d.HasChange("connector_port") {
-			if v, has_v := d.GetOk("connector_port"); has_v {
-				hostUpdateParam.SetConnectorPort(v.(int32))
-			}
-		}
-		if d.HasChange("java_home") {
-			if v, has_v := d.GetOk("java_home"); has_v {
-				hostUpdateParam.SetJavaHome(v.(string))
-			}
-		}
-		if d.HasChange("hostname") {
-			if v, has_v := d.GetOk("hostname"); has_v {
-				hostUpdateParam.SetHostname(v.(string))
-			}
-		}
-		if d.HasChange("ssh_port") {
-			if v, has_v := d.GetOk("ssh_port"); has_v {
-				hostUpdateParam.SetSshPort(v.(int64))
-			}
-		}
-		if d.HasChange("toolkit_path") {
-			if v, has_v := d.GetOk("toolkit_path"); has_v {
-				hostUpdateParam.SetToolkitPath(v.(string))
-			}
-		}
-		if d.HasChange("nfs_addresses") {
-			if v, has_v := d.GetOk("nfs_addresses"); has_v {
-				hostUpdateParam.SetNfsAddresses(toStringArray(v))
-			}
-		}
-		if d.HasChange("oracle_tde_keystores_root_path") {
-			if v, has_v := d.GetOk("oracle_tde_keystores_root_path"); has_v {
-				hostUpdateParam.SetOracleTdeKeystoresRootPath(v.(string))
+		// retrieve the hostId corresponding to the old host name (that will be updated)
+		for _, host := range hostsList {
+			if oldHostName == host.(map[string]interface{})["hostname"].(string) {
+				hostId = host.(map[string]interface{})["id"].(string)
+				tflog.Info(ctx, "<>>>>>><<<<<<<>>>>>> hostsId: "+hostId)
+				break
+			} else {
+				// if not found, proceed with enable and finally display the failure events
+				updateFailure = true
+				failureEvents = append(failureEvents, "No hostname %s found to update", oldHostName)
 			}
 		}
 
-		hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostID).HostUpdateParameters(*hostUpdateParam).Execute()
-		if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			failureEvents = append(failureEvents, hostHttpRes.Body.Close().Error())
-		}
+		if !updateFailure {
+			tflog.Info(ctx, DLPX+INFO+" hostID "+hostId)
+			tflog.Info(ctx, DLPX+INFO+" environmentId "+environmentId)
 
-		job_res, job_err := PollJobStatus(*hostUpdateRes.Job.Id, ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*hostUpdateRes.Job.Id+"!")
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			failureEvents = append(failureEvents, job_err)
-			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+			hostUpdateParam := dctapi.NewHostUpdateParameters()
+			if d.HasChange("connector_port") {
+				if v, has_v := d.GetOk("connector_port"); has_v {
+					hostUpdateParam.SetConnectorPort(v.(int32))
+				}
+			}
+			if newJavaHome != "" {
+				hostUpdateParam.SetJavaHome(newJavaHome)
+			}
+			if newHostName != "" {
+				hostUpdateParam.SetHostname(newHostName)
+			}
+			if newSshPort != 0 {
+				hostUpdateParam.SetSshPort(newSshPort)
+			}
+			if newToolkitPath != "" {
+				hostUpdateParam.SetToolkitPath(newToolkitPath)
+			}
+			if newNfsAddress != nil {
+				hostUpdateParam.SetNfsAddresses(toStringArray(newNfsAddress))
+			}
+			// if d.HasChange("oracle_tde_keystores_root_path") {
+			// 	if v, has_v := d.GetOk("oracle_tde_keystores_root_path"); has_v {
+			// 		hostUpdateParam.SetOracleTdeKeystoresRootPath(v.(string))
+			// 	}
+			// }
+
+			hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
+			if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				failureEvents = append(failureEvents, hostHttpRes.Body.Close().Error())
+			}
+
+			job_res, job_err := PollJobStatus(*hostUpdateRes.Job.Id, ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*hostUpdateRes.Job.Id+"!")
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				failureEvents = append(failureEvents, job_err)
+				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+			}
 		}
 
 	}

@@ -581,7 +581,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"make_current_account_owner": {
