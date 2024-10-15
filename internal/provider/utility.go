@@ -124,7 +124,6 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 			returnedHost["nfs_addresses"] = host.GetNfsAddresses()
 			returnedHost["java_home"] = host.GetJavaHome()
 			returnedHost["oracle_tde_keystores_root_path"] = host.GetOracleTdeKeystoresRootPath()
-
 			returnedHosts[i] = returnedHost
 		}
 		return returnedHosts

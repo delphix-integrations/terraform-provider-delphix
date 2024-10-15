@@ -156,6 +156,11 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"os_type": {
+				Type:     schema.TypeString,
+				Default:  "UNIX",
+				Optional: true,
+			},
 			"database_type": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -233,10 +238,6 @@ func resourceEnvironment() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
-						"os_name": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
 						"ssh_port": {
 							Type:     schema.TypeInt,
 							Optional: true,
@@ -259,6 +260,10 @@ func resourceEnvironment() *schema.Resource {
 							Elem: &schema.Schema{
 								Type: schema.TypeString,
 							},
+						},
+						"os_name": {
+							Type:     schema.TypeString,
+							Computed: true,
 						},
 						"os_version": {
 							Type:     schema.TypeString,
@@ -341,7 +346,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	var hostname, os_name, toolkit_path, java_home string
+	var hostname, toolkit_path, java_home string
 	var ssh_port int
 	var nfs_addresses interface{}
 	// process hosts
@@ -349,7 +354,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		hosts := v.([]interface{})
 		if len(hosts) > 0 {
 			host := hosts[0].(map[string]interface{}) // Cast host to a map
-			os_name = host["os_name"].(string)
+			// os_type = host["os_type"].(string)
 			// oracle_tde_keystores_root_path = host["oracle_tde_keystores_root_path"].(string)
 			hostname = host["hostname"].(string)
 			toolkit_path = host["toolkit_path"].(string)
@@ -363,7 +368,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
 		d.Get("engine_id").(string),
-		os_name,
+		d.Get("os_type").(string),
 		hostname,
 	)
 
@@ -460,7 +465,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	// Clusters
 	if v := d.Get("is_cluster"); v.(bool) {
 		createEnvParams.SetIsCluster(v.(bool))
-		if os_name == "WINDOWS" {
+		if d.Get("os_type").(string) == "WINDOWS" {
 			createEnvParams.SetIsTarget(d.Get("is_target").(bool))
 		}
 	}
@@ -571,12 +576,11 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
+	var modifiedChangedKeys []string
 	for k := range d.State().Attributes {
 		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			tflog.Info(ctx, "artataagataga "+k)
 			k = "tags"
-		}
-		if strings.Contains(k, "hosts") { // this is because the changed keys are of the form tag.0.keydi
-			k = "hosts"
 		}
 		if d.HasChange(k) {
 			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
@@ -584,7 +588,18 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 	}
 	for _, ck := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+ck)
+		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+ck) // for hosts it will be in the form hosts.0.nfs_addresses.#
+		if strings.Contains(ck, "hosts.0.hostname") ||
+			strings.Contains(ck, "hosts.0.ssh_port") ||
+			strings.Contains(ck, "hosts.0.toolkit_path") ||
+			strings.Contains(ck, "hosts.0.java_home") ||
+			strings.Contains(ck, "hosts.0.nfs_addresses") {
+			ck = "hosts"
+		}
+		modifiedChangedKeys = append(modifiedChangedKeys, ck)
+	}
+	for _, mck := range modifiedChangedKeys {
+		tflog.Info(ctx, "!!!!!!!!mck!!!!!!!"+mck)
 	}
 	client := meta.(*apiClient).client
 	environmentId := d.Get("id").(string)
@@ -595,9 +610,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	var vdbDiags, dsourceDiags diag.Diagnostics
 	var disableDsourceFailure bool = false
 	// if changedKeys contains non updatable field set a flag
-	for _, key := range changedKeys {
+	for _, key := range modifiedChangedKeys {
 		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+key)
 		if !updatableEnvKeys[key] {
+			// we stop the update process here if non supported attribute is detected here
 			updateFailure = true
 			tflog.Info(ctx, ">>>>>!!!<<<<<<"+key)
 			nonUpdatableField = append(nonUpdatableField, key)
