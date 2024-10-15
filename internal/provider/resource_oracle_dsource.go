@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
+
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -710,7 +711,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		oracleDSourceLinkSourceParameters.SetOpsPreLogSync(toSourceOperationArray(v))
 	}
 
-	req := client.DSourcesApi.LinkOracleDatabase(ctx)
+	req := client.DSourcesAPI.LinkOracleDatabase(ctx)
 
 	apiRes, httpRes, err := req.OracleDSourceLinkSourceParameters(*oracleDSourceLinkSourceParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {

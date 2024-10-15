@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -580,7 +581,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"make_current_account_owner": {
@@ -965,7 +965,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
+	req := client.VDBsAPI.ProvisionVdbBySnapshot(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1210,7 +1210,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
+	req := client.VDBsAPI.ProvisionVdbByTimestamp(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1440,7 +1440,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
+	req := client.VDBsAPI.ProvisionVdbFromBookmark(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1508,12 +1508,12 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	vdbId := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+			return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -1562,54 +1562,127 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
+	vdbId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "pre_refresh") {
+			k = "pre_refresh"
+		}
+		if strings.Contains(k, "post_refresh") {
+			k = "post_refresh"
+		}
+		if strings.Contains(k, "configure_clone") {
+			k = "configure_clone"
+		}
+		if strings.Contains(k, "pre_snapshot") {
+			k = "pre_snapshot"
+		}
+		if strings.Contains(k, "post_snapshot") {
+			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_start") {
+			k = "pre_start"
+		}
+		if strings.Contains(k, "post_start") {
+			k = "post_start"
+		}
+		if strings.Contains(k, "pre_stop") {
+			k = "pre_stop"
+		}
+		if strings.Contains(k, "post_stop") {
+			k = "post_stop"
+		}
 		if d.HasChange(k) {
+			tflog.Info(ctx, ">>>>>@@@VDB<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
-
-	if d.HasChanges(
-		"auto_select_repository",
-		"source_data_id",
-		"id",
-		"database_type",
-		"database_version",
-		"status",
-		"ip_address",
-		"fqdn",
-		"parent_id",
-		"group_name",
-		"creation_date",
-		"target_group_id",
-		"database_name",
-		"truncate_log_on_checkpoint",
-		"repository_id",
-		"file_mapping_rules",
-		"oracle_instance_name",
-		"unique_name",
-		"open_reset_logs",
-		"snapshot_policy_id",
-		"retention_policy_id",
-		"recovery_model",
-		"online_log_groups",
-		"online_log_size",
-		"os_username",
-		"os_password",
-		"archive_log",
-		"timestamp",
-		"timestamp_in_database_timezone",
-		"snapshot_id") {
-
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
-
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	for _, ck := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!VDB!!!!!!!!"+ck)
 	}
+
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
+
+	// var vdbs []dctapi.VDB
+	// var vdbDiags diag.Diagnostics
+
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!!VDB!!!!!!!"+key)
+		if !updatableVdbKeys[key] {
+			updateFailure = true
+			tflog.Info(ctx, ">>>>>!!!VDB<<<<<<"+key)
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
+	}
+
+	if updateFailure {
+		tflog.Info(ctx, "######updateVDBfailure")
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveVdbUpdate[key] {
+			tflog.Info(ctx, "######isDestructiveVDBUpdate"+key)
+			destructiveUpdate = true
+		}
+	}
+	if destructiveUpdate {
+		if diags := disableVDB(ctx, client, vdbId); diags != nil {
+			tflog.Error(ctx, "failure in disabling vdbs")
+			//disableVdbFailure = true
+			revertChanges(d, changedKeys)
+			return diags
+		}
+	}
+	// if d.HasChanges(
+	// 	"auto_select_repository",
+	// 	"source_data_id",
+	// 	"id",
+	// 	"database_type",
+	// 	"database_version",
+	// 	"status",
+	// 	"ip_address",
+	// 	"fqdn",
+	// 	"parent_id",
+	// 	"group_name",
+	// 	"creation_date",
+	// 	"target_group_id",
+	// 	"database_name",
+	// 	"truncate_log_on_checkpoint",
+	// 	"repository_id",
+	// 	"file_mapping_rules",
+	// 	"oracle_instance_name",
+	// 	"unique_name",
+	// 	"open_reset_logs",
+	// 	"snapshot_policy_id",
+	// 	"retention_policy_id",
+	// 	"recovery_model",
+	// 	"online_log_groups",
+	// 	"online_log_size",
+	// 	"os_username",
+	// 	"os_password",
+	// 	"archive_log",
+	// 	"timestamp",
+	// 	"timestamp_in_database_timezone",
+	// 	"snapshot_id") {
+
+	// 	// revert and set the old value to the changed keys
+	// 	for _, key := range changedKeys {
+	// 		old, _ := d.GetChange(key)
+	// 		d.Set(key, old)
+	// 	}
+
+	// 	return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	// }
 
 	nvdh := dctapi.NewVirtualDatasetHooks()
 
@@ -1796,19 +1869,11 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 
-	if diags := disableVDB(ctx, client, d.Get("id").(string)); diags != nil {
-		revertChanges(d, changedKeys)
-		return diags //if failure should we enable
-	}
-
-	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
+		revertChanges(d, changedKeys)
 		return diags
 	}
 
@@ -1835,7 +1900,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	res, httpRes, err := client.VDBsAPI.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
@@ -1851,7 +1916,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	return diags
