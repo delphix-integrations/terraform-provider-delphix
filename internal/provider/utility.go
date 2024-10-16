@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -21,7 +21,7 @@ var SLEEP_TIME = 10
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
 
-	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
+	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
 		resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
 		if resBodyErr != nil {
@@ -35,7 +35,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	var i = 0
 	for res.GetStatus() == Pending || res.GetStatus() == Started {
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
-		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
+		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
 				return "", "Received nil response for Job ID " + job_id
@@ -183,7 +183,7 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		var api_err error
 		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
 		for attempt := 1; attempt <= maxAttempts; attempt++ {
-			snapshotRes, _, api_err = client.DSourcesApi.GetDsourceSnapshots(ctx, d.Id()).Execute()
+			snapshotRes, _, api_err = client.DSourcesAPI.GetDsourceSnapshots(ctx, d.Id()).Execute()
 			if api_err != nil {
 				tflog.Error(ctx, DLPX+ERROR+"Error fetching dSource snapshots: "+api_err.Error())
 				break // Exit the loop on error to avoid unnecessary retries
@@ -205,5 +205,51 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		} else if len(snapshotRes.GetItems()) == 0 {
 			tflog.Info(ctx, DLPX+INFO+"Maximum attempts reached. Snapshots are not available.")
 		}
+	}
+}
+
+func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Disable VDB "+vdbId)
+	disableVDBParam := dctapi.NewDisableVDBParameters()
+	apiRes, httpRes, err := client.VDBsAPI.DisableVdb(ctx, vdbId).DisableVDBParameters(*disableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB disable Job Polling failed. Error: "+job_err)
+		//return here
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+}
+
+func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Enable VDB "+vdbId)
+	enableVDBParam := dctapi.NewEnableVDBParameters()
+	apiRes, httpRes, err := client.VDBsAPI.EnableVdb(ctx, vdbId).EnableVDBParameters(*enableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB enable Job Polling failed. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+}
+
+func revertChanges(d *schema.ResourceData, changedKeys []string) {
+	for _, key := range changedKeys {
+		old, _ := d.GetChange(key)
+		d.Set(key, old)
 	}
 }

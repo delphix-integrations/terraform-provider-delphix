@@ -2,8 +2,11 @@ module terraform-provider-delphix
 
 go 1.22.0
 
+toolchain go1.22.6
+
 require (
 	github.com/delphix/dct-sdk-go/v14 v14.0.0
+	github.com/delphix/dct-sdk-go/v21 v21.0.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 )
 

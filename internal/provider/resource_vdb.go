@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	dctapi "github.com/delphix/dct-sdk-go/v21"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -519,10 +521,6 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"masked": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
 			"listener_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -583,7 +581,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"make_current_account_owner": {
@@ -865,9 +862,6 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
-	}
 	if v, has_v := d.GetOkExists("listener_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
 	}
@@ -971,7 +965,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
+	req := client.VDBsAPI.ProvisionVdbBySnapshot(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1106,9 +1100,6 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBByTimestampParameters.SetMasked(v.(bool))
-	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
 	}
@@ -1219,7 +1210,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
+	req := client.VDBsAPI.ProvisionVdbByTimestamp(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1350,9 +1341,6 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
-	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
 	}
@@ -1452,7 +1440,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
+	req := client.VDBsAPI.ProvisionVdbFromBookmark(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1520,12 +1508,12 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	vdbId := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+			return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -1562,6 +1550,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	config_params, _ := json.Marshal(result.GetConfigParams())
 	d.Set("config_params", string(config_params))
 	d.Set("additional_mount_points", flattenAdditionalMountPoints(result.GetAdditionalMountPoints()))
+
 	d.Set("id", vdbId)
 
 	return diags
@@ -1573,68 +1562,244 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
+	vdbId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "pre_refresh") {
+			k = "pre_refresh"
+		}
+		if strings.Contains(k, "post_refresh") {
+			k = "post_refresh"
+		}
+		if strings.Contains(k, "configure_clone") {
+			k = "configure_clone"
+		}
+		if strings.Contains(k, "pre_snapshot") {
+			k = "pre_snapshot"
+		}
+		if strings.Contains(k, "post_snapshot") {
+			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_start") {
+			k = "pre_start"
+		}
+		if strings.Contains(k, "post_start") {
+			k = "post_start"
+		}
+		if strings.Contains(k, "pre_stop") {
+			k = "pre_stop"
+		}
+		if strings.Contains(k, "post_stop") {
+			k = "post_stop"
+		}
 		if d.HasChange(k) {
+			tflog.Info(ctx, ">>>>>@@@VDB<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
+	for _, ck := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!VDB!!!!!!!!"+ck)
+	}
 
-	if d.HasChanges(
-		"auto_select_repository",
-		"source_data_id",
-		"id",
-		"database_type",
-		"database_version",
-		"status",
-		"ip_address",
-		"fqdn",
-		"parent_id",
-		"group_name",
-		"creation_date",
-		"target_group_id",
-		"database_name",
-		"truncate_log_on_checkpoint",
-		"repository_id",
-		"pre_refresh",
-		"post_refresh",
-		"pre_rollback",
-		"post_rollback",
-		"configure_clone",
-		"pre_snapshot",
-		"post_snapshot",
-		"pre_start",
-		"post_start",
-		"pre_stop",
-		"post_stop",
-		"file_mapping_rules",
-		"oracle_instance_name",
-		"unique_name",
-		"mount_point",
-		"masked",
-		"open_reset_logs",
-		"snapshot_policy_id",
-		"retention_policy_id",
-		"recovery_model",
-		"online_log_groups",
-		"online_log_size",
-		"os_username",
-		"os_password",
-		"archive_log",
-		"custom_env_vars",
-		"custom_env_files",
-		"timestamp",
-		"timestamp_in_database_timezone",
-		"snapshot_id") {
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
 
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
+	// var vdbs []dctapi.VDB
+	// var vdbDiags diag.Diagnostics
+
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range changedKeys {
+		tflog.Info(ctx, "!!!!!!!!VDB!!!!!!!"+key)
+		if !updatableVdbKeys[key] {
+			updateFailure = true
+			tflog.Info(ctx, ">>>>>!!!VDB<<<<<<"+key)
+			nonUpdatableField = append(nonUpdatableField, key)
 		}
+	}
 
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	if updateFailure {
+		tflog.Info(ctx, "######updateVDBfailure")
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveVdbUpdate[key] {
+			tflog.Info(ctx, "######isDestructiveVDBUpdate"+key)
+			destructiveUpdate = true
+		}
+	}
+	if destructiveUpdate {
+		if diags := disableVDB(ctx, client, vdbId); diags != nil {
+			tflog.Error(ctx, "failure in disabling vdbs")
+			//disableVdbFailure = true
+			revertChanges(d, changedKeys)
+			return diags
+		}
+	}
+	// if d.HasChanges(
+	// 	"auto_select_repository",
+	// 	"source_data_id",
+	// 	"id",
+	// 	"database_type",
+	// 	"database_version",
+	// 	"status",
+	// 	"ip_address",
+	// 	"fqdn",
+	// 	"parent_id",
+	// 	"group_name",
+	// 	"creation_date",
+	// 	"target_group_id",
+	// 	"database_name",
+	// 	"truncate_log_on_checkpoint",
+	// 	"repository_id",
+	// 	"file_mapping_rules",
+	// 	"oracle_instance_name",
+	// 	"unique_name",
+	// 	"open_reset_logs",
+	// 	"snapshot_policy_id",
+	// 	"retention_policy_id",
+	// 	"recovery_model",
+	// 	"online_log_groups",
+	// 	"online_log_size",
+	// 	"os_username",
+	// 	"os_password",
+	// 	"archive_log",
+	// 	"timestamp",
+	// 	"timestamp_in_database_timezone",
+	// 	"snapshot_id") {
+
+	// 	// revert and set the old value to the changed keys
+	// 	for _, key := range changedKeys {
+	// 		old, _ := d.GetChange(key)
+	// 		d.Set(key, old)
+	// 	}
+
+	// 	return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	// }
+
+	nvdh := dctapi.NewVirtualDatasetHooks()
+
+	if d.HasChange("pre_refresh") {
+		if v, has_v := d.GetOk("pre_refresh"); has_v {
+			nvdh.SetPreRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPreRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_refresh") {
+		if v, has_v := d.GetOk("post_refresh"); has_v {
+			nvdh.SetPostRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPostRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_rollback") {
+		if v, has_v := d.GetOk("pre_rollback"); has_v {
+			nvdh.SetPreRollback(toHookArray(v))
+		} else {
+			nvdh.SetPreRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_rollback") {
+		if v, has_v := d.GetOk("post_rollback"); has_v {
+			nvdh.SetPostRollback(toHookArray(v))
+		} else {
+			nvdh.SetPostRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("configure_clone") {
+		if v, has_v := d.GetOk("configure_clone"); has_v {
+			nvdh.SetConfigureClone(toHookArray(v))
+		} else {
+			nvdh.SetConfigureClone([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_snapshot") {
+		if v, has_v := d.GetOk("pre_snapshot"); has_v {
+			nvdh.SetPreSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPreSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_snapshot") {
+		if v, has_v := d.GetOk("post_snapshot"); has_v {
+			nvdh.SetPostSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPostSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_start") {
+		if v, has_v := d.GetOk("pre_start"); has_v {
+			nvdh.SetPreStart(toHookArray(v))
+		} else {
+			nvdh.SetPreStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_start") {
+		if v, has_v := d.GetOk("post_start"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_stop") {
+		if v, has_v := d.GetOk("pre_stop"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_stop") {
+		if v, has_v := d.GetOk("post_stop"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if nvdh != nil {
+		updateVDBParam.SetHooks(*nvdh)
+	}
+
+	if d.HasChange("mount_point") {
+		updateVDBParam.SetMountPoint(d.Get("mount_point").(string))
+	}
+
+	if d.HasChange("custom_env_files") {
+		if v, has_v := d.GetOk("custom_env_files"); has_v {
+			updateVDBParam.SetCustomEnvFiles(toStringArray(v))
+		} else {
+			updateVDBParam.SetCustomEnvFiles([]string{})
+		}
+	}
+	if d.HasChange("custom_env_vars") {
+		if v, has_v := d.GetOk("custom_env_vars"); has_v {
+			custom_env_vars := make(map[string]string)
+
+			for k, v := range v.(map[string]interface{}) {
+				custom_env_vars[k] = v.(string)
+			}
+			updateVDBParam.SetCustomEnvVars(custom_env_vars)
+		} else {
+			updateVDBParam.SetCustomEnvVars(map[string]string{})
+		}
 	}
 
 	if d.HasChange("template_id") {
@@ -1704,14 +1869,11 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 
-	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
+		revertChanges(d, changedKeys)
 		return diags
 	}
 
@@ -1724,9 +1886,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
+	if diags := enableVDB(ctx, client, d.Get("id").(string)); diags != nil {
+		return diags //if failure should we enable
+	}
+
 	return diags
 }
-
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
@@ -1735,7 +1900,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	res, httpRes, err := client.VDBsAPI.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
@@ -1751,7 +1916,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	return diags
