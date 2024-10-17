@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v21"
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
