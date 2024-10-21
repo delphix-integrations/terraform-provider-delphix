@@ -157,6 +157,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -185,6 +186,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -213,6 +215,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -241,6 +244,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -269,6 +273,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -297,6 +302,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -325,6 +331,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -353,6 +360,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -381,6 +389,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -409,6 +418,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -437,6 +447,7 @@ func resourceVdb() *schema.Resource {
 						"has_credentials": {
 							Type:     schema.TypeBool,
 							Optional: true,
+							Default:  false,
 						},
 					},
 				},
@@ -449,6 +460,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"jdbc_connection_string": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"auxiliary_template_id": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -457,7 +472,7 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"oracle_instance_name": {
+			"instance_name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -521,6 +536,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"masked": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"listener_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -555,6 +574,14 @@ func resourceVdb() *schema.Resource {
 				Optional: true,
 			},
 			"bookmark_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"parent_dsource_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"root_parent_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -693,21 +720,18 @@ func toHookArray(array interface{}) []dctapi.Hook {
 		if name != "" {
 			hook_item.SetName(item_map["name"].(string))
 		}
+		element_id := item_map["element_id"].(string)
+		if element_id != "" {
+			hook_item.SetElementId(element_id)
+		}
+		has_credentials := item_map["has_credentials"].(bool)
+		if has_credentials {
+			hook_item.SetHasCredentials(has_credentials)
+		}
 
 		// defaults to "bash" as per resource schema spec
 		hook_item.SetShell(item_map["shell"].(string))
 		items = append(items, *hook_item)
-	}
-	return items
-}
-
-func toTagArray(array interface{}) []dctapi.Tag {
-	items := []dctapi.Tag{}
-	for _, item := range array.([]interface{}) {
-		item_map := item.(map[string]interface{})
-		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
-
-		items = append(items, *tag_item)
 	}
 	return items
 }
@@ -817,7 +841,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBBySnapshotParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBBySnapshotParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -852,6 +876,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1055,7 +1082,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBByTimestampParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBByTimestampParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1090,6 +1117,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBByTimestampParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1296,7 +1326,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBFromBookmarkParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1331,6 +1361,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1543,8 +1576,29 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("ip_address", result.GetIpAddress())
 	d.Set("fqdn", result.GetFqdn())
 	d.Set("parent_id", result.GetParentId())
+	d.Set("parent_dsource_id", result.GetParentDsourceId())
+	d.Set("root_parent_id", result.GetRootParentId())
+	d.Set("source_data_id", result.GetParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("instance_name", result.GetInstanceName())
+	d.Set("pre_refresh", flattenHooks(result.GetHooks().PreRefresh))
+	d.Set("post_refresh", flattenHooks(result.GetHooks().PostRefresh))
+	d.Set("configure_clone", flattenHooks(result.GetHooks().ConfigureClone))
+	d.Set("pre_snapshot", flattenHooks(result.GetHooks().PreSnapshot))
+	d.Set("post_snapshot", flattenHooks(result.GetHooks().PostSnapshot))
+	d.Set("pre_start", flattenHooks(result.GetHooks().PreStart))
+	d.Set("post_start", flattenHooks(result.GetHooks().PostStart))
+	d.Set("pre_stop", flattenHooks(result.GetHooks().PreStop))
+	d.Set("post_stop", flattenHooks(result.GetHooks().PostStop))
+	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
+	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
+	d.Set("database_name", result.GetDatabaseName())
+
+	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())
+	d.Set("cdb_id", result.GetCdbId())
+	d.Set("template_id", result.GetTemplateId())
+	d.Set("mount_point", result.GetMountPoint())
 
 	appdata_source_params, _ := json.Marshal(result.GetAppdataSourceParams())
 	d.Set("appdata_source_params", string(appdata_source_params))
@@ -1663,7 +1717,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// 	"truncate_log_on_checkpoint",
 	// 	"repository_id",
 	// 	"file_mapping_rules",
-	// 	"oracle_instance_name",
+	// 	"instance_name",
 	// 	"unique_name",
 	// 	"open_reset_logs",
 	// 	"snapshot_policy_id",

@@ -170,7 +170,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * `file_mapping_rules` - (Optional) Target VDB file mapping rules (Oracle Only). Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.
 
-* `oracle_instance_name` - (Optional) Target VDB SID name (Oracle Only).
+* `instance_name` - (Optional) Target VDB SID name (Oracle Only).
 
 * `unique_name` - (Optional) Target VDB db_unique_name (Oracle Only).
 

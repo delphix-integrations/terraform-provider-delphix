@@ -152,6 +152,23 @@ func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMou
 	return make([]interface{}, 0)
 }
 
+func flattenHooks(hooks []dctapi.Hook) []interface{} {
+	if hooks != nil {
+		returnedHooks := make([]interface{}, len(hooks))
+		for i, hook := range hooks {
+			returnedHook := make(map[string]interface{})
+			returnedHook["name"] = hook.GetName()
+			returnedHook["command"] = hook.GetCommand()
+			returnedHook["shell"] = hook.GetShell()
+			returnedHook["element_id"] = hook.GetElementId()
+			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			returnedHooks[i] = returnedHook
+		}
+		return returnedHooks
+	}
+	return make([]interface{}, 0)
+}
+
 func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
@@ -252,4 +269,15 @@ func revertChanges(d *schema.ResourceData, changedKeys []string) {
 		old, _ := d.GetChange(key)
 		d.Set(key, old)
 	}
+}
+
+func toTagArray(array interface{}) []dctapi.Tag {
+	items := []dctapi.Tag{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
+
+		items = append(items, *tag_item)
+	}
+	return items
 }
