@@ -1578,7 +1578,6 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("parent_id", result.GetParentId())
 	d.Set("parent_dsource_id", result.GetParentDsourceId())
 	d.Set("root_parent_id", result.GetRootParentId())
-	d.Set("source_data_id", result.GetParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
 	d.Set("instance_name", result.GetInstanceName())
@@ -1594,6 +1593,11 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
 	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
 	d.Set("database_name", result.GetDatabaseName())
+	_, is_provision := d.GetOk("provision_type")
+	if !is_provision {
+		// its an import, set to default value
+		d.Set("provision_type", "snapshot")
+	}
 
 	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())
 	d.Set("cdb_id", result.GetCdbId())
