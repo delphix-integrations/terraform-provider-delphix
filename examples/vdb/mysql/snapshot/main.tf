@@ -46,12 +46,7 @@ resource "delphix_vdb" "example" {
     vdbPass: XXXX,
     vdbUser: XXXX
   })
-  config_params = jsonencode({
-processes = 150
-})
-appdata_config_params = jsonencode({
-param = "value"
-})
+
 additional_mount_points = [{
 shared_path = "/",
 mount_path = "/work",

@@ -46,7 +46,7 @@ resource "delphix_vdb" "example" {
   file_mapping_rules              = "/datafile/dbdhcp3/oradata/dbdhcp3:/data\n/u03/app/ora11202/product/11.2.0/dbhome_1/dbs/dbv_R2V4.dbf:/data/dbv_R2V4.dbf"
   new_dbid                        = true
   auxiliary_template_id           = "aux-template-1"
-  oracle_instance_name            = "dbdhcp2"
+  instance_name            = "dbdhcp2"
   retention_policy_id             = "test_retention_policy"
   template_id                     = "template-1"
   listener_ids                    = ["id"]

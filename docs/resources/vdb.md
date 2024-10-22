@@ -25,8 +25,11 @@ resource "delphix_vdb" "vdb_name2" {
   timestamp              = "2021-05-01T08:51:34.148000+00:00"
 
   post_refresh {
-    name    = "HOOK_NAME"
-    command = "COMMAND"
+    command         = "COMMAND"
+    element_id      = "ELEMENT_ID"
+    has_credentials = false
+    name            = "NAME"
+    shell           = "SHELL"
   }
 }
 
@@ -47,13 +50,18 @@ resource "delphix_vdb" "vdb_name" {
   source_data_id         = "DATASOURCE_ID"
 
   pre_refresh {
-    name    = "HOOK_NAME"
-    command = "COMMAND"
+    command         = "COMMAND"
+    element_id      = "ELEMENT_ID"
+    has_credentials = false
+    name            = "NAME"
+    shell           = "SHELL"
   }
 }
 ```
 
 ## Argument Reference
+
+* `provision_type` - (Optional) The type of provisioning to be carried out. Defaults to snapshot. Valid values are `[snapshot, bookmark, timestamp]` 
 
 * `source_data_id` - (Optional) The ID or name of the source object (dSource or VDB) to provision from. All other objects referenced by the parameters must live on the same engine as the source.
 
@@ -61,7 +69,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * `target_group_id` - (Optional) The ID of the group into which the VDB will be provisioned. If unset, a group is selected randomly on the Engine.
 
-* `name` - (Optional) The unique name of the provisioned VDB within a group. If unset, a name is randomly generated.
+* `name` - (Optional) [Updatable] The unique name of the provisioned VDB within a group. If unset, a name is randomly generated.
 
 * `database_name` - (Optional) The name of the database on the target environment. Defaults to name.
 
@@ -87,14 +95,14 @@ resource "delphix_vdb" "vdb_name" {
 
 * `auto_select_repository` - (Optional) Option to automatically select a compatible environment and repository. Mutually exclusive with repository_id.
 
-* `pre_refresh` - (Optional) The commands to execute on the target environment before refreshing the VDB. This is a map of 5 parameters:
+* `pre_refresh` - (Optional) [Updatable] The commands to execute on the target environment before refreshing the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
   * `element_id` - Element ID for the hook
   * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_refresh` - (Optional) The commands to execute on the target environment after refreshing the VDB. This is a map of 5 parameters:
+* `post_refresh` - (Optional) [Updatable] The commands to execute on the target environment after refreshing the VDB. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
@@ -122,40 +130,40 @@ resource "delphix_vdb" "vdb_name" {
   * `element_id` - Element ID for the hook
   * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_snapshot` - (Optional) The commands to execute on the target environment before snapshotting a virtual source. These commands can quiesce any data prior to snapshotting. This is a map of 5 parameters:
+* `pre_snapshot` - (Optional) [Updatable] The commands to execute on the target environment before snapshotting a virtual source. These commands can quiesce any data prior to snapshotting. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
   * `element_id` - Element ID for the hook
   * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_snapshot` - (Optional) The commands to execute on the target environment after snapshotting a virtual source. This is a map of 5 parameters:
+* `post_snapshot` - (Optional) [Updatable] The commands to execute on the target environment after snapshotting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
   * `element_id` - Element ID for the hook
   * `has_credentials` - Flag to indicate if it has credentials
 
-* `pre_start` - (Optional) The commands to execute on the target environment before starting a virtual source. This is a map of 5 parameters:
+* `pre_start` - (Optional) [Updatable] The commands to execute on the target environment before starting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
 
-* `post_start` - (Optional) The commands to execute on the target environment after starting a virtual source. This is a map of 5 parameters:
-  * `name` - Name of the hook
-  * `command` - (Required)Command to be executed
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
-  * `element_id` - Element ID for the hook
-  * `has_credentials` - Flag to indicate if it has credentials
-
-* `pre_stop` - (Optional) The commands to execute on the target environment before stopping a virtual source. This is a map of 5 parameters:
+* `post_start` - (Optional) [Updatable] The commands to execute on the target environment after starting a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
   * `element_id` - Element ID for the hook
   * `has_credentials` - Flag to indicate if it has credentials
 
-* `post_stop` - (Optional) The commands to execute on the target environment after stopping a virtual source. This is a map of 5 parameters:
+* `pre_stop` - (Optional) [Updatable] The commands to execute on the target environment before stopping a virtual source. This is a map of 5 parameters:
+  * `name` - Name of the hook
+  * `command` - (Required)Command to be executed
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
+  * `element_id` - Element ID for the hook
+  * `has_credentials` - Flag to indicate if it has credentials
+
+* `post_stop` - (Optional) [Updatable] The commands to execute on the target environment after stopping a virtual source. This is a map of 5 parameters:
   * `name` - Name of the hook
   * `command` - (Required)Command to be executed
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`
@@ -178,7 +186,7 @@ resource "delphix_vdb" "vdb_name" {
 
 * `vcdb_database_name` - (Optional) When provisioning an Oracle Multitenant vCDB (when the cdb_id property is not set), the database name of the provisioned vCDB. Defaults to the value of the vcdb_name property. (Oracle Multitenant Only).
 
-* `mount_point` - (Optional) Mount point for the VDB (Oracle, ASE Only).
+* `mount_point` - (Optional) [Updatable] Mount point for the VDB (Oracle, ASE Only).
 
 * `open_reset_logs` - (Optional) Whether to open the database after provision (Oracle Only).
 
@@ -226,30 +234,30 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 
 * `make_current_account_owner` - (Optional) Whether the account provisioning this VDB must be configured as owner of the VDB. 
 
-* `config_params` - (Optional) Database configuration parameter overrides
+* `config_params` - (Optional) [Updatable] Database configuration parameter overrides
 
-* `appdata_source_params` - The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated.
+* `appdata_source_params` - [Updatable] The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated.
 
-* `appdata_config_params` - (Optional) The list of parameters specified by the source config schema in the toolkit
+* `instance_name` - (Optional) The instance name name of this single instance VDB
 
-* `additional_mount_points` - (Optional) Specifies additional locations on which to mount a subdirectory of an AppData container
+* `additional_mount_points` - (Optional) [Updatable] Specifies additional locations on which to mount a subdirectory of an AppData container
   * `shared_path` - (Required) Relative path within the container of the directory that should be mounted.
-  * `mount_path` - (Required) Absolute path on the target environment were the filesystem should be mounted
-  * `environment_id` - (Required) The entity ID of the environment on which the file system will be mounted.
+  * `mount_path` - (Optional) Absolute path on the target environment were the filesystem should be mounted
+  * `environment_id` - (Optional) The entity ID of the environment on which the file system will be mounted.
 
 * `vcdb_tde_key_identifier` - (Optional) ID of the key created by Delphix. (Oracle Multitenant Only)
 
-* `cdb_tde_keystore_password` - (Optional) The password for the Transparent Data Encryption keystore associated with the CDB. (Oracle Multitenant Only)
+* `cdb_tde_keystore_password` - (Optional) [Updatable] The password for the Transparent Data Encryption keystore associated with the CDB. (Oracle Multitenant Only)
 
-* `target_vcdb_tde_keystore_path` - (Optional) Path to the keystore of the target vCDB. (Oracle Multitenant Only)
+* `target_vcdb_tde_keystore_path` - (Optional) [Updatable] Path to the keystore of the target vCDB. (Oracle Multitenant Only)
 
-* `tde_key_identifier` - (Optional) ID of the key created by Delphix. (Oracle Multitenant Only)
+* `tde_key_identifier` - (Optional) [Updatable] ID of the key created by Delphix. (Oracle Multitenant Only)
 
 * `tde_exported_key_file_secret` - (Optional) Secret to be used while exporting and importing vPDB encryption keys if Transparent Data Encryption is enabled on the vPDB. (Oracle Multitenant Only)
 
-* `parent_tde_keystore_password` - (Optional) The password of the keystore specified in parentTdeKeystorePath. (Oracle Multitenant Only)
+* `parent_tde_keystore_password` - (Optional) [Updatable] The password of the keystore specified in parentTdeKeystorePath. (Oracle Multitenant Only)
 
-* `parent_tde_keystore_path` - (Optional) Path to a copy of the parent's Oracle transparent data encryption keystore on the target host. Required to provision from snapshots containing encrypted database files. (Oracle Multitenant Only)
+* `parent_tde_keystore_path` - (Optional) [Updatable] Path to a copy of the parent's Oracle transparent data encryption keystore on the target host. Required to provision from snapshots containing encrypted database files. (Oracle Multitenant Only)
 
 * `oracle_rac_custom_env_vars` - (Optional) Environment variable to be set when the engine creates an Oracle RAC VDB. See the Engine documentation for the list of allowed/denied environment variables and rules about substitution.
   * `node_id` - (Required) The node id of the cluster.
@@ -286,3 +294,14 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 * `tags` - A list of key value pair.
 
 * `creation_date` - The date this VDB was created.
+
+## Import
+
+In Terraform v1.5.0 and later, use an [`import` block](https://developer.hashicorp.com/terraform/language/import) to import VDBs using the word `delphix_vdb`. For example:
+
+```terraform
+import { 
+    to = delphix_vdb.vdb_import_demo
+    id = "vdb_id" 
+}
+```

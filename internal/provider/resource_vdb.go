@@ -579,11 +579,11 @@ func resourceVdb() *schema.Resource {
 			},
 			"parent_dsource_id": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Computed: true,
 			},
 			"root_parent_id": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Computed: true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -1657,6 +1657,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 		if strings.Contains(k, "post_stop") {
 			k = "post_stop"
+		}
+		if strings.Contains(k, "additional_mount_points") {
+			k = "additional_mount_points"
+		}
+		if strings.Contains(k, "listener_ids") {
+			k = "listener_ids"
 		}
 		if d.HasChange(k) {
 			tflog.Info(ctx, ">>>>>@@@VDB<<<<<<"+k)

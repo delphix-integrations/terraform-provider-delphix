@@ -46,7 +46,7 @@ resource "delphix_vdb" "example" {
   auxiliary_template_id   = "aux-template-1"
   database_name           = "dbname_to_be_created"
   mount_point             = "/var/mnt"
-  oracle_instance_name    = "dbdhcp2"
+  instance_name    = "dbdhcp2"
   retention_policy_id     = "test_retention_policy"
   template_id             = "template-1"
   cdb_id                  = ""
