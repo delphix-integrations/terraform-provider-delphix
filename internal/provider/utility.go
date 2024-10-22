@@ -169,6 +169,20 @@ func flattenHooks(hooks []dctapi.Hook) []interface{} {
 	return make([]interface{}, 0)
 }
 
+func flattenTags(tags []dctapi.Tag) []interface{} {
+	if tags != nil {
+		returnedTags := make([]interface{}, len(tags))
+		for i, tag := range tags {
+			returnedTag := make(map[string]interface{})
+			returnedTag["key"] = tag.GetKey()
+			returnedTag["value"] = tag.GetValue()
+			returnedTags[i] = returnedTag
+		}
+		return returnedTags
+	}
+	return make([]interface{}, 0)
+}
+
 func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.

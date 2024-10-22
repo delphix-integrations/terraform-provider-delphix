@@ -1593,6 +1593,8 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
 	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
 	d.Set("database_name", result.GetDatabaseName())
+	d.Set("tags", flattenTags(result.GetTags()))
+
 	_, is_provision := d.GetOk("provision_type")
 	if !is_provision {
 		// its an import, set to default value
@@ -1665,12 +1667,9 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			k = "listener_ids"
 		}
 		if d.HasChange(k) {
-			tflog.Info(ctx, ">>>>>@@@VDB<<<<<<"+k)
+			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
-	}
-	for _, ck := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!VDB!!!!!!!!"+ck)
 	}
 
 	var updateFailure, destructiveUpdate bool = false, false
@@ -1681,16 +1680,14 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// if changedKeys contains non updatable field set a flag
 	for _, key := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!!VDB!!!!!!!"+key)
 		if !updatableVdbKeys[key] {
 			updateFailure = true
-			tflog.Info(ctx, ">>>>>!!!VDB<<<<<<"+key)
+			tflog.Debug(ctx, "non updatable field: "+key)
 			nonUpdatableField = append(nonUpdatableField, key)
 		}
 	}
 
 	if updateFailure {
-		tflog.Info(ctx, "######updateVDBfailure")
 		revertChanges(d, changedKeys)
 		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
 	}
@@ -1698,58 +1695,17 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// find if destructive update
 	for _, key := range changedKeys {
 		if isDestructiveVdbUpdate[key] {
-			tflog.Info(ctx, "######isDestructiveVDBUpdate"+key)
+			tflog.Debug(ctx, "destructive updates for: "+key)
 			destructiveUpdate = true
 		}
 	}
 	if destructiveUpdate {
 		if diags := disableVDB(ctx, client, vdbId); diags != nil {
 			tflog.Error(ctx, "failure in disabling vdbs")
-			//disableVdbFailure = true
 			revertChanges(d, changedKeys)
 			return diags
 		}
 	}
-	// if d.HasChanges(
-	// 	"auto_select_repository",
-	// 	"source_data_id",
-	// 	"id",
-	// 	"database_type",
-	// 	"database_version",
-	// 	"status",
-	// 	"ip_address",
-	// 	"fqdn",
-	// 	"parent_id",
-	// 	"group_name",
-	// 	"creation_date",
-	// 	"target_group_id",
-	// 	"database_name",
-	// 	"truncate_log_on_checkpoint",
-	// 	"repository_id",
-	// 	"file_mapping_rules",
-	// 	"instance_name",
-	// 	"unique_name",
-	// 	"open_reset_logs",
-	// 	"snapshot_policy_id",
-	// 	"retention_policy_id",
-	// 	"recovery_model",
-	// 	"online_log_groups",
-	// 	"online_log_size",
-	// 	"os_username",
-	// 	"os_password",
-	// 	"archive_log",
-	// 	"timestamp",
-	// 	"timestamp_in_database_timezone",
-	// 	"snapshot_id") {
-
-	// 	// revert and set the old value to the changed keys
-	// 	for _, key := range changedKeys {
-	// 		old, _ := d.GetChange(key)
-	// 		d.Set(key, old)
-	// 	}
-
-	// 	return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
-	// }
 
 	nvdh := dctapi.NewVirtualDatasetHooks()
 
@@ -1953,8 +1909,39 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
-	if diags := enableVDB(ctx, client, d.Get("id").(string)); diags != nil {
-		return diags //if failure should we enable
+	if d.HasChanges(
+		"tags",
+	) { // tags update
+		tflog.Debug(ctx, "updating tags")
+		if d.HasChange("tags") {
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			oldTag, newTag := d.GetChange("tags")
+			if len(toTagArray(oldTag)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
+				tflog.Debug(ctx, "tag delete response: "+tagDelResp.Status)
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTag)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+	if destructiveUpdate {
+		if diags := enableVDB(ctx, client, vdbId); diags != nil {
+			return diags //if failure should we enable
+		}
 	}
 
 	return diags

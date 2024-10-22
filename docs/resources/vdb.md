@@ -228,7 +228,7 @@ Environment variable to be set when the engine creates a VDB. See the Engine doc
 
 * `bookmark_id` - (Optional) The ID or name of the bookmark from which to execute the operation. The bookmark must contain only one VDB.
 
-* `tags` - (Optional) The tags to be created for VDB. This is a map of 2 parameters:
+* `tags` - (Optional) [Updatable] The tags to be created for VDB. This is a map of 2 parameters:
   * `key` - (Required) Key of the tag
   * `value` - (Required) Value of the tag
 
