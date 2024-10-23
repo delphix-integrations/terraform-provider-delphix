@@ -152,12 +152,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -181,12 +180,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -210,12 +208,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -239,12 +236,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -268,12 +264,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -297,12 +292,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -326,12 +320,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -355,12 +348,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -384,12 +376,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -413,12 +404,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
@@ -442,12 +432,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
-							Default:  false,
+							Computed: true,
 						},
 					},
 				},
