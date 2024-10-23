@@ -190,6 +190,12 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
 	})
 
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"PostgreSQL source not found: "+source_id+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
+
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()

@@ -419,6 +419,12 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
 	})
 
+	if apiRes == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Environment not found: "+envId+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
+
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()

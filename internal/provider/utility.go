@@ -85,9 +85,13 @@ func PollForStatusCode(ctx context.Context, apiCall func() (interface{}, *http.R
 	var httpRes *http.Response
 	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
-		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
+		res, httpRes, err = apiCall()
+		if httpRes.StatusCode == statusCode {
 			tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
 			return res, nil
+		} else if httpRes.StatusCode == http.StatusNotFound {
+			tflog.Info(ctx, DLPX+INFO+"[404 Not found] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
+			break
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}

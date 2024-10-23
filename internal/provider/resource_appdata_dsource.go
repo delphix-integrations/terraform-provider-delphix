@@ -500,6 +500,12 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
 	})
 
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Dsource not found: "+dsource_id+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
+
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()

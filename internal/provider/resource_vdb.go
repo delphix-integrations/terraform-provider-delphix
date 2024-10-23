@@ -1536,6 +1536,12 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"VDB not found: "+vdbId+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
+
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
