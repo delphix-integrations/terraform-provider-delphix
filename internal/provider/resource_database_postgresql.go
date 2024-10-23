@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -181,7 +182,6 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 }
 
 func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	client := meta.(*apiClient).client
 
 	source_id := d.Id()
@@ -217,7 +217,25 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("Error occured in type casting.")
 	}
 
+	repository_value := d.Get("repository_value").(string)
+
+	if repository_value == "" {
+		resEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, result.GetEnvironmentId()).Execute()
+
+		if diags := apiErrorResponseHelper(ctx, resEnv, httpRes, err); diags != nil {
+			return diags
+		}
+		if result.GetRepository() != "" {
+			for _, repo := range resEnv.Repositories {
+				if strings.EqualFold(repo.GetId(), result.GetRepository()) {
+					repository_value = repo.GetName()
+				}
+			}
+		}
+	}
+
 	d.Set("id", result.GetId())
+	d.Set("repository_value", repository_value)
 	d.Set("environment_id", result.GetEnvironmentId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())

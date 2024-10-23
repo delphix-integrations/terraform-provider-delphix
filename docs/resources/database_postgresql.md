@@ -66,3 +66,18 @@ resource "delphix_database_postgresql" "source" {
 * `tags` -  The tags to be created for database. This is a map of 2 parameters:
     * `key` - Key of the tag
     * `value` - Value of the tag
+
+## Import (Beta)
+
+Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add source configs created directly in Data Control Tower into a Terraform state file. 
+
+For example:
+```terraform
+import { 
+    to = delphix_database_postgresql.source_config_import
+    id = "source_config_id"
+}
+```
+
+*This is a beta feature. Delphix offers no guarantees of support or compatibility.*
+
