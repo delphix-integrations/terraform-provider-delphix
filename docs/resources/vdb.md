@@ -63,73 +63,6 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
 
 * `name` - (Optional) [Updatable] The unique name of the VDB. If empty, a name is randomly generated.
 
-* `instance_name` - (Optional) The VDB's SID name (Oracle Only).
-
-* `open_reset_logs` - (Optional) TRUE or FALSE value which determines whether to open the database after provision (Oracle Only).
-
-* `online_log_size` - (Optional) The online log size in MB (Oracle Only).
-
-* `online_log_groups` - (Optional) The number of online log groups (Oracle Only).
-
-* `archive_log` - (Optional) TRUE or FALSE boolean to create a VDB in `archivelog` mode (Oracle Only).
-
-* `new_dbid` - (Optional) [Updatable] TRUE or FALSE boolean to generate a new DB ID for the created VDB (Oracle Only).
-
-* `listener_ids` - (Optional) [Updatable] The listener IDs for this provision operation. This is a list of listener ids. For eg: [ "listener-123", "listener-456" ]  (Oracle Only).
-
-* `file_mapping_rules` - (Optional) The VDB file mapping rules (Oracle Only). Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.
-
-* `unique_name` - (Optional) The VDB's db_unique_name (Oracle Only).
-
-* `auxiliary_template_id` - (Optional) The ID of the configuration template to apply to the auxiliary container database (CDB). This is only relevant when provisioning a Multitenant pluggable database into an existing CDB, i.e when the cdb_id property is set. (Oracle Only)
-
-* `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. If empty, a new vCDB will be provisioned. (Oracle only)
-
-* `os_username` - (Optional) The name of the privileged user to run the provision operation (Oracle only).
-
-* `os_password` - (Optional) The password of the privileged user to run the provision operation (Oracle only).
-
-* `vcdb_tde_key_identifier` - (Optional) ID of the key created by the Continuous Data Engine. (Oracle Multitenant Only)
-
-* `cdb_tde_keystore_password` - (Optional) [Updatable] The password for the Transparent Data Encryption keystore associated with the CDB. (Oracle Multitenant Only)
-
-* `target_vcdb_tde_keystore_path` - (Optional) [Updatable] Path to the keystore of the vCDB. (Oracle Multitenant Only)
-
-* `tde_key_identifier` - (Optional) [Updatable] ID of the key created by the Continuous Data Engine. (Oracle Multitenant Only)
-
-* `tde_exported_key_file_secret` - (Optional) Secret to be used while exporting and importing vPDB encryption keys if Transparent Data Encryption is enabled on the vPDB. (Oracle Multitenant Only)
-
-* `parent_tde_keystore_password` - (Optional) [Updatable] The password of the keystore specified in parentTdeKeystorePath. (Oracle Multitenant Only)
-
-* `parent_tde_keystore_path` - (Optional) [Updatable] Path to a copy of the parent's Oracle transparent data encryption keystore on the target host. Required to provision from snapshots containing encrypted database files. (Oracle Multitenant Only)
-
-* `vcdb_name` - (Optional) The name of the provisioned vCDB when the cdb_id property is not set  (Oracle Multitenant Only).
-
-* `vcdb_database_name` - (Optional) The database name of the provisioned vCDB wwhen the cdb_id property is not set. Defaults to the value of the vcdb_name property (Oracle Multitenant Only).
-
-* `cluster_node_ids` - (Optional) The cluster node ids, name, or addresses for this provision operation (Oracle RAC Only).
-
-* `oracle_rac_custom_env_vars` - (Optional) Environment variable to be set when the engine creates an Oracle RAC VDB. See the Engine documentation for the list of allowed/denied environment variables and rules about substitution.
-  * `node_id` - (Required) The node id of the cluster.
-  * `name` - (Required) Name of the environment variable
-  * `value` - (Required) Value of the environment variable.
-
-* `oracle_rac_custom_env_files` - (Optional) Environment files to be sourced when the Engine creates an Oracle RAC VDB. This path can be followed by parameters. Paths and parameters are separated by spaces.
-  * `node_id` - (Required) The node id of the cluster.
-  * `path_parameters` - (Required) This references a file from which certain parameters will be loaded.
-
-* `db_username` - (Optional) [Updatable] The username of the database (Oracle, SAP ASE only). Only for update.
-
-* `db_password` - (Optional) [Updatable] The password of the database (Oracle, SAP ASE only). Only for update.
-
-* `template_id` - (Optional) [Updatable] The ID of the VDB Configuration Template (Oracle, SQL Server Only).
-
-* `database_name` - (Optional) The name of the database on the Target environment. Defaults to "name" (Oracle, MSSQL, SAP ASE).
-
-* `mount_point` - (Optional) [Updatable] The mount point for the VDB (Oracle, ASE Only).
-
-* `truncate_log_on_checkpoint` - (Optional) TRUE or FALSE value to truncate the logs on checkpoints (SAP ASE only).
-
 * `environment_id` - (Optional) The ID or name of the Target environment where to provision the VDB. If "repository_id" unambigously identifies a repository, then this value is ignored.
 
 * `environment_user_id` - (Optional) [Updatable] The environment user ID to use to connect to the Target environment.
@@ -199,14 +132,6 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
 
 * `retention_policy_id` - (Optional) The ID of the Snapshot Retention Policy for the VDB.
 
-* `recovery_model` - (Optional) Recovery model of the source database. Valid values are `[ FULL, SIMPLE, BULK_LOGGED ]`  (SQL Server Only).
-
-* `pre_script` - (Optional) [Updatable] PowerShell script or executable to run prior to provisioning (SQL Server Only).
-
-* `post_script` - (Optional) [Updatable] PowerShell script or executable to run after provisioning (SQL Server Only).
-
-* `cdc_on_provision` - (Optional) [Updatable] Option to enable change data capture (CDC) on both the provisioned VDB and subsequent snapshot-related operations (e.g. refresh, rewind) (SQL Server Only).
-
 * `masked` - (Optional) TRUE or FALSE boolean to set a VDB as "Masked". Note: You should define a `configure_clone` script in the Hooks step to mask the dataset. The selection of this option will cause the data to be marked as masked, regardless of whether you have defined a script to do so or not.
 If you do not define a script to mask the dataset, the data will not be masked unless there is a masking job associated with the dataset.
 
@@ -229,6 +154,81 @@ Environment variable to be set when a VDB is created. See the Continuous Data EN
   * `shared_path` - (Required) Relative path within the container of the directory that should be mounted.
   * `mount_path` - (Optional) Absolute path on the target environment were the filesystem should be mounted
   * `environment_id` - (Optional) The entity ID of the environment on which the file system will be mounted.
+
+* `instance_name` - (Optional) The VDB's SID name (Oracle Only).
+
+* `open_reset_logs` - (Optional) TRUE or FALSE value which determines whether to open the database after provision (Oracle Only).
+
+* `online_log_size` - (Optional) The online log size in MB (Oracle Only).
+
+* `online_log_groups` - (Optional) The number of online log groups (Oracle Only).
+
+* `archive_log` - (Optional) TRUE or FALSE boolean to create a VDB in `archivelog` mode (Oracle Only).
+
+* `new_dbid` - (Optional) [Updatable] TRUE or FALSE boolean to generate a new DB ID for the created VDB (Oracle Only).
+
+* `listener_ids` - (Optional) [Updatable] The listener IDs for this provision operation. This is a list of listener ids. For eg: [ "listener-123", "listener-456" ]  (Oracle Only).
+
+* `file_mapping_rules` - (Optional) The VDB file mapping rules (Oracle Only). Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.
+
+* `unique_name` - (Optional) The VDB's db_unique_name (Oracle Only).
+
+* `auxiliary_template_id` - (Optional) The ID of the configuration template to apply to the auxiliary container database (CDB). This is only relevant when provisioning a Multitenant pluggable database into an existing CDB, i.e when the cdb_id property is set. (Oracle Only)
+
+* `cdb_id` - (Optional) The ID of the container database (CDB) to provision an Oracle Multitenant database into. If empty, a new vCDB will be provisioned. (Oracle only)
+
+* `os_username` - (Optional) The name of the privileged user to run the provision operation (Oracle only).
+
+* `os_password` - (Optional) The password of the privileged user to run the provision operation (Oracle only).
+
+* `vcdb_tde_key_identifier` - (Optional) ID of the key created by the Continuous Data Engine. (Oracle Multitenant Only)
+
+* `cdb_tde_keystore_password` - (Optional) [Updatable] The password for the Transparent Data Encryption keystore associated with the CDB. (Oracle Multitenant Only)
+
+* `target_vcdb_tde_keystore_path` - (Optional) [Updatable] Path to the keystore of the vCDB. (Oracle Multitenant Only)
+
+* `tde_key_identifier` - (Optional) [Updatable] ID of the key created by the Continuous Data Engine. (Oracle Multitenant Only)
+
+* `tde_exported_key_file_secret` - (Optional) Secret to be used while exporting and importing vPDB encryption keys if Transparent Data Encryption is enabled on the vPDB. (Oracle Multitenant Only)
+
+* `parent_tde_keystore_password` - (Optional) [Updatable] The password of the keystore specified in parentTdeKeystorePath. (Oracle Multitenant Only)
+
+* `parent_tde_keystore_path` - (Optional) [Updatable] Path to a copy of the parent's Oracle transparent data encryption keystore on the target host. Required to provision from snapshots containing encrypted database files. (Oracle Multitenant Only)
+
+* `vcdb_name` - (Optional) The name of the provisioned vCDB when the cdb_id property is not set  (Oracle Multitenant Only).
+
+* `vcdb_database_name` - (Optional) The database name of the provisioned vCDB wwhen the cdb_id property is not set. Defaults to the value of the vcdb_name property (Oracle Multitenant Only).
+
+* `cluster_node_ids` - (Optional) The cluster node ids, name, or addresses for this provision operation (Oracle RAC Only).
+
+* `oracle_rac_custom_env_vars` - (Optional) Environment variable to be set when the engine creates an Oracle RAC VDB. See the Engine documentation for the list of allowed/denied environment variables and rules about substitution.
+  * `node_id` - (Required) The node id of the cluster.
+  * `name` - (Required) Name of the environment variable
+  * `value` - (Required) Value of the environment variable.
+
+* `oracle_rac_custom_env_files` - (Optional) Environment files to be sourced when the Engine creates an Oracle RAC VDB. This path can be followed by parameters. Paths and parameters are separated by spaces.
+  * `node_id` - (Required) The node id of the cluster.
+  * `path_parameters` - (Required) This references a file from which certain parameters will be loaded.
+
+* `db_username` - (Optional) [Updatable] The username of the database (Oracle, SAP ASE only). Only for update.
+
+* `db_password` - (Optional) [Updatable] The password of the database (Oracle, SAP ASE only). Only for update.
+
+* `template_id` - (Optional) [Updatable] The ID of the VDB Configuration Template (Oracle, SQL Server Only).
+
+* `database_name` - (Optional) The name of the database on the Target environment. Defaults to "name" (Oracle, MSSQL, SAP ASE).
+
+* `mount_point` - (Optional) [Updatable] The mount point for the VDB (Oracle, ASE Only).
+
+* `truncate_log_on_checkpoint` - (Optional) TRUE or FALSE value to truncate the logs on checkpoints (SAP ASE only).
+
+* `recovery_model` - (Optional) Recovery model of the source database. Valid values are `[ FULL, SIMPLE, BULK_LOGGED ]`  (SQL Server Only).
+
+* `pre_script` - (Optional) [Updatable] PowerShell script or executable to run prior to provisioning (SQL Server Only).
+
+* `post_script` - (Optional) [Updatable] PowerShell script or executable to run after provisioning (SQL Server Only).
+
+* `cdc_on_provision` - (Optional) [Updatable] Option to enable change data capture (CDC) on both the provisioned VDB and subsequent snapshot-related operations (e.g. refresh, rewind) (SQL Server Only).
 
 
 ## Attribute Reference
