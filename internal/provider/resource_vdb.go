@@ -93,6 +93,7 @@ func resourceVdb() *schema.Resource {
 			"database_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"cdb_id": {
 				Type:     schema.TypeString,
@@ -464,6 +465,7 @@ func resourceVdb() *schema.Resource {
 			"instance_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"unique_name": {
 				Type:     schema.TypeString,
@@ -480,6 +482,7 @@ func resourceVdb() *schema.Resource {
 			"mount_point": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"open_reset_logs": {
 				Type:     schema.TypeBool,
@@ -1643,6 +1646,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		if strings.Contains(k, "post_snapshot") {
 			k = "post_snapshot"
 		}
+		if strings.Contains(k, "pre_rollback") {
+			k = "pre_rollback"
+		}
+		if strings.Contains(k, "post_rollback") {
+			k = "post_rollback"
+		}
 		if strings.Contains(k, "pre_start") {
 			k = "pre_start"
 		}
@@ -1665,6 +1674,10 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
+	}
+
+	for _, key := range changedKeys {
+		tflog.Debug(ctx, "ChangedKeys>>>>>>>> "+key)
 	}
 
 	var updateFailure, destructiveUpdate bool = false, false
@@ -1778,17 +1791,17 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	if d.HasChange("pre_stop") {
 		if v, has_v := d.GetOk("pre_stop"); has_v {
-			nvdh.SetPostStart(toHookArray(v))
+			nvdh.SetPreStop(toHookArray(v))
 		} else {
-			nvdh.SetPostStart([]dctapi.Hook{})
+			nvdh.SetPreStop([]dctapi.Hook{})
 		}
 	}
 
 	if d.HasChange("post_stop") {
 		if v, has_v := d.GetOk("post_stop"); has_v {
-			nvdh.SetPostStart(toHookArray(v))
+			nvdh.SetPostStop(toHookArray(v))
 		} else {
-			nvdh.SetPostStart([]dctapi.Hook{})
+			nvdh.SetPostStop([]dctapi.Hook{})
 		}
 	}
 

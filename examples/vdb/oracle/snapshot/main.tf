@@ -76,44 +76,44 @@ resource "delphix_vdb" "example" {
     processes = 150
   })
  pre_start {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_rollback {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_start {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_rollback {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_stop {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   configure_clone {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_snapshot {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_refresh {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_refresh {
     name            = "string"
@@ -121,9 +121,9 @@ resource "delphix_vdb" "example" {
     shell           = "bash"
   }
   post_stop {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_snapshot {
     name            = "string"

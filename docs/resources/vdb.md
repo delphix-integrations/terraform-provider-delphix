@@ -81,12 +81,12 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
   * `command` - (Required) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `pre_rollback` - The commands to execute on the Target environment before rewinding the VDB. This is a map of three parameters:
+* `pre_self_refresh` - The commands to execute on the Target environment before rewinding the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
   * `command` - (Required) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `post_rollback` - The commands to execute on the Target environment after rewinding the VDB. This is a map of three parameters:
+* `post_self_refresh` - The commands to execute on the Target environment after rewinding the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
   * `command` - (Required) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
