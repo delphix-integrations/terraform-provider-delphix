@@ -1676,10 +1676,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	for _, key := range changedKeys {
-		tflog.Debug(ctx, "ChangedKeys>>>>>>>> "+key)
-	}
-
 	var updateFailure, destructiveUpdate bool = false, false
 	var nonUpdatableField []string
 
