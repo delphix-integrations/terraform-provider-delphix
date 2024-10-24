@@ -27,9 +27,9 @@ resource "delphix_database_postgresql" "source" {
 
 * `repository_value` - (Required)  The Id or Name of the Repository onto which the source will be created..
 
-* `environment_value` - (Optional) The Id or Name of the environment to create the source on.
+* `environment_value` - The Id or Name of the environment to create the source on.
 
-* `engine_value` - (Optional) The Id or Name of the engine to create the source on.
+* `engine_value` - The Id or Name of the engine to create the source on.
 
 * `id` - The Source object entity ID.
 

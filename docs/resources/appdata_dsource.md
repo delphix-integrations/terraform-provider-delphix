@@ -125,27 +125,27 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `make_current_account_owner` - (Required) Whether the account creating this reporting schedule must be configured as owner of the reporting schedule.
 
-* `description` - (Optional) The notes/description for the dSource.
+* `description` - The notes/description for the dSource.
 
 * `link_type` - (Required) The type of link to create. Default is AppDataDirect.
     * `AppDataDirect` - Represents the AppData specific parameters of a link request for a source directly replicated into the Delphix Engine.
     * `AppDataStaged` - Represents the AppData specific parameters of a link request for a source with a staging source.
 
-* `name` - (Optional) The unique name of the dSource. If unset, a name is randomly generated.
+* `name` - The unique name of the dSource. If unset, a name is randomly generated.
 
-* `staging_mount_base` - (Optional) The base mount point for the NFS mount on the staging environment [AppDataStaged only].
+* `staging_mount_base` - The base mount point for the NFS mount on the staging environment [AppDataStaged only].
 
 * `environment_user` - (Required) The OS user to use for linking.
 
 * `staging_environment` - (Required) The environment used as an intermediate stage to pull data into Delphix [AppDataStaged only].
 
-* `staging_environment_user` - (Optional) The environment user used to access the staging environment [AppDataStaged only].
+* `staging_environment_user` - The environment user used to access the staging environment [AppDataStaged only].
 
-* `tags` - (Optional) The tags to be created for dSource. This is a map of 2 parameters:
+* `tags` - The tags to be created for dSource. This is a map of 2 parameters:
     * `key` - (Required) Key of the tag
     * `value` - (Required) Value of the tag
 
-* `ops_pre_sync` - (Optional) Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing
+* `ops_pre_sync` - Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing
     * `name` - Name of the hook
     * `command` - Command to be executed
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
@@ -162,7 +162,7 @@ resource "delphix_appdata_dsource" "dsource_name" {
         * `azure_vault_secret_key` - Azure vault key in the key-value store.
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
     
-* `ops_post_sync` - (Optional) Operations to perform after syncing a created dSource.
+* `ops_post_sync` - Operations to perform after syncing a created dSource.
     * `name` - Name of the hook
     * `command` - Command to be executed
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
@@ -179,14 +179,14 @@ resource "delphix_appdata_dsource" "dsource_name" {
         * `azure_vault_secret_key` - Azure vault key in the key-value store.
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
 
-* `excludes` - (Optional) List of subdirectories in the source to exclude when syncing data.These paths are relative to the root of the source directory. [AppDataDirect only]
+* `excludes` - List of subdirectories in the source to exclude when syncing data.These paths are relative to the root of the source directory. [AppDataDirect only]
 
-* `follow_symlinks` - (Optional) List of symlinks in the source to follow when syncing data.These paths are relative to the root of the source directory. All other symlinks are preserved. [AppDataDirect only]
+* `follow_symlinks` - List of symlinks in the source to follow when syncing data.These paths are relative to the root of the source directory. All other symlinks are preserved. [AppDataDirect only]
 
-* `parameters` - (Optional) The JSON payload is based on the type of dSource being created. Different data sources require different parameters.
+* `parameters` - The JSON payload is based on the type of dSource being created. Different data sources require different parameters.
 
-* `sync_parameters` - (Optional) The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
+* `sync_parameters` - The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
 
-* `skip_wait_for_snapshot_creation` - (Optional) By default this resource will wait for a snapshot to be created post-dSource creation. This ensure a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`.
+* `skip_wait_for_snapshot_creation` - By default this resource will wait for a snapshot to be created post-dSource creation. This ensure a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`.
 
-* `wait_time` - (Optional) By default this resource waits 0 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
+* `wait_time` - By default this resource waits 0 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
