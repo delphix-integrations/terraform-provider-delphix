@@ -25,6 +25,8 @@ var updatableVdbKeys = map[string]bool{
 	"configure_clone":               true,
 	"pre_snapshot":                  true,
 	"post_snapshot":                 true,
+	"pre_self_refresh":              true,
+	"post_self_refresh":             true,
 	"pre_rollback":                  true,
 	"post_rollback":                 true,
 	"pre_start":                     true,

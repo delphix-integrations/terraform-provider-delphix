@@ -73,57 +73,67 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
 
 * `pre_refresh` - [Updatable] The commands to execute on the Target environment before refreshing the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `post_refresh` - [Updatable] The commands to execute on the Target environment after refreshing the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `pre_self_refresh` - The commands to execute on the Target environment before rewinding the VDB. This is a map of three parameters:
+* `pre_self_refresh` - [Updatable] The commands to execute on the Target environment before a self refresh on the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `post_self_refresh` - The commands to execute on the Target environment after rewinding the VDB. This is a map of three parameters:
+* `post_self_refresh` - [Updatable] The commands to execute on the Target environment after a self refresh on the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `configure_clone` - The commands to execute on the Target environment when the VDB is created or refreshed. This is a map of three parameters:
+* `pre_rollback` - (Deprecated) [Updatable] The commands to execute on the Target environment before a rollback on the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
+
+* `post_rollback` - (Deprecated) [Updatable] The commands to execute on the Target environment after a rollback on the VDB. This is a map of three parameters:
+  * `name` - Name of the hook.
+  * `command` - (Required, if hook is specified) Command to be executed.
+  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
+
+* `configure_clone` - [Updatable] The commands to execute on the Target environment when the VDB is created or refreshed. This is a map of three parameters:
+  * `name` - Name of the hook.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `pre_snapshot` - [Updatable] The commands to execute on the Target environment before snapshotting a virtual database. These commands can quiesce any data prior to snapshotting. This is a map of five parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `post_snapshot` - [Updatable] The commands to execute on the Target environment after snapshotting a virtual database. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `pre_start` - [Updatable] The commands to execute on the Target environment before starting a virtual database. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `post_start` - [Updatable] The commands to execute on the Target environment after starting a virtual database. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `pre_stop` - [Updatable] The commands to execute on the Target environment before stopping a virtual database. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `post_stop` - [Updatable] The commands to execute on the Target environment after stopping a virtual database. This is a map of three parameters:
   * `name` - Name of the hook.
-  * `command` - (Required) Command to be executed.
+  * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
 * `vdb_restart` - [Updatable] Indicates whether the Continuous Data Engine should automatically restart this virtual database when Target environment reboot is detected.

@@ -190,6 +190,62 @@ func resourceVdb() *schema.Resource {
 					},
 				},
 			},
+			"pre_self_refresh": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"command": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"shell": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+					},
+				},
+			},
+			"post_self_refresh": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"command": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"shell": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+					},
+				},
+			},
 			"pre_rollback": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -445,6 +501,7 @@ func resourceVdb() *schema.Resource {
 			"vdb_restart": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"template_id": {
 				Type:     schema.TypeString,
@@ -908,6 +965,12 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBBySnapshotParameters.SetPostRefresh(toHookArray(v))
 	}
+	if v, has_v := d.GetOk("pre_self_refresh"); has_v {
+		provisionVDBBySnapshotParameters.SetPreSelfRefresh(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("post_self_refresh"); has_v {
+		provisionVDBBySnapshotParameters.SetPostSelfRefresh(toHookArray(v))
+	}
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBBySnapshotParameters.SetPreRollback(toHookArray(v))
 	}
@@ -1156,6 +1219,12 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBByTimestampParameters.SetPostRefresh(toHookArray(v))
 	}
+	if v, has_v := d.GetOk("pre_self_refresh"); has_v {
+		provisionVDBByTimestampParameters.SetPreSelfRefresh(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("post_self_refresh"); has_v {
+		provisionVDBByTimestampParameters.SetPostSelfRefresh(toHookArray(v))
+	}
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBByTimestampParameters.SetPreRollback(toHookArray(v))
 	}
@@ -1389,6 +1458,12 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_refresh"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostRefresh(toHookArray(v))
 	}
+	if v, has_v := d.GetOk("pre_self_refresh"); has_v {
+		provisionVDBFromBookmarkParameters.SetPreSelfRefresh(toHookArray(v))
+	}
+	if v, has_v := d.GetOk("post_self_refresh"); has_v {
+		provisionVDBFromBookmarkParameters.SetPostSelfRefresh(toHookArray(v))
+	}
 	if v, has_v := d.GetOk("pre_rollback"); has_v {
 		provisionVDBFromBookmarkParameters.SetPreRollback(toHookArray(v))
 	}
@@ -1590,8 +1665,11 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("post_stop", flattenHooks(result.GetHooks().PostStop))
 	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
 	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
+	d.Set("pre_self_refresh", flattenHooks(result.GetHooks().PreSelfRefresh))
+	d.Set("post_self_refresh", flattenHooks(result.GetHooks().PostSelfRefresh))
 	d.Set("database_name", result.GetDatabaseName())
 	d.Set("tags", flattenTags(result.GetTags()))
+	d.Set("vdb_restart", result.GetVdbRestart())
 
 	_, is_provision := d.GetOk("provision_type")
 	if !is_provision {
@@ -1645,6 +1723,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 		if strings.Contains(k, "post_snapshot") {
 			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_self_refresh") {
+			k = "pre_self_refresh"
+		}
+		if strings.Contains(k, "post_self_refresh") {
+			k = "post_self_refresh"
 		}
 		if strings.Contains(k, "pre_rollback") {
 			k = "pre_rollback"
@@ -1726,6 +1810,22 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			nvdh.SetPostRefresh(toHookArray(v))
 		} else {
 			nvdh.SetPostRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_self_refresh") {
+		if v, has_v := d.GetOk("pre_self_refresh"); has_v {
+			nvdh.SetPreSelfRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPreSelfRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_self_refresh") {
+		if v, has_v := d.GetOk("post_self_refresh"); has_v {
+			nvdh.SetPostSelfRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPostSelfRefresh([]dctapi.Hook{})
 		}
 	}
 
