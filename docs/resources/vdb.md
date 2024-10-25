@@ -81,22 +81,12 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
   * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `pre_self_refresh` - [Updatable] The commands to execute on the Target environment before a self refresh on the VDB. This is a map of three parameters:
+* `pre_rollback` - [Updatable] The commands to execute on the Target environment before a rollback on the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
   * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
 
-* `post_self_refresh` - [Updatable] The commands to execute on the Target environment after a self refresh on the VDB. This is a map of three parameters:
-  * `name` - Name of the hook.
-  * `command` - (Required, if hook is specified) Command to be executed.
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
-
-* `pre_rollback` - (Deprecated) [Updatable] The commands to execute on the Target environment before a rollback on the VDB. This is a map of three parameters:
-  * `name` - Name of the hook.
-  * `command` - (Required, if hook is specified) Command to be executed.
-  * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
-
-* `post_rollback` - (Deprecated) [Updatable] The commands to execute on the Target environment after a rollback on the VDB. This is a map of three parameters:
+* `post_rollback` - [Updatable] The commands to execute on the Target environment after a rollback on the VDB. This is a map of three parameters:
   * `name` - Name of the hook.
   * `command` - (Required, if hook is specified) Command to be executed.
   * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]`.
