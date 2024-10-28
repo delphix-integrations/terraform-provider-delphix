@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -99,8 +99,8 @@ func configure(version string, p *schema.Provider) func(context.Context, *schema
 		}
 		// make a test call
 
-		req := client.ManagementApi.GetRegisteredEngines(ctx)
-		_, _, err := client.ManagementApi.GetRegisteredEnginesExecute(req)
+		req := client.ManagementAPI.GetRegisteredEngines(ctx)
+		_, _, err := client.ManagementAPI.GetRegisteredEnginesExecute(req)
 
 		if err != nil {
 			return nil, diag.FromErr(err)

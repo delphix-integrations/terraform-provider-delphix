@@ -46,7 +46,7 @@ resource "delphix_vdb" "example" {
   auxiliary_template_id   = "aux-template-1"
   database_name           = "dbname_to_be_created"
   mount_point             = "/var/mnt"
-  oracle_instance_name    = "dbdhcp2"
+  instance_name    = "dbdhcp2"
   retention_policy_id     = "test_retention_policy"
   template_id             = "template-1"
   cdb_id                  = ""
@@ -76,81 +76,59 @@ resource "delphix_vdb" "example" {
     processes = 150
   })
  pre_start {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_rollback {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_start {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_rollback {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_stop {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   configure_clone {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_snapshot {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_refresh {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   post_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_stop {
-    name            = "string",
-    command         = "string",
-    shell           = "bash",
-    element_id      = "string",
-    has_credentials = true
+    name            = "string"
+    command         = "string"
+    shell           = "bash"
   }
   pre_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   tags {
     key   = "key-1"

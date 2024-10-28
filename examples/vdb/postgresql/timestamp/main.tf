@@ -43,12 +43,6 @@ resource "delphix_vdb" "example" {
     postgresPort        = 5434
     configSettingsStg   = [{ propertyName: "timezone", value:"GMT", commentProperty:false}]
   })
-  config_params jsonencode({
-    processes = 150
-  })
-  appdata_config_params jsonencode({
-    param = "value"
-  })
   additional_mount_points = [{
       shared_path = "/",
       mount_path = "/work",
@@ -58,78 +52,56 @@ resource "delphix_vdb" "example" {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   configure_clone {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_start {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_start {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   make_current_account_owner = true
   tags {

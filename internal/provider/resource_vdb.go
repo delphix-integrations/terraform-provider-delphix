@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -91,6 +93,7 @@ func resourceVdb() *schema.Resource {
 			"database_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"cdb_id": {
 				Type:     schema.TypeString,
@@ -150,11 +153,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -178,11 +181,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -206,11 +209,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -234,11 +237,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -262,11 +265,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -290,11 +293,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -318,11 +321,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -346,11 +349,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -374,11 +377,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -402,11 +405,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -430,11 +433,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -442,10 +445,15 @@ func resourceVdb() *schema.Resource {
 			"vdb_restart": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"template_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"jdbc_connection_string": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 			"auxiliary_template_id": {
 				Type:     schema.TypeString,
@@ -455,9 +463,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"oracle_instance_name": {
+			"instance_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"unique_name": {
 				Type:     schema.TypeString,
@@ -474,6 +483,7 @@ func resourceVdb() *schema.Resource {
 			"mount_point": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"open_reset_logs": {
 				Type:     schema.TypeBool,
@@ -560,6 +570,14 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"parent_dsource_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"root_parent_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -583,7 +601,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"make_current_account_owner": {
@@ -680,6 +697,9 @@ func resourceVdb() *schema.Resource {
 				},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -693,21 +713,18 @@ func toHookArray(array interface{}) []dctapi.Hook {
 		if name != "" {
 			hook_item.SetName(item_map["name"].(string))
 		}
+		element_id := item_map["element_id"].(string)
+		if element_id != "" {
+			hook_item.SetElementId(element_id)
+		}
+		has_credentials := item_map["has_credentials"].(bool)
+		if has_credentials {
+			hook_item.SetHasCredentials(has_credentials)
+		}
 
 		// defaults to "bash" as per resource schema spec
 		hook_item.SetShell(item_map["shell"].(string))
 		items = append(items, *hook_item)
-	}
-	return items
-}
-
-func toTagArray(array interface{}) []dctapi.Tag {
-	items := []dctapi.Tag{}
-	for _, item := range array.([]interface{}) {
-		item_map := item.(map[string]interface{})
-		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
-
-		items = append(items, *tag_item)
 	}
 	return items
 }
@@ -817,7 +834,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBBySnapshotParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBBySnapshotParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -853,6 +870,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
 	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
+	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
 	}
@@ -864,9 +884,6 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
-	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOkExists("listener_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
@@ -971,7 +988,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbBySnapshot(ctx)
+	req := client.VDBsAPI.ProvisionVdbBySnapshot(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1058,7 +1075,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBByTimestampParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBByTimestampParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1094,6 +1111,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
 	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBByTimestampParameters.SetMasked(v.(bool))
+	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
 	}
@@ -1105,9 +1125,6 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
-	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBByTimestampParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
@@ -1219,7 +1236,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbByTimestamp(ctx)
+	req := client.VDBsAPI.ProvisionVdbByTimestamp(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1302,7 +1319,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBFromBookmarkParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1338,6 +1355,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
 	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
+	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
 	}
@@ -1349,9 +1369,6 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("new_dbid"); has_v {
 		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
-	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
@@ -1452,7 +1469,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsApi.ProvisionVdbFromBookmark(ctx)
+	req := client.VDBsAPI.ProvisionVdbFromBookmark(ctx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1520,12 +1537,18 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	vdbId := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
+
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"VDB not found: "+vdbId+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+			return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -1552,8 +1575,36 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("ip_address", result.GetIpAddress())
 	d.Set("fqdn", result.GetFqdn())
 	d.Set("parent_id", result.GetParentId())
+	d.Set("parent_dsource_id", result.GetParentDsourceId())
+	d.Set("root_parent_id", result.GetRootParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("instance_name", result.GetInstanceName())
+	d.Set("pre_refresh", flattenHooks(result.GetHooks().PreRefresh))
+	d.Set("post_refresh", flattenHooks(result.GetHooks().PostRefresh))
+	d.Set("configure_clone", flattenHooks(result.GetHooks().ConfigureClone))
+	d.Set("pre_snapshot", flattenHooks(result.GetHooks().PreSnapshot))
+	d.Set("post_snapshot", flattenHooks(result.GetHooks().PostSnapshot))
+	d.Set("pre_start", flattenHooks(result.GetHooks().PreStart))
+	d.Set("post_start", flattenHooks(result.GetHooks().PostStart))
+	d.Set("pre_stop", flattenHooks(result.GetHooks().PreStop))
+	d.Set("post_stop", flattenHooks(result.GetHooks().PostStop))
+	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
+	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
+	d.Set("database_name", result.GetDatabaseName())
+	d.Set("tags", flattenTags(result.GetTags()))
+	d.Set("vdb_restart", result.GetVdbRestart())
+
+	_, is_provision := d.GetOk("provision_type")
+	if !is_provision {
+		// its an import, set to default value
+		d.Set("provision_type", "snapshot")
+	}
+
+	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())
+	d.Set("cdb_id", result.GetCdbId())
+	d.Set("template_id", result.GetTemplateId())
+	d.Set("mount_point", result.GetMountPoint())
 
 	appdata_source_params, _ := json.Marshal(result.GetAppdataSourceParams())
 	d.Set("appdata_source_params", string(appdata_source_params))
@@ -1562,6 +1613,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	config_params, _ := json.Marshal(result.GetConfigParams())
 	d.Set("config_params", string(config_params))
 	d.Set("additional_mount_points", flattenAdditionalMountPoints(result.GetAdditionalMountPoints()))
+
 	d.Set("id", vdbId)
 
 	return diags
@@ -1573,68 +1625,210 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
+	vdbId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "pre_refresh") {
+			k = "pre_refresh"
+		}
+		if strings.Contains(k, "post_refresh") {
+			k = "post_refresh"
+		}
+		if strings.Contains(k, "configure_clone") {
+			k = "configure_clone"
+		}
+		if strings.Contains(k, "pre_snapshot") {
+			k = "pre_snapshot"
+		}
+		if strings.Contains(k, "post_snapshot") {
+			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_rollback") {
+			k = "pre_rollback"
+		}
+		if strings.Contains(k, "post_rollback") {
+			k = "post_rollback"
+		}
+		if strings.Contains(k, "pre_start") {
+			k = "pre_start"
+		}
+		if strings.Contains(k, "post_start") {
+			k = "post_start"
+		}
+		if strings.Contains(k, "pre_stop") {
+			k = "pre_stop"
+		}
+		if strings.Contains(k, "post_stop") {
+			k = "post_stop"
+		}
+		if strings.Contains(k, "additional_mount_points") {
+			k = "additional_mount_points"
+		}
+		if strings.Contains(k, "listener_ids") {
+			k = "listener_ids"
+		}
 		if d.HasChange(k) {
+			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
 
-	if d.HasChanges(
-		"auto_select_repository",
-		"source_data_id",
-		"id",
-		"database_type",
-		"database_version",
-		"status",
-		"ip_address",
-		"fqdn",
-		"parent_id",
-		"group_name",
-		"creation_date",
-		"target_group_id",
-		"database_name",
-		"truncate_log_on_checkpoint",
-		"repository_id",
-		"pre_refresh",
-		"post_refresh",
-		"pre_rollback",
-		"post_rollback",
-		"configure_clone",
-		"pre_snapshot",
-		"post_snapshot",
-		"pre_start",
-		"post_start",
-		"pre_stop",
-		"post_stop",
-		"file_mapping_rules",
-		"oracle_instance_name",
-		"unique_name",
-		"mount_point",
-		"masked",
-		"open_reset_logs",
-		"snapshot_policy_id",
-		"retention_policy_id",
-		"recovery_model",
-		"online_log_groups",
-		"online_log_size",
-		"os_username",
-		"os_password",
-		"archive_log",
-		"custom_env_vars",
-		"custom_env_files",
-		"timestamp",
-		"timestamp_in_database_timezone",
-		"snapshot_id") {
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
 
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
+	// var vdbs []dctapi.VDB
+	// var vdbDiags diag.Diagnostics
+
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range changedKeys {
+		if !updatableVdbKeys[key] {
+			updateFailure = true
+			tflog.Debug(ctx, "non updatable field: "+key)
+			nonUpdatableField = append(nonUpdatableField, key)
 		}
+	}
 
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveVdbUpdate[key] {
+			tflog.Debug(ctx, "destructive updates for: "+key)
+			destructiveUpdate = true
+		}
+	}
+	if destructiveUpdate {
+		if diags := disableVDB(ctx, client, vdbId); diags != nil {
+			tflog.Error(ctx, "failure in disabling vdbs")
+			revertChanges(d, changedKeys)
+			return diags
+		}
+	}
+
+	nvdh := dctapi.NewVirtualDatasetHooks()
+
+	if d.HasChange("pre_refresh") {
+		if v, has_v := d.GetOk("pre_refresh"); has_v {
+			nvdh.SetPreRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPreRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_refresh") {
+		if v, has_v := d.GetOk("post_refresh"); has_v {
+			nvdh.SetPostRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPostRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_rollback") {
+		if v, has_v := d.GetOk("pre_rollback"); has_v {
+			nvdh.SetPreRollback(toHookArray(v))
+		} else {
+			nvdh.SetPreRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_rollback") {
+		if v, has_v := d.GetOk("post_rollback"); has_v {
+			nvdh.SetPostRollback(toHookArray(v))
+		} else {
+			nvdh.SetPostRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("configure_clone") {
+		if v, has_v := d.GetOk("configure_clone"); has_v {
+			nvdh.SetConfigureClone(toHookArray(v))
+		} else {
+			nvdh.SetConfigureClone([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_snapshot") {
+		if v, has_v := d.GetOk("pre_snapshot"); has_v {
+			nvdh.SetPreSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPreSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_snapshot") {
+		if v, has_v := d.GetOk("post_snapshot"); has_v {
+			nvdh.SetPostSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPostSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_start") {
+		if v, has_v := d.GetOk("pre_start"); has_v {
+			nvdh.SetPreStart(toHookArray(v))
+		} else {
+			nvdh.SetPreStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_start") {
+		if v, has_v := d.GetOk("post_start"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_stop") {
+		if v, has_v := d.GetOk("pre_stop"); has_v {
+			nvdh.SetPreStop(toHookArray(v))
+		} else {
+			nvdh.SetPreStop([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_stop") {
+		if v, has_v := d.GetOk("post_stop"); has_v {
+			nvdh.SetPostStop(toHookArray(v))
+		} else {
+			nvdh.SetPostStop([]dctapi.Hook{})
+		}
+	}
+
+	if nvdh != nil {
+		updateVDBParam.SetHooks(*nvdh)
+	}
+
+	if d.HasChange("mount_point") {
+		updateVDBParam.SetMountPoint(d.Get("mount_point").(string))
+	}
+
+	if d.HasChange("custom_env_files") {
+		if v, has_v := d.GetOk("custom_env_files"); has_v {
+			updateVDBParam.SetCustomEnvFiles(toStringArray(v))
+		} else {
+			updateVDBParam.SetCustomEnvFiles([]string{})
+		}
+	}
+	if d.HasChange("custom_env_vars") {
+		if v, has_v := d.GetOk("custom_env_vars"); has_v {
+			custom_env_vars := make(map[string]string)
+
+			for k, v := range v.(map[string]interface{}) {
+				custom_env_vars[k] = v.(string)
+			}
+			updateVDBParam.SetCustomEnvVars(custom_env_vars)
+		} else {
+			updateVDBParam.SetCustomEnvVars(map[string]string{})
+		}
 	}
 
 	if d.HasChange("template_id") {
@@ -1704,14 +1898,11 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 
-	res, httpRes, err := client.VDBsApi.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
+		revertChanges(d, changedKeys)
 		return diags
 	}
 
@@ -1724,9 +1915,43 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
 	}
 
+	if d.HasChanges(
+		"tags",
+	) { // tags update
+		tflog.Debug(ctx, "updating tags")
+		if d.HasChange("tags") {
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			oldTag, newTag := d.GetChange("tags")
+			if len(toTagArray(oldTag)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
+				tflog.Debug(ctx, "tag delete response: "+tagDelResp.Status)
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTag)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+	if destructiveUpdate {
+		if diags := enableVDB(ctx, client, vdbId); diags != nil {
+			return diags //if failure should we enable
+		}
+	}
+
 	return diags
 }
-
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
@@ -1735,7 +1960,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsApi.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	res, httpRes, err := client.VDBsAPI.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
@@ -1751,7 +1976,7 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsApi.GetVdbById(ctx, vdbId).Execute()
+		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
 	return diags
