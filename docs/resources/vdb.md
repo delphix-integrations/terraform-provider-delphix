@@ -155,7 +155,7 @@ Environment variable to be set when a VDB is created. See the Continuous Data EN
   * `mount_path` - Absolute path on the target environment were the filesystem should be mounted
   * `environment_id` - The entity ID of the environment on which the file system will be mounted.
 
-* `instance_name` - The VDB's SID name (Oracle Only).
+* `instance_name` - The VDB's SID name (Oracle Only). (This parameter is available starting DCT v22+)
 
 * `open_reset_logs` - TRUE or FALSE value which determines whether to open the database after provision (Oracle Only).
 
