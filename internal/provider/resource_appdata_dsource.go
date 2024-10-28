@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -457,7 +457,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		appDataDSourceLinkSourceParameters.SetSyncParameters(sync_params)
 	}
 
-	req := client.DSourcesApi.LinkAppdataDatabase(ctx)
+	req := client.DSourcesAPI.LinkAppdataDatabase(ctx)
 
 	apiRes, httpRes, err := req.AppDataDSourceLinkSourceParameters(*appDataDSourceLinkSourceParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -497,12 +497,18 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	dsource_id := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.DSourcesApi.GetDsourceById(ctx, dsource_id).Execute()
+		return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
 	})
+
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Dsource not found: "+dsource_id+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.DSourcesApi.GetDsourceById(ctx, dsource_id).Execute()
+			return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -564,7 +570,7 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
 	deleteDsourceParams.SetForce(false)
 
-	res, httpRes, err := client.DSourcesApi.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+	res, httpRes, err := client.DSourcesAPI.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
@@ -580,7 +586,7 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.DSourcesApi.GetDsourceById(ctx, dsourceId).Execute()
+		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
 	})
 
 	return diags

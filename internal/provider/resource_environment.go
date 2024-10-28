@@ -2,10 +2,11 @@ package provider
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
+
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -384,7 +385,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetTags(toTagArray(v))
 	}
 
-	apiReq := client.EnvironmentsApi.CreateEnvironment(ctx)
+	apiReq := client.EnvironmentsAPI.CreateEnvironment(ctx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -415,12 +416,18 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	envId := d.Id()
 
 	apiRes, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
 	})
+
+	if apiRes == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Environment not found: "+envId+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+			return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
 		})
 		if diags != nil {
 			tflog.Error(ctx, DLPX+ERROR+"Error in polling of environment for deletion.")
@@ -450,7 +457,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, httpRes, err := client.EnvironmentsApi.DeleteEnvironment(ctx, envId).Execute()
+	apiRes, httpRes, err := client.EnvironmentsAPI.DeleteEnvironment(ctx, envId).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
@@ -464,7 +471,7 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
 	}
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsApi.GetEnvironmentById(ctx, envId).Execute()
+		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
 	})
 
 	return diags

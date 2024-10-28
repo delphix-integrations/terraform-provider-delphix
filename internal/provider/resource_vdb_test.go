@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"testing"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/acctest"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -138,7 +138,7 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	provisionVDBBySnapshotParameters.SetAutoSelectRepository(true)
 	provisionVDBBySnapshotParameters.SetSourceDataId(os.Getenv("DATASOURCE_ID"))
 
-	vdb_req := client.VDBsApi.ProvisionVdbBySnapshot(context.Background())
+	vdb_req := client.VDBsAPI.ProvisionVdbBySnapshot(context.Background())
 
 	vdb_res, vdb_http_res, vdb_err := vdb_req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if diags := apiErrorResponseHelper(context.Background(), vdb_res, vdb_http_res, vdb_err); diags != nil {
@@ -160,7 +160,7 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	bookmark.SetVdbIds([]string{vdb_id})
 	bookmark.SetName(acctest.RandStringFromCharSet(10, acctest.CharSetAlphaNum))
 
-	bookmark_req := client.BookmarksApi.CreateBookmark(context.Background()).BookmarkCreateParameters(*bookmark)
+	bookmark_req := client.BookmarksAPI.CreateBookmark(context.Background()).BookmarkCreateParameters(*bookmark)
 	bk_res, bk_http_res, bk_err := bookmark_req.Execute()
 
 	if diags := apiErrorResponseHelper(context.Background(), bk_res, bk_http_res, bk_err); diags != nil {
@@ -206,7 +206,7 @@ func testAccCheckDctVdbResourceExists(n string) resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		res, _, err := client.VDBsAPI.GetVdbById(context.Background(), vdbId).Execute()
 
 		if err != nil {
 			return err
@@ -236,7 +236,7 @@ func testAccCheckDctAppDataVdbResourceExists(n string) resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		res, _, err := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		res, _, err := client.VDBsAPI.GetVdbById(context.Background(), vdbId).Execute()
 
 		if err != nil {
 			return err
@@ -266,13 +266,13 @@ func testAccCheckDctVdbBookmarkResourceExists() resource.TestCheckFunc {
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		get_vdb_response, _, get_vdb_error := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		get_vdb_response, _, get_vdb_error := client.VDBsAPI.GetVdbById(context.Background(), vdbId).Execute()
 
 		if get_vdb_error != nil {
 			return get_vdb_error
 		}
 
-		get_bookmark_response, _, get_bookmark_error := client.BookmarksApi.GetBookmarkById(context.Background(), bookmark_id).Execute()
+		get_bookmark_response, _, get_bookmark_error := client.BookmarksAPI.GetBookmarkById(context.Background(), bookmark_id).Execute()
 
 		if get_bookmark_error != nil {
 			return get_bookmark_error
@@ -298,7 +298,7 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 
 		vdbId := rs.Primary.ID
 
-		_, httpResp, _ := client.VDBsApi.GetVdbById(context.Background(), vdbId).Execute()
+		_, httpResp, _ := client.VDBsAPI.GetVdbById(context.Background(), vdbId).Execute()
 
 		if httpResp == nil {
 			return fmt.Errorf("VDB has not been deleted")
@@ -318,7 +318,7 @@ func testAccCheckVdbDestroyBookmark(s *terraform.State) error {
 	print("Deleting parent vdb " + vdb_id)
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
-	client.VDBsApi.DeleteVdb(context.Background(), vdb_id).DeleteVDBParameters(*deleteVdbParams).Execute()
+	client.VDBsAPI.DeleteVdb(context.Background(), vdb_id).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	return testAccCheckVdbDestroy(s)
 }

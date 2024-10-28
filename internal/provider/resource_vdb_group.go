@@ -2,9 +2,10 @@ package provider
 
 import (
 	"context"
+
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v22"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -44,9 +45,8 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	client := meta.(*apiClient).client
 
-	apiRes, httpRes, err := client.VDBGroupsApi.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
+	apiRes, httpRes, err := client.VDBGroupsAPI.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
 		d.Get("name").(string),
-		toStringArray(d.Get("vdb_ids")),
 	)).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -71,7 +71,7 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 	vdbGroupId := d.Id()
 	tflog.Info(ctx, DLPX+INFO+"VdbGroupId: "+vdbGroupId)
-	apiRes, httpRes, err := client.VDBGroupsApi.GetVdbGroup(ctx, vdbGroupId).Execute()
+	apiRes, httpRes, err := client.VDBGroupsAPI.GetVdbGroup(ctx, vdbGroupId).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
@@ -97,7 +97,7 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	httpRes, err := client.VDBGroupsApi.DeleteVdbGroup(ctx, vdbGroupId).Execute()
+	httpRes, err := client.VDBGroupsAPI.DeleteVdbGroup(ctx, vdbGroupId).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		return diags
