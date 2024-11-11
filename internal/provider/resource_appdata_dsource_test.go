@@ -17,11 +17,11 @@ func TestDsource_create_positive(t *testing.T) {
 	name := os.Getenv("DSOURCE_NAME")
 	environmentUser := os.Getenv("DSOURCE_ENV_USER")
 	stagingEnvironment := os.Getenv("DSOURCE_STAGE_ENV")
-	postgresPort := os.Getenv("DSOURCE_POSTGRES_PORT")
+	parameters := os.Getenv("DSOURCE_PARAMETERS")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
-			testDsourcePreCheck(t, sourceId, groupId, name, environmentUser, stagingEnvironment, postgresPort)
+			testDsourcePreCheck(t, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
 		},
 		Providers:    testAccProviders,
 		CheckDestroy: testDsourceDestroy,
@@ -31,13 +31,13 @@ func TestDsource_create_positive(t *testing.T) {
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 			{
-				Config: testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, postgresPort),
+				Config: testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, parameters),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId)),
 			},
 			{
-				Config: testDsourceUpdate(sourceId, groupId, "update_same_dsource", environmentUser, stagingEnvironment, postgresPort),
+				Config: testDsourceUpdate(sourceId, groupId, "update_same_dsource", environmentUser, stagingEnvironment, parameters),
 				Check:  resource.ComposeAggregateTestCheckFunc(
 				// irrelevant
 				),
@@ -47,7 +47,7 @@ func TestDsource_create_positive(t *testing.T) {
 	})
 }
 
-func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, postgresPort string) {
+func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) {
 	testAccPreCheck(t)
 	if sourceId == "" {
 		t.Fatal("DSOURCE_SOURCE_ID must be set for env acceptance tests")
@@ -64,12 +64,12 @@ func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name str
 	if stagingEnvironment == "" {
 		t.Fatal("DSOURCE_STAGE_ENV must be set for env acceptance tests")
 	}
-	if postgresPort == "" {
-		t.Fatal("DSOURCE_POSTGRES_PORT must be set for env acceptance tests")
+	if parameters == "" {
+		t.Fatal("DSOURCE_PARAMETERS must be set for env acceptance tests")
 	}
 }
 
-func testDsourceBasic(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, postgresPort string) string {
+func testDsourceBasic(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
   source_value                  = "%s"
@@ -86,10 +86,10 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
     resync = true
   })
 }
-	`, sourceId, groupId, name, environmentUser, stagingEnvironment, postgresPort)
+	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
 }
 
-func testDsourceUpdate(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, postgresPort string) string {
+func testDsourceUpdate(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
   source_value                  = "%s"
@@ -106,7 +106,7 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
     resync = true
   })
 }
-	`, sourceId, groupId, name, environmentUser, stagingEnvironment, postgresPort)
+	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
 }
 
 func testDsourceExists(n string, sourceId string) resource.TestCheckFunc {
