@@ -92,8 +92,8 @@ func resourceVdb() *schema.Resource {
 			},
 			"database_name": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
+				Optional: true,
 			},
 			"cdb_id": {
 				Type:     schema.TypeString,
@@ -1594,6 +1594,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	if !*result.IsAppdata {
 		d.Set("database_name", result.GetDatabaseName())
 	}
+
 	d.Set("tags", flattenTags(result.GetTags()))
 	d.Set("vdb_restart", result.GetVdbRestart())
 
