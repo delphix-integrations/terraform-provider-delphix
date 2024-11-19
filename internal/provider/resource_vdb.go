@@ -92,7 +92,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"database_name": {
 				Type:     schema.TypeString,
-				Computed: true,
 				Optional: true,
 			},
 			"cdb_id": {
