@@ -79,8 +79,8 @@ __General Oracle__
 * `online_log_groups` - The number of online log groups.  
 * `archive_log` - TRUE or FALSE boolean to create a VDB in `archivelog` mode.  
 * `new_dbid` - TRUE or FALSE boolean to generate a new DB ID for the created VDB. [Updatable]  
-* `listener_ids` - The listener IDs for this provision operation. This is a list of listener ids. For eg: `[ "listener-123", "listener-456" ]`. [Updatable]  
-* `file_mapping_rules` - The VDB file mapping rules). Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.  
+* `listener_ids` - The listener IDs for this provision operation. This is a list of listener IDs. For eg: `[ "listener-123", "listener-456" ]`. [Updatable]  
+* `file_mapping_rules` - The VDB file mapping rules. Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.  
 
 __Oracle Multitenant__  
 <br /> In addition to the General Oracle arguments, the following list applies to the Oracle Multitenant deployment configuration.  
@@ -95,20 +95,20 @@ __Oracle Multitenant__
 * `cdb_tde_keystore_password` - The password for the Transparent Data Encryption keystore associated with the CDB. [Updatable]  
 * `target_vcdb_tde_keystore_path` - [Updatable] Path to the keystore of the vCDB.   
 * `tde_key_identifier` - ID of the key created by the Continuous Data Engine. [Updatable]  
-* `tde_exported_key_file_secret` - Secret to be used while exporting and importing vPDB encryption keys if Transparent Data Encryption is enabled on the vPDB.   
+* `tde_exported_key_file_secret` - Secret to be used when exporting and importing vPDB encryption keys if Transparent Data Encryption is enabled on the vPDB.   
 * `parent_tde_keystore_password` - The password of the keystore specified in parentTdeKeystorePath. [Updatable]  
 * `parent_tde_keystore_path` - Path to a copy of the parent's Oracle Transparent Data Encryption keystore on the target host. Required to provision from snapshots containing encrypted database files. [Updatable]  
 
 __Oracle Real Applications Clusters (RAC)__  
 <br /> In addition to the General Oracle arguments, the following list applies to the Oracle RAC deployment configuration. All properties marked as required are necessary for Oracle RAC provisions.  
 
-* `cluster_node_ids` - The cluster node ids, name, or addresses for this provision operation.  
+* `cluster_node_ids` - The cluster node IDs, name, or addresses for this provision operation.  
 * `oracle_rac_custom_env_vars` - Environment variable to be set when the engine creates an Oracle RAC VDB. See the Delphix Continuous Data Engine documentation for the list of allowed/denied environment variables and rules about substitution.  
-    * `node_id` - (Required) The node id of the cluster.  
+    * `node_id` - (Required) The node ID of the cluster.  
     * `name` - (Required) Name of the environment variable  
     * `value` - (Required) Value of the environment variable.  
 * `oracle_rac_custom_env_files` - Environment files to be sourced when the Delphix Continuous Data Engine creates an Oracle RAC VDB. This path can be followed by parameters. Paths and parameters are separated by spaces.  
-    * `node_id` - (Required) The node id of the cluster.  
+    * `node_id` - (Required) The node ID of the cluster.  
     * `path_parameters` - (Required) This references a file from which certain parameters will be loaded.  
 
 ### SQL Server 
@@ -131,13 +131,13 @@ The following arguments apply to the SAP ASE database type.
 * `truncate_log_on_checkpoint` - TRUE or FALSE value to truncate the logs on checkpoints.  
 
 ### Other Databases 
-The following arguments apply to all other database types, such as PostgreSQL, MySQL, MongoDB, and others. These are databases that are supported by the AppData (vSDK) framework.  
+The following arguments apply to all other database types, such as PostgreSQL, MySQL, MongoDB etc. These are databases that are supported by the AppData (vSDK) framework.  
 
 * `appdata_source_params` - (Required) The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated. [Updatable]  
     * Consult the connector documentation for more details.   
 * `additional_mount_points` - Specifies additional locations on which to mount a subdirectory of an AppData container. [Updatable]  
     * `shared_path` - (Required) Relative path within the container of the directory that should be mounted.  
-    * `mount_path` - Absolute path on the target environment where the filesystem should be mounted.  
+    * `mount_path` - Absolute path on the Target environment where the filesystem should be mounted.  
     * `environment_id` - The entity ID of the environment on which the file system will be mounted.  
  
 ### Target Engine, Environment and Repository  
