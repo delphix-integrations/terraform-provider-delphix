@@ -131,7 +131,7 @@ The following arguments apply to the SAP ASE database type.
 * `truncate_log_on_checkpoint` - TRUE or FALSE value to truncate the logs on checkpoints.  
 
 ### Other Databases 
-The following arguments apply to all other database types, such as PostgreSQL, MySQL, MongoDB etc. These are databases that are supported by the AppData (vSDK) framework.  
+The following arguments apply to all other databases supported by the AppData (vSDK) framework and include database types such as PostgreSQL, MySQL, MongoDB, etc. 
 
 * `appdata_source_params` - (Required) The JSON payload conforming to the DraftV4 schema based on the type of application data being manipulated. [Updatable]  
     * Consult the connector documentation for more details.   
