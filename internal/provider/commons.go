@@ -51,6 +51,7 @@ var updatableVdbKeys = map[string]bool{
 	"new_dbid":                      true,
 	"mount_point":                   true,
 	"tags":                          true,
+	"database_name":                 true,
 }
 
 var isDestructiveVdbUpdate = map[string]bool{

@@ -1591,7 +1591,10 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("post_stop", flattenHooks(result.GetHooks().PostStop))
 	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
 	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
-	d.Set("database_name", result.GetDatabaseName())
+	if !*result.IsAppdata {
+		d.Set("database_name", result.GetDatabaseName())
+	}
+
 	d.Set("tags", flattenTags(result.GetTags()))
 	d.Set("vdb_restart", result.GetVdbRestart())
 
@@ -1927,7 +1930,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
-				tflog.Debug(ctx, "tag delete response: "+tagDelResp.Status)
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true

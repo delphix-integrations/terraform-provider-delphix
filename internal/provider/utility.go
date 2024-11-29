@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
 	"time"
 
@@ -285,7 +286,9 @@ func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag
 func revertChanges(d *schema.ResourceData, changedKeys []string) {
 	for _, key := range changedKeys {
 		old, _ := d.GetChange(key)
-		d.Set(key, old)
+		if !reflect.ValueOf(old).IsZero() { // so that a previously optional param is not set to blank erroraneously
+			d.Set(key, old)
+		}
 	}
 }
 
