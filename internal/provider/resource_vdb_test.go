@@ -93,9 +93,6 @@ func testAccVdbAppDataPreCheck(t *testing.T) {
 	if err := os.Getenv("APPDATA_SOURCE_PARAMS"); err == "" {
 		t.Fatal("APPDATA_SOURCE_PARAMS must be set for vdb acceptance tests")
 	}
-	if err := os.Getenv("APPDATA_CONFIG_PARAMS"); err == "" {
-		t.Fatal("APPDATA_CONFIG_PARAMS must be set for vdb acceptance tests")
-	}
 }
 
 func testAccCheckDctVDBConfigBasic() string {
@@ -111,15 +108,13 @@ func testAccCheckDctVDBConfigBasic() string {
 func testAccCheckDctVDBConfigAppDataBasic() string {
 	appdata_datasource_id := os.Getenv("APPDATA_DATASOURCE_ID")
 	appdata_source_params := os.Getenv("APPDATA_SOURCE_PARAMS")
-	appdata_config_params := os.Getenv("APPDATA_CONFIG_PARAMS")
 	return fmt.Sprintf(`
 	resource "delphix_vdb" "new_appdata" {
 		auto_select_repository = true
     	source_data_id         = "%s"
 		appdata_source_params  = jsonencode(%s)
-		appdata_config_params  = jsonencode(%s)
 	}
-	`, appdata_datasource_id, appdata_source_params, appdata_config_params)
+	`, appdata_datasource_id, appdata_source_params)
 }
 
 func testAccCheckDctVDBBookmarkConfigBasic() string {
@@ -184,8 +179,6 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	bookmark_id            = "%s"
 	}
 	`, bookmark_id)
-
-	print(resource)
 
 	return resource
 
@@ -314,8 +307,6 @@ func testAccCheckVdbDestroy(s *terraform.State) error {
 
 func testAccCheckVdbDestroyBookmark(s *terraform.State) error {
 	client := testAccProvider.Meta().(*apiClient).client
-
-	print("Deleting parent vdb " + vdb_id)
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 	client.VDBsAPI.DeleteVdb(context.Background(), vdb_id).DeleteVDBParameters(*deleteVdbParams).Execute()

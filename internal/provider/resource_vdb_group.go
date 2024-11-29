@@ -30,7 +30,7 @@ func resourceVdbGroup() *schema.Resource {
 			},
 			"vdb_ids": {
 				Type:     schema.TypeList,
-				Required: true,
+				Optional: true,
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
@@ -45,9 +45,9 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	client := meta.(*apiClient).client
 
-	apiRes, httpRes, err := client.VDBGroupsAPI.CreateVdbGroup(ctx).CreateVDBGroupRequest(*dctapi.NewCreateVDBGroupRequest(
-		d.Get("name").(string),
-	)).Execute()
+	vdbGroupCreateReq := *dctapi.NewCreateVDBGroupRequest(d.Get("name").(string))
+	vdbGroupCreateReq.SetVdbIds(toStringArray(d.Get("vdb_ids")))
+	apiRes, httpRes, err := client.VDBGroupsAPI.CreateVdbGroup(ctx).CreateVDBGroupRequest(vdbGroupCreateReq).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
@@ -74,6 +74,7 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 	apiRes, httpRes, err := client.VDBGroupsAPI.GetVdbGroup(ctx, vdbGroupId).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		d.SetId("")
 		return diags
 	}
 
