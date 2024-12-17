@@ -302,3 +302,11 @@ func toTagArray(array interface{}) []dctapi.Tag {
 	}
 	return items
 }
+
+func toIntArray(array interface{}) []int32 {
+	items := []int32{}
+	for _, item := range array.([]interface{}) {
+		items = append(items, int32(item.(int)))
+	}
+	return items
+}

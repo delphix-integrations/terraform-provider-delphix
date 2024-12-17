@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -16,9 +17,9 @@ func resourceOracleDsource() *schema.Resource {
 		Description: "Resource for Oracle dSource creation.",
 
 		CreateContext: resourceOracleDsourceCreate,
-		ReadContext:   resourceDsourceRead,
-		UpdateContext: resourceDsourceUpdate,
-		DeleteContext: resourceDsourceDelete,
+		ReadContext:   resourceOracleDsourceRead,
+		UpdateContext: resourceOracleDsourceUpdate,
+		DeleteContext: resourceOracleDsourceDelete,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -40,6 +41,7 @@ func resourceOracleDsource() *schema.Resource {
 			"log_sync_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
@@ -456,19 +458,7 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"source_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"database_type": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"namespace_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"namespace_name": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -488,10 +478,6 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"plugin_version": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"creation_date": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -504,7 +490,15 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
+			"is_detached": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
 			"engine_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"source_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -520,12 +514,20 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"previous_timeflow_id": {
+			"is_appdata": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"sync_policy_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"is_appdata": {
-				Type:     schema.TypeBool,
+			"retention_policy_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"exported_data_directory": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"wait_time": {
@@ -710,7 +712,6 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if v, has_v := d.GetOk("ops_pre_log_sync"); has_v {
 		oracleDSourceLinkSourceParameters.SetOpsPreLogSync(toSourceOperationArray(v))
 	}
-
 	req := client.DSourcesAPI.LinkOracleDatabase(ctx)
 
 	apiRes, httpRes, err := req.OracleDSourceLinkSourceParameters(*oracleDSourceLinkSourceParameters).Execute()
@@ -744,10 +745,111 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	return diags
 }
 
-func toIntArray(array interface{}) []int32 {
-	items := []int32{}
-	for _, item := range array.([]interface{}) {
-		items = append(items, int32(item.(int)))
+func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
+	client := meta.(*apiClient).client
+
+	dsource_id := d.Id()
+
+	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+	})
+
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Dsource not found: "+dsource_id+", removing from state. ")
+		d.SetId("")
+		return nil
 	}
-	return items
+
+	if diags != nil {
+		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
+			return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+		})
+		// This would imply error in poll for deletion so we just log and exit.
+		if diags != nil {
+			tflog.Error(ctx, DLPX+ERROR+"Error in polling of dSource for deletion.")
+		} else {
+			// diags will be nil in case of successful poll for deletion logic aka 404
+			tflog.Error(ctx, DLPX+ERROR+"Error reading the dSource "+dsource_id+", removing from state.")
+			d.SetId("")
+		}
+
+		return nil
+	}
+
+	result, ok := res.(*dctapi.DSource)
+	if !ok {
+		return diag.Errorf("Error occured in type casting.")
+	}
+
+	d.Set("id", result.GetId())
+	d.Set("database_type", result.GetDatabaseType())
+	d.Set("name", result.GetName())
+	d.Set("is_replica", result.GetIsReplica())
+	d.Set("database_version", result.GetDatabaseVersion())
+	d.Set("content_type", result.GetContentType())
+	d.Set("data_uuid", result.GetDataUuid())
+	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("group_name", result.GetGroupName())
+	d.Set("enabled", result.GetEnabled())
+	d.Set("is_detached", result.GetIsDetached())
+	d.Set("engine_id", result.GetEngineId())
+	d.Set("source_id", result.GetSourceId())
+	d.Set("status", result.GetStatus())
+	d.Set("engine_name", result.GetEngineName())
+	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
+	d.Set("is_appdata", result.GetIsAppdata())
+	d.Set("hooks", result.GetHooks())
+	d.Set("sync_policy_id", result.GetSyncPolicyId())
+	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
+	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
+	d.Set("exported_data_directory", result.GetExportedDataDirectory())
+	return diags
+}
+
+func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// get the changed keys
+	changedKeys := make([]string, 0, len(d.State().Attributes))
+	for k := range d.State().Attributes {
+		if d.HasChange(k) {
+			changedKeys = append(changedKeys, k)
+		}
+	}
+	// revert and set the old value to the changed keys
+	for _, key := range changedKeys {
+		old, _ := d.GetChange(key)
+		d.Set(key, old)
+	}
+
+	return diag.Errorf("Action update not implemented for resource : dSource")
+}
+
+func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*apiClient).client
+
+	dsourceId := d.Id()
+
+	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
+	deleteDsourceParams.SetForce(false)
+
+	res, httpRes, err := client.DSourcesAPI.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+
+	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
+		return diags
+	}
+
+	job_status, job_err := PollJobStatus(*res.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
+	}
+
+	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+	})
+
+	return diags
 }
