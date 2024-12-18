@@ -32,7 +32,7 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -808,20 +808,134 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
+	var diags diag.Diagnostics
+	client := meta.(*apiClient).client
+	updateOracleDsource := dctapi.NewUpdateOracleDsourceParameters()
+
+	dsourceId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
 		if d.HasChange(k) {
+			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
-	// revert and set the old value to the changed keys
+
+	var updateFailure bool = false
+	var nonUpdatableField []string
+
+	// check if the changed keys are updatable
 	for _, key := range changedKeys {
-		old, _ := d.GetChange(key)
-		d.Set(key, old)
+		if !updatableOracleDsourceKeys[key] {
+			updateFailure = true
+			tflog.Debug(ctx, "non updatable field: "+key)
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
 	}
 
-	return diag.Errorf("Action update not implemented for resource : dSource")
+	// if not updatable keys are provided, error out
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// set changed params in the updateOracleDsource
+	if d.HasChange("name") {
+		updateOracleDsource.SetName(d.Get("name").(string))
+	}
+	if d.HasChange("environment_user_id") {
+		updateOracleDsource.SetEnvironmentUserId(d.Get("environment_user_id").(string))
+	}
+	if d.HasChange("backup_level_enabled") {
+		updateOracleDsource.SetBackupLevelEnabled(d.Get("backup_level_enabled").(bool))
+	}
+	if d.HasChange("rman_channels") {
+		updateOracleDsource.SetRmanChannels(d.Get("rman_channels").(int32))
+	}
+	if d.HasChange("files_per_set") {
+		updateOracleDsource.SetFilesPerSet(d.Get("files_per_set").(int32))
+	}
+	if d.HasChange("check_logical") {
+		updateOracleDsource.SetCheckLogical(d.Get("check_logical").(bool))
+	}
+	if d.HasChange("encrypted_linking_enabled") {
+		updateOracleDsource.SetEncryptedLinkingEnabled(d.Get("encrypted_linking_enabled").(bool))
+	}
+	if d.HasChange("compressed_linking_enabled") {
+		updateOracleDsource.SetCompressedLinkingEnabled(d.Get("compressed_linking_enabled").(bool))
+	}
+	if d.HasChange("bandwidth_limit") {
+		updateOracleDsource.SetBandwidthLimit(d.Get("bandwidth_limit").(int32))
+	}
+	if d.HasChange("number_of_connections") {
+		updateOracleDsource.SetNumberOfConnections(d.Get("number_of_connections").(int32))
+	}
+	if d.HasChange("pre_provisioning_enabled") {
+		updateOracleDsource.SetPreProvisioningEnabled(d.Get("pre_provisioning_enabled").(bool))
+	}
+	if d.HasChange("diagnose_no_logging_faults") {
+		updateOracleDsource.SetDiagnoseNoLoggingFaults(d.Get("diagnose_no_logging_faults").(bool))
+	}
+	if d.HasChange("external_file_path") {
+		updateOracleDsource.SetExternalFilePath(d.Get("external_file_path").(string))
+	}
+	// if d.HasChange("log_sync_mode") {
+	// 	updateOracleDsource.SetLogSyncMode(d.Get("log_sync_mode").(string))
+	// }
+	// if d.HasChange("log_sync_interval") {
+	// 	updateOracleDsource.SetLogSyncInterval(d.Get("log_sync_interval").(string))
+	// }
+
+	res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
+
+	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+		// revert and set the old value to the changed keys
+		revertChanges(d, changedKeys)
+		return diags
+	}
+
+	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] Dsource-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+	}
+
+	if d.HasChanges(
+		"tags",
+	) { // tags update
+		tflog.Debug(ctx, "updating tags")
+		if d.HasChange("tags") {
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			oldTag, newTag := d.GetChange("tags")
+			if len(toTagArray(oldTag)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTag)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+
+	return diags
 }
 
 func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
