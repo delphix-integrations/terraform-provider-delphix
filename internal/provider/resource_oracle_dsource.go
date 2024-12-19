@@ -79,7 +79,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -150,7 +159,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -398,7 +416,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -804,6 +831,9 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
 	d.Set("exported_data_directory", result.GetExportedDataDirectory())
+	d.Set("ops_pre_sync", result.GetHooks().OpsPreSync)
+	d.Set("ops_post_sync", result.GetHooks().OpsPostSync)
+	d.Set("ops_pre_log_sync", result.GetHooks().OpsPreLogSync)
 	return diags
 }
 
