@@ -107,7 +107,8 @@ var updatableOracleDsourceKeys = map[string]bool{
 	"diagnose_no_logging_faults":            true,
 	"external_file_path":                    true,
 	"hooks":                                 true,
-	"logsync_mode":                          true,
-	"logsync_interval":                      true,
 	"tags":                                  true,
+	"ops_pre_sync":                          true,
+	"ops_pre_log_sync":                      true,
+	"ops_post_sync":                         true,
 }

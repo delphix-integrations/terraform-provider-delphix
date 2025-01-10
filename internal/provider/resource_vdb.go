@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v22"
+	dctapi "github.com/delphix/dct-sdk-go/v23"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -1580,17 +1580,17 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
 	d.Set("instance_name", result.GetInstanceName())
-	d.Set("pre_refresh", flattenHooks(result.GetHooks().PreRefresh))
-	d.Set("post_refresh", flattenHooks(result.GetHooks().PostRefresh))
-	d.Set("configure_clone", flattenHooks(result.GetHooks().ConfigureClone))
-	d.Set("pre_snapshot", flattenHooks(result.GetHooks().PreSnapshot))
-	d.Set("post_snapshot", flattenHooks(result.GetHooks().PostSnapshot))
-	d.Set("pre_start", flattenHooks(result.GetHooks().PreStart))
-	d.Set("post_start", flattenHooks(result.GetHooks().PostStart))
-	d.Set("pre_stop", flattenHooks(result.GetHooks().PreStop))
-	d.Set("post_stop", flattenHooks(result.GetHooks().PostStop))
-	d.Set("pre_rollback", flattenHooks(result.GetHooks().PreRollback))
-	d.Set("post_rollback", flattenHooks(result.GetHooks().PostRollback))
+	d.Set("pre_refresh", flattenVDbHooks(result.GetHooks().PreRefresh))
+	d.Set("post_refresh", flattenVDbHooks(result.GetHooks().PostRefresh))
+	d.Set("configure_clone", flattenVDbHooks(result.GetHooks().ConfigureClone))
+	d.Set("pre_snapshot", flattenVDbHooks(result.GetHooks().PreSnapshot))
+	d.Set("post_snapshot", flattenVDbHooks(result.GetHooks().PostSnapshot))
+	d.Set("pre_start", flattenVDbHooks(result.GetHooks().PreStart))
+	d.Set("post_start", flattenVDbHooks(result.GetHooks().PostStart))
+	d.Set("pre_stop", flattenVDbHooks(result.GetHooks().PreStop))
+	d.Set("post_stop", flattenVDbHooks(result.GetHooks().PostStop))
+	d.Set("pre_rollback", flattenVDbHooks(result.GetHooks().PreRollback))
+	d.Set("post_rollback", flattenVDbHooks(result.GetHooks().PostRollback))
 	if !*result.IsAppdata {
 		d.Set("database_name", result.GetDatabaseName())
 	}

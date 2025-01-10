@@ -3,11 +3,13 @@ package provider
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v22"
+	dctapi "github.com/delphix/dct-sdk-go/v23"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -568,6 +570,11 @@ func resourceOracleDsource() *schema.Resource {
 				Optional: true,
 			},
 		},
+		CustomizeDiff: customdiff.All(
+			customdiff.ValidateChange("ops_pre_sync", func(ctx context.Context, old, new, meta any) error {
+				return nil
+			}),
+		),
 	}
 }
 
@@ -763,7 +770,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 
 	PollSnapshotStatus(d, ctx, client)
 
-	readDiags := resourceDsourceRead(ctx, d, meta)
+	readDiags := resourceOracleDsourceRead(ctx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -831,9 +838,9 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
 	d.Set("exported_data_directory", result.GetExportedDataDirectory())
-	d.Set("ops_pre_sync", result.GetHooks().OpsPreSync)
-	d.Set("ops_post_sync", result.GetHooks().OpsPostSync)
-	d.Set("ops_pre_log_sync", result.GetHooks().OpsPreLogSync)
+	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync))
+	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync))
+	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync))
 	return diags
 }
 
@@ -848,6 +855,18 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "ops_pre_sync") {
+			k = "ops_pre_sync"
+		}
+		if strings.Contains(k, "ops_pre_log_sync") {
+			k = "ops_pre_log_sync"
+		}
+		if strings.Contains(k, "ops_post_sync") {
+			k = "ops_post_sync"
+		}
 		if d.HasChange(k) {
 			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
@@ -912,12 +931,37 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 	if d.HasChange("external_file_path") {
 		updateOracleDsource.SetExternalFilePath(d.Get("external_file_path").(string))
 	}
-	// if d.HasChange("log_sync_mode") {
-	// 	updateOracleDsource.SetLogSyncMode(d.Get("log_sync_mode").(string))
-	// }
-	// if d.HasChange("log_sync_interval") {
-	// 	updateOracleDsource.SetLogSyncInterval(d.Get("log_sync_interval").(string))
-	// }
+
+	// update hooks
+	ndsh := dctapi.NewDSourceHooks()
+
+	if d.HasChange("ops_pre_sync") {
+		if v, has_v := d.GetOk("ops_pre_sync"); has_v {
+			ndsh.SetOpsPreSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPreSync([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("ops_pre_log_sync") {
+		if v, has_v := d.GetOk("ops_pre_log_sync"); has_v {
+			ndsh.SetOpsPreLogSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPreLogSync([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("ops_post_sync") {
+		if v, has_v := d.GetOk("ops_post_sync"); has_v {
+			ndsh.SetOpsPostSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPostSync([]dctapi.Hook{})
+		}
+	}
+
+	if ndsh != nil {
+		updateOracleDsource.SetHooks(*ndsh)
+	}
 
 	res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
 

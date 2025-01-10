@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v22"
+	dctapi "github.com/delphix/dct-sdk-go/v23"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -157,7 +157,24 @@ func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMou
 	return make([]interface{}, 0)
 }
 
-func flattenHooks(hooks []dctapi.Hook) []interface{} {
+func flattenVDbHooks(hooks []dctapi.Hook) []interface{} {
+	if hooks != nil {
+		returnedHooks := make([]interface{}, len(hooks))
+		for i, hook := range hooks {
+			returnedHook := make(map[string]interface{})
+			returnedHook["name"] = hook.GetName()
+			returnedHook["command"] = hook.GetCommand()
+			returnedHook["shell"] = hook.GetShell()
+			returnedHook["element_id"] = hook.GetElementId()
+			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			returnedHooks[i] = returnedHook
+		}
+		return returnedHooks
+	}
+	return make([]interface{}, 0)
+}
+
+func flattenDSourceHooks(hooks []dctapi.Hook) []interface{} {
 	if hooks != nil {
 		returnedHooks := make([]interface{}, len(hooks))
 		for i, hook := range hooks {
