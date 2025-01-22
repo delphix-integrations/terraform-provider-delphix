@@ -33,7 +33,7 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Optional: true,
+				Required: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
