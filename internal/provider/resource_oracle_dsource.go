@@ -9,7 +9,6 @@ import (
 
 	dctapi "github.com/delphix/dct-sdk-go/v23"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/customdiff"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -570,11 +569,6 @@ func resourceOracleDsource() *schema.Resource {
 				Optional: true,
 			},
 		},
-		CustomizeDiff: customdiff.All(
-			customdiff.ValidateChange("ops_pre_sync", func(ctx context.Context, old, new, meta any) error {
-				return nil
-			}),
-		),
 	}
 }
 
@@ -816,6 +810,15 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("Error occured in type casting.")
 	}
 
+	ops_pre_sync_Raw, _ := d.Get("ops_pre_sync").([]interface{})
+	oldOpsPreSync := toSourceOperationArray(ops_pre_sync_Raw)
+
+	ops_post_sync_Raw, _ := d.Get("ops_post_sync").([]interface{})
+	oldOpsPostSync := toSourceOperationArray(ops_post_sync_Raw)
+
+	ops_pre_log_sync_Raw, _ := d.Get("ops_pre_log_sync").([]interface{})
+	oldOpsPreLogSync := toSourceOperationArray(ops_pre_log_sync_Raw)
+
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
@@ -838,9 +841,9 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
 	d.Set("exported_data_directory", result.GetExportedDataDirectory())
-	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync))
-	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync))
-	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync))
+	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
+	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
+	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
 	return diags
 }
 
@@ -902,10 +905,10 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		updateOracleDsource.SetBackupLevelEnabled(d.Get("backup_level_enabled").(bool))
 	}
 	if d.HasChange("rman_channels") {
-		updateOracleDsource.SetRmanChannels(d.Get("rman_channels").(int32))
+		updateOracleDsource.SetRmanChannels(int32(d.Get("rman_channels").(int)))
 	}
 	if d.HasChange("files_per_set") {
-		updateOracleDsource.SetFilesPerSet(d.Get("files_per_set").(int32))
+		updateOracleDsource.SetFilesPerSet(int32(d.Get("files_per_set").(int)))
 	}
 	if d.HasChange("check_logical") {
 		updateOracleDsource.SetCheckLogical(d.Get("check_logical").(bool))
@@ -917,10 +920,10 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		updateOracleDsource.SetCompressedLinkingEnabled(d.Get("compressed_linking_enabled").(bool))
 	}
 	if d.HasChange("bandwidth_limit") {
-		updateOracleDsource.SetBandwidthLimit(d.Get("bandwidth_limit").(int32))
+		updateOracleDsource.SetBandwidthLimit(int32(d.Get("bandwidth_limit").(int)))
 	}
 	if d.HasChange("number_of_connections") {
-		updateOracleDsource.SetNumberOfConnections(d.Get("number_of_connections").(int32))
+		updateOracleDsource.SetNumberOfConnections(int32(d.Get("number_of_connections").(int)))
 	}
 	if d.HasChange("pre_provisioning_enabled") {
 		updateOracleDsource.SetPreProvisioningEnabled(d.Get("pre_provisioning_enabled").(bool))

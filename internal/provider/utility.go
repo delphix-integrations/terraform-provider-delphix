@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
@@ -174,7 +175,7 @@ func flattenVDbHooks(hooks []dctapi.Hook) []interface{} {
 	return make([]interface{}, 0)
 }
 
-func flattenDSourceHooks(hooks []dctapi.Hook) []interface{} {
+func flattenDSourceHooks(hooks []dctapi.Hook, oldList []dctapi.SourceOperation) []interface{} {
 	if hooks != nil {
 		returnedHooks := make([]interface{}, len(hooks))
 		for i, hook := range hooks {
@@ -184,6 +185,23 @@ func flattenDSourceHooks(hooks []dctapi.Hook) []interface{} {
 			returnedHook["shell"] = hook.GetShell()
 			returnedHook["element_id"] = hook.GetElementId()
 			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			credsEnvVars := []map[string]interface{}{}
+			for _, cred := range oldList[i].GetCredentialsEnvVars() {
+				credsEnvVars = append(credsEnvVars, map[string]interface{}{
+					"base_var_name":                cred.BaseVarName,
+					"password":                     cred.Password,
+					"vault":                        cred.Vault,
+					"azure_vault_name":             cred.AzureVaultName,
+					"azure_vault_secret_key":       cred.AzureVaultSecretKey,
+					"azure_vault_username_key":     cred.AzureVaultUsernameKey,
+					"cyberark_vault_query_string":  cred.CyberarkVaultQueryString,
+					"hashicorp_vault_engine":       cred.HashicorpVaultEngine,
+					"hashicorp_vault_secret_key":   cred.HashicorpVaultSecretKey,
+					"hashicorp_vault_secret_path":  cred.HashicorpVaultSecretPath,
+					"hashicorp_vault_username_key": cred.HashicorpVaultUsernameKey,
+				})
+			}
+			returnedHook["credentials_env_vars"] = credsEnvVars
 			returnedHooks[i] = returnedHook
 		}
 		return returnedHooks
@@ -302,10 +320,32 @@ func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag
 
 func revertChanges(d *schema.ResourceData, changedKeys []string) {
 	for _, key := range changedKeys {
-		old, _ := d.GetChange(key)
-		if !reflect.ValueOf(old).IsZero() { // so that a previously optional param is not set to blank erroraneously
+		old, new := d.GetChange(key)
+		if oldboolValue, ok := old.(bool); ok {
+			fmt.Println("\n!!!!!!!!!!!!!!OLD Value is bool:", oldboolValue)
+		}
+		if newboolValue, ok := new.(bool); ok {
+			fmt.Println("\n!!!!!!!!!!!!!!NEW Value is bool:", newboolValue)
+		}
+		if !isEmpty(old) { // so that a previously optional param is not set to blank erroraneously
+			fmt.Println("\nKEY: ", key)
 			d.Set(key, old)
 		}
+	}
+}
+
+func isEmpty(value interface{}) bool {
+	v := reflect.ValueOf(value)
+
+	switch v.Kind() {
+	case reflect.Bool:
+		return false
+	case reflect.String, reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
+		return v.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return v.IsNil()
+	default:
+		return v.IsZero()
 	}
 }
 
