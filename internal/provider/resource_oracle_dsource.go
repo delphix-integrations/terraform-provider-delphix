@@ -33,7 +33,7 @@ func resourceOracleDsource() *schema.Resource {
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -47,6 +47,7 @@ func resourceOracleDsource() *schema.Resource {
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -568,6 +569,9 @@ func resourceOracleDsource() *schema.Resource {
 				Default:  false,
 				Optional: true,
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
