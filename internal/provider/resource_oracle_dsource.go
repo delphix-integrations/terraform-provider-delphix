@@ -823,6 +823,12 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	ops_pre_log_sync_Raw, _ := d.Get("ops_pre_log_sync").([]interface{})
 	oldOpsPreLogSync := toSourceOperationArray(ops_pre_log_sync_Raw)
 
+	make_current_account_owner, _ := d.Get("make_current_account_owner").(bool)
+	if isEmpty(make_current_account_owner) {
+		make_current_account_owner = true
+	}
+
+	d.Set("make_current_account_owner", make_current_account_owner)
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())

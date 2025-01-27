@@ -4,7 +4,7 @@ In Delphix terminology, a dSource is an internal, ready-only database copy that 
 
 A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. 
 
-The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
+The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the `apply`, `import`, and `destroy` terraform commands. Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
 
 
 ## System Requirements 
@@ -18,15 +18,13 @@ The Oracle dSource resource allows Terraform to create and delete Oracle dSource
 
 ## Note 
 
-* `status` and `enabled` are computed values and are subject to change in the tfstate file based on the dSource state. 
-* Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks areis not updatable. Any changes reflected on the state file does not reflect the actual value on the actual infrastructure. 
+* `status` and `enabled` are computed values and are subjected to change in the tfstate file based on the dSource state. 
+* Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file does not reflect the actual value on the actual infrastructure. 
 * It is also to be noted that sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
 
   
 
 ## Example Usage 
-
-  
 
 * The linking of a dSource can be performed via direct ingestion as shown in the example below 
 
@@ -141,7 +139,6 @@ The following arguments define how the Delphix Continuous Data will authenticate
 The following arguments apply to all dSources, but they are not often necessary for simple sources. 
 
 * `make_current_account_owner` - Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: true. 
-
 * `ops_pre_log_sync` - Operations to perform after syncing a created dSource and before running the LogSync. 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
@@ -158,7 +155,6 @@ The following arguments apply to all dSources, but they are not often necessary 
         * `azure_vault_username_key` - Azure vault key in the key-value store. 
         * `azure_vault_secret_key` - Azure vault key in the key-value store. 
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-
 * `ops_pre_sync` - Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
@@ -175,7 +171,6 @@ The following arguments apply to all dSources, but they are not often necessary 
         * `azure_vault_username_key` - Azure vault key in the key-value store. 
         * `azure_vault_secret_key` - Azure vault key in the key-value store. 
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-
 * `ops_post_sync` - Operations to perform after syncing a created dSource. 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
@@ -192,7 +187,6 @@ The following arguments apply to all dSources, but they are not often necessary 
         * `azure_vault_username_key` - Azure vault key in the key-value store. 
         * `azure_vault_secret_key` - Azure vault key in the key-value store. 
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-
  * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
