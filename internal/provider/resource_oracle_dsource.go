@@ -30,10 +30,16 @@ func resourceOracleDsource() *schema.Resource {
 			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -48,6 +54,9 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Default:  true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -563,11 +572,17 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeInt,
 				Default:  0,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
 			},
 			"skip_wait_for_snapshot_creation": {
 				Type:     schema.TypeBool,
 				Default:  false,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					return true
+				},
 			},
 		},
 		Importer: &schema.ResourceImporter{
@@ -823,12 +838,6 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	ops_pre_log_sync_Raw, _ := d.Get("ops_pre_log_sync").([]interface{})
 	oldOpsPreLogSync := toSourceOperationArray(ops_pre_log_sync_Raw)
 
-	make_current_account_owner, _ := d.Get("make_current_account_owner").(bool)
-	if isEmpty(make_current_account_owner) {
-		make_current_account_owner = true
-	}
-
-	d.Set("make_current_account_owner", make_current_account_owner)
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
