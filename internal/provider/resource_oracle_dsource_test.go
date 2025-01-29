@@ -39,7 +39,7 @@ func TestOracleDsource_create_positive(t *testing.T) {
 			},
 			{
 				// negative update test case
-				Config:      testOracleDsourceBasic(name, sourcevalue, "non-existent"),
+				Config:      testOracleDsourceUpdateNegative(name, sourcevalue, "non-existent"),
 				ExpectError: regexp.MustCompile("Error running apply: exit status 1"),
 			},
 			{
@@ -71,6 +71,16 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
   group_id                   = "%s"
 }
 	`, name, sourceValue, groupId)
+}
+
+func testOracleDsourceUpdateNegative(name string, sourceValue string, description string) string {
+	return fmt.Sprintf(`
+resource "delphix_oracle_dsource" "test_oracle_dsource" {
+  name                       = "%s"
+  source_value               = "%s"
+  description                = "%s"
+}
+	`, name, sourceValue, description)
 }
 
 func testOracleDsourceExists(n string, sourceValue string) resource.TestCheckFunc {

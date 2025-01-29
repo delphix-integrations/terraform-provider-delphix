@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -32,14 +31,20 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return os.Getenv("TF_ACC_TEST") != "true"
+					if old != new {
+						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
 				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return os.Getenv("TF_ACC_TEST") != "true"
+					if old != new {
+						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
 				},
 			},
 			"description": {
@@ -56,7 +61,10 @@ func resourceOracleDsource() *schema.Resource {
 				Optional: true,
 				Default:  true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return os.Getenv("TF_ACC_TEST") != "true"
+					if old != new {
+						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
 				},
 			},
 			"tags": {
@@ -574,7 +582,10 @@ func resourceOracleDsource() *schema.Resource {
 				Default:  0,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return os.Getenv("TF_ACC_TEST") != "true"
+					if old != new {
+						tflog.Info(context.Background(), "updating wait_time is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
 				},
 			},
 			"skip_wait_for_snapshot_creation": {
@@ -582,7 +593,10 @@ func resourceOracleDsource() *schema.Resource {
 				Default:  false,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return os.Getenv("TF_ACC_TEST") != "true"
+					if old != new {
+						tflog.Info(context.Background(), "updating skip_wait_for_snapshot_creation is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
 				},
 			},
 		},
