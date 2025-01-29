@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -31,14 +32,14 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
+					return os.Getenv("TF_ACC_TEST") != "true"
 				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
+					return os.Getenv("TF_ACC_TEST") != "true"
 				},
 			},
 			"description": {
@@ -55,7 +56,7 @@ func resourceOracleDsource() *schema.Resource {
 				Optional: true,
 				Default:  true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
+					return os.Getenv("TF_ACC_TEST") != "true"
 				},
 			},
 			"tags": {
@@ -573,7 +574,7 @@ func resourceOracleDsource() *schema.Resource {
 				Default:  0,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
+					return os.Getenv("TF_ACC_TEST") != "true"
 				},
 			},
 			"skip_wait_for_snapshot_creation": {
@@ -581,7 +582,7 @@ func resourceOracleDsource() *schema.Resource {
 				Default:  false,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					return true
+					return os.Getenv("TF_ACC_TEST") != "true"
 				},
 			},
 		},
@@ -855,7 +856,6 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("engine_name", result.GetEngineName())
 	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
 	d.Set("is_appdata", result.GetIsAppdata())
-	d.Set("hooks", result.GetHooks())
 	d.Set("sync_policy_id", result.GetSyncPolicyId())
 	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
