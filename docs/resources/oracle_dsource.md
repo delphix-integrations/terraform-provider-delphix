@@ -21,6 +21,8 @@ The Oracle dSource resource allows Terraform to create and delete Oracle dSource
 * `status` and `enabled` are computed values and are subjected to change in the tfstate file based on the dSource state. 
 * Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file does not reflect the actual value on the actual infrastructure. 
 * It is also to be noted that sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
+* `Make_current_account_owner `,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during creation of dsource and not in case of updates. They are to be used only one time.
+*  `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection
 
   
 
