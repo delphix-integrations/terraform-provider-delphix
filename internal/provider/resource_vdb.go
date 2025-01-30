@@ -98,6 +98,7 @@ func resourceVdb() *schema.Resource {
 			"cdb_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"cluster_node_ids": {
 				Type:     schema.TypeList,
