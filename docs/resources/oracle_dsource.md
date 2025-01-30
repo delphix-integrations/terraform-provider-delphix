@@ -172,3 +172,19 @@ The following arguments apply to all dSources but they are not often necessary f
  * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
+
+## Import (Beta)  
+Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  
+
+For example:  
+```terraform 
+import {   
+    to = delphix_oracle_dsource.dsrc_import_demo
+    id = "dsource_id"   
+}  
+``` 
+*This is a beta feature. Delphix offers no guarantees of support or compatibility.* 
+
+## Limitations 
+
+Not all properties are supported through the `update` command. Properties that are not supported by the `update` command are presented via an error message at runtime. 
