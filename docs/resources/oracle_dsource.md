@@ -1,34 +1,36 @@
 # Resource: <resource name> delphix_oracle_dsource 
 
-In Delphix terminology, a dSource is an internal, ready-only database copy that the Delphix Continuous Data Engine uses to create and update virtual copies of your database.  
+In Delphix terminology, a dSource is an internal, read-only database copy that the Delphix Continuous Data Engine uses to create and update virtual copies of your database.  
 
 A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. 
 
-The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the `apply`, `import`, and `destroy` terraform commands. Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
+The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
+
+Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
 
 
 ## System Requirements 
 
   
-* Data Control Tower v21+ is required for the dSource Oracle resource 
-* This Oracle dSource Resource only supports Oracle.  
-* See the AppData dSource resource for the support of other connectors,such as PostgreSQL and SAP HANA.  
-* The Delphix Provider does not support SQL Server or SAP ASE currently. 
+* Data Control Tower v21+ is required for the dSource Oracle resource.
+* This Oracle dSource resource only supports Oracle.  
+* For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSource resource. 
+* The Delphix Provider does not currently support SQL Server or SAP ASE.  
 
 
 ## Note 
 
-* `status` and `enabled` are computed values and are subjected to change in the tfstate file based on the dSource state. 
-* Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file does not reflect the actual value on the actual infrastructure. 
-* It is also to be noted that sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
-* `Make_current_account_owner `,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during creation of dsource and not in case of updates. They are to be used only one time.
+* `status` and `enabled` are computed values and are subject to change in the tfstate file based on the dSource state. 
+* Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file do not reflect the actual value of the actual infrastructure. 
+* Sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
+* `Make_current_account_owner `,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during the creation of dsource. Note, they can only be used once and are not applicable to updates.
 *  `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection
 
   
 
 ## Example Usage 
 
-* The linking of a dSource can be performed via direct ingestion as shown in the example below 
+* The linking of a dSource can be performed via direct ingestion as shown in the example below:
 
 
 ```hcl 
@@ -58,7 +60,7 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
 * `encrypted_linking_enabled` - True if SnapSync data from the source should be retrieved through an encrypted connection. Enabling this feature can decrease the performance of SnapSync from the source but has no impact on the performance of VDBs created from the retrieved data. [Updatable] 
 * `compressed_linking_enabled` - True if SnapSync data from the source should be compressed over the network. Enabling this feature will reduce network bandwidth consumption and may significantly improve throughput, especially over slow network. [Updatable] 
 * `check_logical` - True if extended block checking should be used for this linked database. [Updatable] 
-* `files_for_full_backup` - List of datafiles to take a full backup of. This would be useful in situations where certain datafiles could not be backed up during previous SnapSync due to corruption or because they went offline. 
+* `files_for_full_backup` - List of datafiles to take a full backup of. This is useful if certain datafiles could not be backed up during previous SnapSync due to corruption or because they went offline. 
 * `files_per_set` - The number of data files to include in each RMAN backup set. [Updatable] 
 * `rman_channels` - The number of parallel channels to use. [Updatable] 
 * `bandwidth_limit` - Bandwidth limit (MB/s) for SnapSync and LogSync network traffic. A value of 0 means no limit. [Updatable] 
@@ -78,9 +80,9 @@ The following arguments enable the user to control how the first snapshot should
 
 * `force_full_backup` - Whether to take another full backup of the source database. 
 * `double_sync` - True if two SnapSyncs should be performed in immediate succession to reduce the number of logs required to provision the snapshot. This may significantly reduce the time necessary to provision from a snapshot. 
-* `do_not_resume` - Indicates whether a fresh SnapSync must be started regardless of if it was possible to resume the current SnapSync. If true, we will not resume but instead ignore previous progress and backup all datafiles even if already completed from previous failed SnapSync. This does not force a full backup, if an incremental was in progress this will start a new incremental snapshot. 
+* `do_not_resume` - Indicates if a fresh SnapSync must be started regardless of whether it was possible to resume the current SnapSync. If true, we will not resume; instead, we will ignore previous progress and back up all datafiles even if they have already been completed from the last failed SnapSync. This does not force a full backup; if an incremental was in progress this will start a new incremental snapshot. 
 * `skip_wait_for_snapshot_creation` - By default this resource will wait for a snapshot to be created post-dSource creation. This ensures a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`. 
-* `wait_time` - This value controls how long the resource will wait for the initial snapshot to be successfully ingested by Delphix. By default, the value is 0. (ie It does not wait for the snapshot to be created.) If a synchronous behavior, specify a value that is slightly longer than the average ingestion time. This argument was introduced in provider v3.2.1.  
+* `wait_time` - This value controls how long the resource will wait for the initial snapshot to be successfully ingested by Delphix. By default, the value is 0, meaning it does not wait for the snapshot to be created. If a synchronous behavior, specifies a value that is slightly longer than the average ingestion time. This argument was introduced in Delphix provider v3.2.1.  
 
 This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`. 
 
@@ -90,19 +92,19 @@ This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `tr
 The following arguments define how the Delphix Continuous Data will authenticate with the source environment and database. 
 
 * `environment_user_id` - ID of the environment user to use for linking. [Updatable] 
-* `non_sys_username` - non-SYS database user to access this database. Only required for username-password auth (Single tenant only). 
-* `non_sys_password` - Password for non sys user authentication (Single tenant only). 
+* `non_sys_username` - non-SYS database user to access this database. Only required for username-password auth (single tenant only). 
+* `non_sys_password` - Password for non sys user authentication (single tenant only). 
 * `fallback_username` - The database fallback username. Optional if bequeath connections are enabled (to be used in case of bequeath connection failures). Only required for username-password auth. 
 * `fallback_password` - Password for fallback username. 
-* `non_sys_vault` - The name or reference of the vault from which to read the database credentials (Single tenant only). 
-* `non_sys_hashicorp_vault_engine` - Vault engine name where the credential is stored (Single tenant only). 
-* `non_sys_hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored (Single tenant only). 
-* `non_sys_hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store (Single tenant only). 
-* `non_sys_hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store (Single tenant only). 
-* `non_sys_azure_vault_name` - Azure key vault name (Single tenant only). 
-* `non_sys_azure_vault_username_key` - Azure vault key for the username in the key-value store (Single tenant only). 
-* `non_sys_azure_vault_secret_key` - Azure vault key for the password in the key-value store (Single tenant only). 
-* `non_sys_cyberark_vault_query_string` - Query to find a credential in the CyberArk vault (Single tenant only). 
+* `non_sys_vault` - The name or reference of the vault from which to read the database credentials (single tenant only). 
+* `non_sys_hashicorp_vault_engine` - Vault engine name where the credential is stored (single tenant only). 
+* `non_sys_hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored (single tenant only). 
+* `non_sys_hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store (single tenant only). 
+* `non_sys_hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store (single tenant only). 
+* `non_sys_azure_vault_name` - Azure key vault name (single tenant only). 
+* `non_sys_azure_vault_username_key` - Azure vault key for the username in the key-value store (single tenant only). 
+* `non_sys_azure_vault_secret_key` - Azure vault key for the password in the key-value store (single tenant only). 
+* `non_sys_cyberark_vault_query_string` - Query to find a credential in the CyberArk vault (single tenant only). 
 * `fallback_vault` - The name or reference of the vault from which to read the database credentials. 
 * `fallback_hashicorp_vault_engine` - Vault engine name where the credential is stored. 
 * `fallback_hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored. 
@@ -116,15 +118,15 @@ The following arguments define how the Delphix Continuous Data will authenticate
 
 ### Advanced  
 
-The following arguments apply to all dSources, but they are not often necessary for simple sources. 
+The following arguments apply to all dSources but they are not often necessary for simple sources. 
 
 * `make_current_account_owner` - Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: true. 
 * `ops_pre_log_sync` - Operations to perform after syncing a created dSource and before running the LogSync. 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
     * `shell` - Type of shell. Valid values are ` [bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that will contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set. 
+    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
+        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set. 
         * `password` - Password to assign to the environment variables. 
         * `vault` - The name or reference of the vault to assign to the environment variables. 
         * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
@@ -135,12 +137,12 @@ The following arguments apply to all dSources, but they are not often necessary 
         * `azure_vault_username_key` - Azure vault key in the key-value store. 
         * `azure_vault_secret_key` - Azure vault key in the key-value store. 
         * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-* `ops_pre_sync` - Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing 
+* `ops_pre_sync` - Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing. 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
     * `shell` - Type of shell. Valid values are ` [bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that will contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set. 
+    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
+        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
         * `password` - Password to assign to the environment variables. 
         * `vault` - The name or reference of the vault to assign to the environment variables. 
         * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
@@ -155,8 +157,8 @@ The following arguments apply to all dSources, but they are not often necessary 
     * `name` - Name of the hook [Updatable] 
     * `command` - Command to be executed [Updatable] 
     * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that will contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set. 
+    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
+        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set. 
         * `password` - Password to assign to the environment variables. 
         * `vault` - The name or reference of the vault to assign to the environment variables. 
         * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
