@@ -817,6 +817,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 				return readDiags
 			}
 		}
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
 	PollSnapshotStatus(d, ctx, client)
