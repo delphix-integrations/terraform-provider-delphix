@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v22"
+	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -157,7 +157,7 @@ func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMou
 	return make([]interface{}, 0)
 }
 
-func flattenHooks(hooks []dctapi.Hook) []interface{} {
+func flattenVDbHooks(hooks []dctapi.Hook) []interface{} {
 	if hooks != nil {
 		returnedHooks := make([]interface{}, len(hooks))
 		for i, hook := range hooks {
@@ -167,6 +167,42 @@ func flattenHooks(hooks []dctapi.Hook) []interface{} {
 			returnedHook["shell"] = hook.GetShell()
 			returnedHook["element_id"] = hook.GetElementId()
 			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			returnedHooks[i] = returnedHook
+		}
+		return returnedHooks
+	}
+	return make([]interface{}, 0)
+}
+
+func flattenDSourceHooks(hooks []dctapi.Hook, oldList []dctapi.SourceOperation) []interface{} {
+	if hooks != nil {
+		returnedHooks := make([]interface{}, len(hooks))
+		for i, hook := range hooks {
+			returnedHook := make(map[string]interface{})
+			returnedHook["name"] = hook.GetName()
+			returnedHook["command"] = hook.GetCommand()
+			returnedHook["shell"] = hook.GetShell()
+			returnedHook["element_id"] = hook.GetElementId()
+			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			credsEnvVars := []map[string]interface{}{}
+			if len(oldList) != 0 {
+				for _, cred := range oldList[i].GetCredentialsEnvVars() {
+					credsEnvVars = append(credsEnvVars, map[string]interface{}{
+						"base_var_name":                cred.BaseVarName,
+						"password":                     cred.Password,
+						"vault":                        cred.Vault,
+						"azure_vault_name":             cred.AzureVaultName,
+						"azure_vault_secret_key":       cred.AzureVaultSecretKey,
+						"azure_vault_username_key":     cred.AzureVaultUsernameKey,
+						"cyberark_vault_query_string":  cred.CyberarkVaultQueryString,
+						"hashicorp_vault_engine":       cred.HashicorpVaultEngine,
+						"hashicorp_vault_secret_key":   cred.HashicorpVaultSecretKey,
+						"hashicorp_vault_secret_path":  cred.HashicorpVaultSecretPath,
+						"hashicorp_vault_username_key": cred.HashicorpVaultUsernameKey,
+					})
+				}
+			}
+			returnedHook["credentials_env_vars"] = credsEnvVars
 			returnedHooks[i] = returnedHook
 		}
 		return returnedHooks
@@ -286,9 +322,24 @@ func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag
 func revertChanges(d *schema.ResourceData, changedKeys []string) {
 	for _, key := range changedKeys {
 		old, _ := d.GetChange(key)
-		if !reflect.ValueOf(old).IsZero() { // so that a previously optional param is not set to blank erroraneously
+		if !isEmpty(old) { // so that a previously optional param is not set to blank erroraneously
 			d.Set(key, old)
 		}
+	}
+}
+
+func isEmpty(value interface{}) bool {
+	v := reflect.ValueOf(value)
+
+	switch v.Kind() {
+	case reflect.Bool:
+		return false
+	case reflect.String, reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
+		return v.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return v.IsNil()
+	default:
+		return v.IsZero()
 	}
 }
 
@@ -301,4 +352,24 @@ func toTagArray(array interface{}) []dctapi.Tag {
 		items = append(items, *tag_item)
 	}
 	return items
+}
+
+func toIntArray(array interface{}) []int32 {
+	items := []int32{}
+	for _, item := range array.([]interface{}) {
+		items = append(items, int32(item.(int)))
+	}
+	return items
+}
+
+func isSnapSyncFailure(job_id string, ctx context.Context, client *dctapi.APIClient) bool {
+	res, httpRes, _ := client.JobsAPI.GetJobById(ctx, job_id).Execute()
+	if httpRes.StatusCode == 200 && len(res.GetTasks()) != 0 {
+		tflog.Info(ctx, "Status of task 1 is "+res.GetTasks()[0].GetStatus())
+		if res.GetTasks()[0].GetStatus() == "COMPLETED" {
+			tflog.Info(ctx, "rolling back Dsource")
+			return true
+		}
+	}
+	return false
 }

@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"net/http"
 
-	dctapi "github.com/delphix/dct-sdk-go/v22"
+	dctapi "github.com/delphix/dct-sdk-go/v25"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
