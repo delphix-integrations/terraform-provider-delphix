@@ -41,11 +41,6 @@ resource "delphix_vdb" "example" {
     postgresPort        = 5434
     configSettingsStg   = [{ propertyName: "timezone", value:"GMT", commentProperty:false}]
   })
-  additional_mount_points = [{
-      shared_path = "/",
-      mount_path = "/work",
-      environment_id = "environment-123"
-  }]
 
   post_snapshot {
     name            = "string"

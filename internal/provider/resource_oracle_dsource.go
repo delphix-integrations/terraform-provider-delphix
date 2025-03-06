@@ -27,6 +27,11 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"rollback_on_failure": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -790,9 +795,28 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 
+	rollback_on_failure := d.Get("rollback_on_failure").(bool)
+
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		d.SetId("")
 		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		if rollback_on_failure {
+			if job_res == Failed {
+				res := isSnapSyncFailure(*apiRes.Job.Id, ctx, client)
+				if res {
+					deleteDiags := resourceOracleDsourceDelete(ctx, d, meta)
+					if deleteDiags.HasError() {
+						return deleteDiags
+					}
+					d.SetId("")
+				}
+			}
+		} else {
+			readDiags := resourceOracleDsourceRead(ctx, d, meta)
+
+			if readDiags.HasError() {
+				return readDiags
+			}
+		}
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
 	}
 
@@ -842,6 +866,12 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	result, ok := res.(*dctapi.DSource)
 	if !ok {
 		return diag.Errorf("Error occured in type casting.")
+	}
+
+	_, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
+	if !rollback_on_failure_exists {
+		// its an import or upgrade, set to default value
+		d.Set("rollback_on_failure", false)
 	}
 
 	ops_pre_sync_Raw, _ := d.Get("ops_pre_sync").([]interface{})

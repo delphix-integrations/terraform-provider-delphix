@@ -361,3 +361,15 @@ func toIntArray(array interface{}) []int32 {
 	}
 	return items
 }
+
+func isSnapSyncFailure(job_id string, ctx context.Context, client *dctapi.APIClient) bool {
+	res, httpRes, _ := client.JobsAPI.GetJobById(ctx, job_id).Execute()
+	if httpRes.StatusCode == 200 && len(res.GetTasks()) != 0 {
+		tflog.Info(ctx, "Status of task 1 is "+res.GetTasks()[0].GetStatus())
+		if res.GetTasks()[0].GetStatus() == "COMPLETED" {
+			tflog.Info(ctx, "rolling back Dsource")
+			return true
+		}
+	}
+	return false
+}
