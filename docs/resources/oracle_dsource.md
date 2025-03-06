@@ -52,7 +52,7 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
 * `source_value` - (Required) ID or name of the source to link. 
 * `description` - The notes (or description) for the dSource. 
 * `group_id` - ID of the Delphix Continuous Data dataset group where this dSource should belong to. This value is not reflected in DCT. Tags are recommended. 
-
+* `rollback_on_failure` - Dsource linking operation when fails during snapsync creates a tainted dsource on the engine. Setting this flag to true will remove the tainted dsource from state as well as engine. By default, it is set to false, where the tainted dsource is maintained on the terraform state.
 
 ### Full Backup and Transaction Log Requirements 
 

@@ -125,6 +125,8 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `make_current_account_owner` - (Required) Whether the account creating this reporting schedule must be configured as owner of the reporting schedule.
 
+* `rollback_on_failure` - Dsource linking operation when fails during snapsync creates a tainted dsource on the engine. Setting this flag to true will remove the tainted dsource from state as well as engine. By default, it is set to false, where the tainted dsource is maintained on the terraform state.
+
 * `description` - The notes/description for the dSource.
 
 * `link_type` - (Required) The type of link to create. Default is AppDataDirect.
