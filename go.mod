@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.6
 
 require (
-	github.com/delphix/dct-sdk-go/v22 v22.0.0
+	github.com/delphix/dct-sdk-go/v25 v25.1.2
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 )
 
