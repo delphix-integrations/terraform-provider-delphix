@@ -1592,6 +1592,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("post_stop", flattenVDbHooks(result.GetHooks().PostStop))
 	d.Set("pre_rollback", flattenVDbHooks(result.GetHooks().PreRollback))
 	d.Set("post_rollback", flattenVDbHooks(result.GetHooks().PostRollback))
+
 	if !result.GetIsAppdata() {
 		d.Set("database_name", result.GetDatabaseName())
 	}
