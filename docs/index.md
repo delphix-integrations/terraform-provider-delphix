@@ -14,8 +14,8 @@ If you are a DCT customer, you can also request support from the [Delphix Suppor
  
 | Product                        | Version  | 
 |--------------------------------|----------| 
-| Data Control Tower (DCT)       | v22+ | 
-| Delphix Continuous Data Engine | v16.0.0.0+ | 
+| Data Control Tower (DCT)       | v2025.1.2+ | 
+| Delphix Continuous Data Engine | v29.0.0.0+ | 
  
 Note: The DCT and Continuous Data versions above guarantees full provider support. However, each resource might support older versions. Refer to the specific resource documentation page for more information. 
  
