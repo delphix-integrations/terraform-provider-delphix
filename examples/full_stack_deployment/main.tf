@@ -20,7 +20,7 @@ terraform {
   }
 }
 
-// *** Requirement***: Various variables used throughout the example.
+# *** Requirement***: Various variables used throughout the example.
 locals {
   dct-key           = "<1.XXXX>"
   dct-host          = "<DCT HOSTNAME>"
@@ -39,10 +39,10 @@ provider "delphix" {
 }
 
 
-// *** Requirement ***: This is an example only and will not work without significant modification and additional files.
-// See the official documentation here for a full VM deployment: https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform
-// The VM creation terraform resource can be replaced with an equivalent resource GCP, AWS, VMWare, etc that's compatible with Delphix Continuous Data.
-// Consult your organization's DevOps expert for guidance on how to provision a VM that's approved for your company.
+# *** Requirement ***: This is an example only and will not work without significant modification and additional files.
+# See the official documentation here for a full VM deployment: https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform
+# The VM creation terraform resource can be replaced with an equivalent resource GCP, AWS, VMWare, etc that's compatible with Delphix Continuous Data.
+# Consult your organization's DevOps expert for guidance on how to provision a VM that's approved for your company.
 resource "azurerm_linux_virtual_machine" "azure_vm" {
   name                  = "Delphix Oracle Target"
   location              = azurerm_resource_group.rg.location // Not provided
@@ -72,7 +72,8 @@ resource "azurerm_linux_virtual_machine" "azure_vm" {
   }
 }
 
-// Add the Azure VM as a Delphix environment.
+# Add the Azure VM as a Delphix environment.
+# Docs: https://registry.terraform.io/providers/delphix-integrations/delphix/latest/docs/resources/environment
 resource "delphix_environment" "linux-oracle-target" {
      name = local.vm-hostname
      os_name = "UNIX"
@@ -84,36 +85,31 @@ resource "delphix_environment" "linux-oracle-target" {
      description = "This is a unix target for the Oracle VDB."     
  } 
 
-// Link and Sync the dSource and take a new snapshot
-// *** Requirement *** This is an Oracle dSource. Updates are likely required.
+
+# If we were ingesting a PostgreSQL (or AppData) database, we would need to configure a Source Config (Source) 
+# resource "delphix_database_postgresql" "postgresql_source_config" {
+#   name             = local.source-db-name + "source config"
+#   repository_value = "PostgreSQL Repo"
+#   engine_value = "1"
+#   environment_value = local.vm-hostname
+# }
+
+# Link and Sync the dSource and take a new snapshot
+# *** Requirement *** This is an Oracle dSource. Updates are likely required.
+# Docs: https://registry.terraform.io/providers/delphix-integrations/delphix/latest/docs/resources/oracle_dsource
 resource "delphix_oracle_dsource" "full_oracle_dsource" {
   name                       = local.dsource-name
   source_value               = local.source-db-name
-  group_id                   = "4-GROUP-1"
-  environment_user_id        = "HOST_USER-1"
+  group_id                   = "full_deployment_group"
+  environment_user_id        = local.vm-username
   log_sync_enabled           = false
-  rman_channels              = 2
-  files_per_set              = 5
-  check_logical              = false
-  encrypted_linking_enabled  = false
-  compressed_linking_enabled = true
-  bandwidth_limit            = 0
-  number_of_connections      = 1
-  diagnose_no_logging_faults = true
-  pre_provisioning_enabled   = false
   link_now                   = true
-  force_full_backup          = false
-  double_sync                = false
-  skip_space_check           = false
-  do_not_resume              = false
-  files_for_full_backup      = []
-  log_sync_mode              = "UNDEFINED"
-  log_sync_interval          = 5
   make_current_account_owner = true
 }
 
 
-// Provision by Snapshot the 1 Oracle VDB on the newly created environment
+# Provision by Snapshot the 1 Oracle VDB on the newly created environment
+# Docs: https://registry.terraform.io/providers/delphix-integrations/delphix/latest/docs/resources/vdb
 resource "delphix_vdb" "vdb_provision_loop" {
   name                   = local.vdb-name
   source_data_id         = local.dsource-name
