@@ -4,7 +4,7 @@ In Delphix terminology, a dSource is an internal, read-only database copy that t
 
 A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. 
 
-The Oracle dSource resource allows Terraform to create and delete Oracle dSources. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
+The Oracle dSource resource allows Terraform to create and delete Oracle dSources via Terraform automation. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
 
 Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
 
@@ -82,10 +82,11 @@ The following arguments enable the user to control how the first snapshot should
 * `double_sync` - True if two SnapSyncs should be performed in immediate succession to reduce the number of logs required to provision the snapshot. This may significantly reduce the time necessary to provision from a snapshot. 
 * `do_not_resume` - Indicates if a fresh SnapSync must be started regardless of whether it was possible to resume the current SnapSync. If true, we will not resume; instead, we will ignore previous progress and back up all datafiles even if they have already been completed from the last failed SnapSync. This does not force a full backup; if an incremental was in progress this will start a new incremental snapshot. 
 * `skip_wait_for_snapshot_creation` - By default this resource will wait for a snapshot to be created post-dSource creation. This ensures a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`. 
-* `wait_time` - This value controls how long the resource will wait for the initial snapshot to be successfully ingested by Delphix. By default, the value is 0, meaning it does not wait for the snapshot to be created. If a synchronous behavior, specifies a value that is slightly longer than the average ingestion time. This argument was introduced in Delphix provider v3.2.1.  
+* `wait_time` - This value controls how long the resource will wait for the initial snapshot to be successfully ingested by Delphix. By default, the value is 0, meaning it does not wait for the snapshot to be created. When using this parameter, it is recommended to use a value that is slightly longer than the average ingestion time. This argument was introduced in Delphix provider v3.2.1.  
 
 This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`. 
 
+Note: In DCT v2025.1, waiting for SnapSync to complete is default functionality. Therefore, these the arguments `skip_wait_for_snapshot_creation` and `wait_time` are ignored. In future versions of the provider, we will look at re-implementing the skip SnapSync behavior. 
 
 ### Password and Password Vault Management 
 

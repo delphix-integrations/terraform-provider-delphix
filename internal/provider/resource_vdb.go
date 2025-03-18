@@ -996,16 +996,16 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	readDiags := resourceVdbRead(ctx, d, meta)
@@ -1244,16 +1244,16 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 	if job_res == "FAILED" {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+*apiRes.Job.Id+" Failed!")
-		return diag.Errorf("[NOT OK] Job %s Failed with error %s", *apiRes.Job.Id, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
 	}
 
 	readDiags := resourceVdbRead(ctx, d, meta)
@@ -1477,16 +1477,16 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	readDiags := resourceVdbRead(ctx, d, meta)
@@ -1911,13 +1911,13 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	if d.HasChanges(
@@ -1970,13 +1970,13 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error : "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {

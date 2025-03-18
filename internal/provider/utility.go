@@ -287,15 +287,15 @@ func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) dia
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"VDB disable Job Polling failed. Error: "+job_err)
 		//return here
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 	return nil
 }
@@ -307,14 +307,14 @@ func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"VDB enable Job Polling failed. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 	return nil
 }

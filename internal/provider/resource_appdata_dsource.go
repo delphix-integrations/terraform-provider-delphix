@@ -469,9 +469,9 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.DsourceId)
+	d.SetId(apiRes.GetDsourceId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
 	}
@@ -481,10 +481,10 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	rollback_on_failure := d.Get("rollback_on_failure").(bool)
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
 		if rollback_on_failure {
 			if job_res == Failed {
-				res := isSnapSyncFailure(*apiRes.Job.Id, ctx, client)
+				res := isSnapSyncFailure(apiRes.Job.GetId(), ctx, client)
 				if res {
 					deleteDiags := resourceDsourceDelete(ctx, d, meta)
 					if deleteDiags.HasError() {
@@ -500,7 +500,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 				return readDiags
 			}
 		}
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	PollSnapshotStatus(d, ctx, client)
@@ -605,13 +605,13 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
