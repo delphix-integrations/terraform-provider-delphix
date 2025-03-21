@@ -18,7 +18,7 @@ provider "delphix" {
 }
 
 resource "delphix_vdb" "example" {
-  bookmark_id             = ""
+  bookmark_id             = "bookmark_name"
   name                    = "vdb_to_be_created"
   source_data_id          = "dsource-name"
   vdb_restart             = true
