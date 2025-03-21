@@ -8,14 +8,9 @@ The Oracle dSource resource allows Terraform to create and delete Oracle dSource
 
 Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.  
 
+This Oracle dSource resource only supports Oracle. 
 
-## System Requirements 
-
-  
-* Data Control Tower v21+ is required for the dSource Oracle resource.
-* This Oracle dSource resource only supports Oracle.  
-* For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSource resource. 
-* The Delphix Provider does not currently support SQL Server or SAP ASE.  
+For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSource resource. The Delphix Provider does not currently support SQL Server or SAP ASE. 
 
 
 ## Note 
@@ -118,57 +113,33 @@ The following arguments define how the Delphix Continuous Data will authenticate
 The following arguments apply to all dSources but they are not often necessary for simple sources. 
 
 * `make_current_account_owner` - Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: true. 
-* `ops_pre_log_sync` - Operations to perform after syncing a created dSource and before running the LogSync. 
-    * `name` - Name of the hook [Updatable] 
-    * `command` - Command to be executed [Updatable] 
-    * `shell` - Type of shell. Valid values are ` [bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set. 
-        * `password` - Password to assign to the environment variables. 
-        * `vault` - The name or reference of the vault to assign to the environment variables. 
-        * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
-        * `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored. 
-        * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store. 
-        * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store. 
-        * `azure_vault_name` - Azure key vault name. 
-        * `azure_vault_username_key` - Azure vault key in the key-value store. 
-        * `azure_vault_secret_key` - Azure vault key in the key-value store. 
-        * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-* `ops_pre_sync` - Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing. 
-    * `name` - Name of the hook [Updatable] 
-    * `command` - Command to be executed [Updatable] 
-    * `shell` - Type of shell. Valid values are ` [bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
-        * `password` - Password to assign to the environment variables. 
-        * `vault` - The name or reference of the vault to assign to the environment variables. 
-        * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
-        * `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored. 
-        * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store. 
-        * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store. 
-        * `azure_vault_name` - Azure key vault name. 
-        * `azure_vault_username_key` - Azure vault key in the key-value store. 
-        * `azure_vault_secret_key` - Azure vault key in the key-value store. 
-        * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-* `ops_post_sync` - Operations to perform after syncing a created dSource. 
-    * `name` - Name of the hook [Updatable] 
-    * `command` - Command to be executed [Updatable] 
-    * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` [Updatable] 
-    * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set. 
-        * `password` - Password to assign to the environment variables. 
-        * `vault` - The name or reference of the vault to assign to the environment variables. 
-        * `hashicorp_vault_engine` - Vault engine name where the credential is stored. 
-        * `hashicorp_vault_secret_path` -  Path in the vault engine where the credential is stored. 
-        * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store. 
-        * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store. 
-        * `azure_vault_name` - Azure key vault name. 
-        * `azure_vault_username_key` - Azure vault key in the key-value store. 
-        * `azure_vault_secret_key` - Azure vault key in the key-value store. 
-        * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
  * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
+
+### Hooks
+Any combination of the following hooks can be provided on the Oracle dSource resource. The available arguments are identical for each hook and are consolidated in a single list to save space. 
+
+#### Names
+* `ops_pre_log_sync`: Operations to perform after syncing a created dSource and before running the LogSync. See argument list below. 
+* `ops_pre_sync`: Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing. See argument list below. 
+* `ops_post_sync`: Operations to perform after syncing a created dSource. See argument list below. 
+
+#### Arguments
+* `name` - Name of the hook [Updatable]   
+* `command` - Command to be executed [Updatable]  
+* `shell` - Type of shell. Valid values are [bash, shell, expect, ps, psd] [Updatable] 
+* `credentials_env_vars` - List of environment variables that contain credentials for this operation 
+* `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
+* `password` - Password to assign to the environment variables. - vault - The name or reference of the vault to assign to the environment variables.  
+* `hashicorp_vault_engine` - Vault engine name where the credential is stored.  
+* `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.  
+* `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.  
+* `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.  
+* `azure_vault_name` - Azure key vault name.  
+* `azure_vault_username_key` - Azure vault key in the key-value store. 
+* `azure_vault_secret_key` - Azure vault key in the key-value store.  
+* `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
 
 ## Import (Beta)  
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  
