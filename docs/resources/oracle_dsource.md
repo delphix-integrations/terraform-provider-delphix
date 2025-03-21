@@ -19,7 +19,7 @@ For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSou
 * Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file do not reflect the actual value of the actual infrastructure. 
 * Sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
 * `Make_current_account_owner `,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during the creation of dsource. Note, they can only be used once and are not applicable to updates.
-*  `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection
+* `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection
 
   
 
