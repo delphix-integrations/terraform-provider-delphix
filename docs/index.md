@@ -1,6 +1,6 @@
 # <provider> Delphix Provider 
  
-The [Terraform Provider for Delphix](https://help.delphix.com/eh/current/Content/Ecoystem/Terraform.htm) enables you to natively manage data-as-code along with your infrastructure. 
+The [Terraform Provider for Delphix](https://help.delphix.com/eh/current/content/terraform.htm) enables you to natively manage data-as-code along with your infrastructure. 
  
 With Terraform and Delphix, you can now automatically provision, manage, and teardown any number of ephemeral data environments to drive enterprise DevOps workflows, such as test data management. 
  
