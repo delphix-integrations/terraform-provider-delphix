@@ -113,7 +113,7 @@ The following arguments define how the Delphix Continuous Data will authenticate
 The following arguments apply to all dSources but they are not often necessary for simple sources. 
 
 * `make_current_account_owner` - Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: true. 
- * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
+* `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
 
