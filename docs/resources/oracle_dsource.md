@@ -130,16 +130,16 @@ Any combination of the following hooks can be provided on the Oracle dSource res
 * `command` - Command to be executed [Updatable]  
 * `shell` - Type of shell. Valid values are [bash, shell, expect, ps, psd] [Updatable] 
 * `credentials_env_vars` - List of environment variables that contain credentials for this operation 
-* `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
-* `password` - Password to assign to the environment variables. - vault - The name or reference of the vault to assign to the environment variables.  
-* `hashicorp_vault_engine` - Vault engine name where the credential is stored.  
-* `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.  
-* `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.  
-* `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.  
-* `azure_vault_name` - Azure key vault name.  
-* `azure_vault_username_key` - Azure vault key in the key-value store. 
-* `azure_vault_secret_key` - Azure vault key in the key-value store.  
-* `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
+    * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
+    * `password` - Password to assign to the environment variables. - vault - The name or reference of the vault to assign to the environment variables.  
+    * `hashicorp_vault_engine` - Vault engine name where the credential is stored.  
+    * `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.  
+    * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.  
+    * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.  
+    * `azure_vault_name` - Azure key vault name.  
+    * `azure_vault_username_key` - Azure vault key in the key-value store. 
+    * `azure_vault_secret_key` - Azure vault key in the key-value store.  
+    * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
 
 ## Import (Beta)  
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  
