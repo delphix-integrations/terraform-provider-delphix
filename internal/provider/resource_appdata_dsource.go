@@ -26,6 +26,11 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"rollback_on_failure": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
@@ -464,19 +469,38 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.DsourceId)
+	d.SetId(apiRes.GetDsourceId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 
+	rollback_on_failure := d.Get("rollback_on_failure").(bool)
+
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		d.SetId("")
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		if rollback_on_failure {
+			if job_res == Failed {
+				res := isSnapSyncFailure(apiRes.Job.GetId(), ctx, client)
+				if res {
+					deleteDiags := resourceDsourceDelete(ctx, d, meta)
+					if deleteDiags.HasError() {
+						return deleteDiags
+					}
+					d.SetId("")
+				}
+			}
+		} else {
+			readDiags := resourceDsourceRead(ctx, d, meta)
+
+			if readDiags.HasError() {
+				return readDiags
+			}
+		}
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	PollSnapshotStatus(d, ctx, client)
@@ -491,7 +515,6 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 }
 
 func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	client := meta.(*apiClient).client
 
 	dsource_id := d.Id()
@@ -525,6 +548,12 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	result, ok := res.(*dctapi.DSource)
 	if !ok {
 		return diag.Errorf("Error occured in type casting.")
+	}
+
+	_, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
+	if !rollback_on_failure_exists {
+		// its an import or upgrade, set to default value
+		d.Set("rollback_on_failure", false)
 	}
 
 	d.Set("id", result.GetId())
@@ -576,13 +605,13 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, *res.Id, job_err)
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {

@@ -125,6 +125,8 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `make_current_account_owner` - (Required) Whether the account creating this reporting schedule must be configured as owner of the reporting schedule.
 
+* `rollback_on_failure` - Dsource linking operation when fails during snapsync creates a tainted dsource on the engine. Setting this flag to true will remove the tainted dsource from state as well as engine. By default, it is set to false, where the tainted dsource is maintained on the terraform state.
+
 * `description` - The notes/description for the dSource.
 
 * `link_type` - (Required) The type of link to create. Default is AppDataDirect.
@@ -187,6 +189,6 @@ resource "delphix_appdata_dsource" "dsource_name" {
 
 * `sync_parameters` - The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
 
-* `skip_wait_for_snapshot_creation` - By default this resource will wait for a snapshot to be created post-dSource creation. This ensure a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`.
+* `skip_wait_for_snapshot_creation` - In DCT v2025.1, waiting for Ingestion and Snapshotting (aka SnapSync) to complete is default functionality. Therefore, these the arguments skip_wait_for_snapshot_creation and wait_time are ignored. In future versions of the provider, we will look at re-implementing the skip SnapSync behavior 
 
-* `wait_time` - By default this resource waits 0 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
+* `wait_time` - In DCT v2025.1, waiting for Ingestion and Snapshotting (aka SnapSync) to complete is default functionality. Therefore, these the arguments skip_wait_for_snapshot_creation and wait_time are ignored. In future versions of the provider, we will look at re-implementing the skip SnapSync behavior. 

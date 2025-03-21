@@ -90,3 +90,23 @@ var isDestructiveVdbUpdate = map[string]bool{
 	"mount_point":                   true,
 	"tags":                          false,
 }
+
+var updatableOracleDsourceKeys = map[string]bool{
+	"name":                       true,
+	"environment_user_id":        true,
+	"backup_level_enabled":       true,
+	"rman_channels":              true,
+	"files_per_set":              true,
+	"check_logical":              true,
+	"encrypted_linking_enabled":  true,
+	"compressed_linking_enabled": true,
+	"bandwidth_limit":            true,
+	"number_of_connections":      true,
+	"pre_provisioning_enabled":   true,
+	"diagnose_no_logging_faults": true,
+	"external_file_path":         true,
+	"tags":                       true,
+	"ops_pre_sync":               true,
+	"ops_pre_log_sync":           true,
+	"ops_post_sync":              true,
+}
