@@ -79,4 +79,4 @@ Consult the Resources section for details on individual resources, such as VDB, 
 | delphix_oracle_dsource                      | v 3.1.0          | v 10.0.0    |
 | delphix_database_postgresql                 | v 3.2.0          | v 14.0.0    |
 | delphix_vdb update<br>delphix_database_postgresql import | v 3.3.0   | v 22.0.0    |
-| delphix_oracle_dsource update<br>delphix_oracle_dsource import | v 3.4.0   | v 23.0.0    |
+| delphix_oracle_dsource update<br>delphix_oracle_dsource import | v 3.4.0   | v 2025.1.2    |
