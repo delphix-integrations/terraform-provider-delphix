@@ -3,7 +3,6 @@ package provider
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -547,7 +546,6 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("engine_id", envRes.GetEngineId())
 	d.Set("is_cluster", envRes.GetIsCluster())
 	d.Set("enabled", envRes.GetEnabled())
-	tflog.Info(ctx, "is WindowsTarget"+strconv.FormatBool(envRes.GetIsWindowsTarget()))
 	d.Set("is_windows_target", envRes.GetIsWindowsTarget())
 	d.Set("staging_environment", envRes.GetStagingEnvironment())
 	d.Set("cluster_home", envRes.GetClusterHome())
@@ -580,16 +578,15 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	var modifiedChangedKeys []string
 	for k := range d.State().Attributes {
-		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.key
 			k = "tags"
 		}
 		if d.HasChange(k) {
-			tflog.Info(ctx, ">>>>>@@@<<<<<<"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
 	for _, ck := range changedKeys {
-		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+ck) // for hosts it will be in the form hosts.0.nfs_addresses.#
+		// for hosts it will be in the form hosts.0.nfs_addresses.#
 		if strings.Contains(ck, "hosts.0.hostname") ||
 			strings.Contains(ck, "hosts.0.ssh_port") ||
 			strings.Contains(ck, "hosts.0.toolkit_path") ||
@@ -599,9 +596,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 		modifiedChangedKeys = append(modifiedChangedKeys, ck)
 	}
-	for _, mck := range modifiedChangedKeys {
-		tflog.Info(ctx, "!!!!!!!!mck!!!!!!!"+mck)
-	}
+
 	client := meta.(*apiClient).client
 	environmentId := d.Get("id").(string)
 	var updateFailure, destructiveUpdate bool = false, false
@@ -612,24 +607,21 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	var disableDsourceFailure bool = false
 	// if changedKeys contains non updatable field set a flag
 	for _, key := range modifiedChangedKeys {
-		tflog.Info(ctx, "!!!!!!!!!!!!!!!"+key)
 		if !updatableEnvKeys[key] {
 			// we stop the update process here if non supported attribute is detected here
 			updateFailure = true
-			tflog.Info(ctx, ">>>>>!!!<<<<<<"+key)
 			nonUpdatableField = append(nonUpdatableField, key)
 		}
 	}
 
 	if updateFailure {
-		tflog.Info(ctx, "######updatefailure")
 		revertChanges(d, changedKeys)
 		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
 	}
 	// find if destructive update
 	for _, key := range changedKeys {
 		if isDestructiveEnvUpdate[key] {
-			tflog.Info(ctx, "######isDestructiveUpdate"+key)
+			tflog.Info(ctx, "isDestructiveUpdate: "+key)
 			destructiveUpdate = true
 		}
 	}
@@ -637,7 +629,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	if destructiveUpdate {
 		// get dsources and vdbs
 		vdbs, vdbDiags = filterVDBs(ctx, client, environmentId)
-		tflog.Info(ctx, "######vdbs")
 		if vdbDiags.HasError() {
 			revertChanges(d, changedKeys)
 			return vdbDiags
@@ -645,7 +636,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// get sources to get dsources
 		sources, sourceDiag := filterSources(ctx, client, environmentId)
-		tflog.Info(ctx, "######sources")
 		if sourceDiag.HasError() {
 			revertChanges(d, changedKeys)
 			return sourceDiag
@@ -658,7 +648,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		// retrieve dsources from source list
 
 		if len(sourceIds) > 0 {
-			tflog.Info(ctx, "######DSource")
 			dsourceItems, dsourceDiags = filterdSources(ctx, client, sourceIds)
 			if dsourceDiags != nil {
 				revertChanges(d, changedKeys)
@@ -668,7 +657,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// disable vdb
 		for _, item := range vdbs {
-			tflog.Info(ctx, "######disableVDB")
 			if diags := disableVDB(ctx, client, item.GetId()); diags != nil {
 				tflog.Error(ctx, "failure in disabling vdbs")
 				//disableVdbFailure = true
@@ -679,7 +667,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// disable dsources
 		for _, item := range dsourceItems {
-			tflog.Info(ctx, "######disabledSource")
 			if diags := disabledSource(ctx, client, item.GetId()); diags != nil {
 				tflog.Error(ctx, "failure in disabling Dsources")
 				disableDsourceFailure = true
@@ -688,7 +675,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if disableDsourceFailure {
 			//enable back vdbs and return
 			for _, item := range vdbs {
-				tflog.Info(ctx, "######disableDsourceFailure")
 				if diags := enableVDB(ctx, client, item.GetId()); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -758,7 +744,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			}
 		}
 		// get the user ref
-		tflog.Info(ctx, "~~~~~~~~Getting the userlist")
+		tflog.Info(ctx, "Getting the userlist")
 		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, environmentId).Execute()
 		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
 			revertChanges(d, changedKeys)
@@ -769,7 +755,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		username, _ := d.GetChange("username")
 		for _, users := range resUserList.GetUsers() {
-			tflog.Info(ctx, "~~~~~~~~Getting the users"+users.GetUsername())
+			tflog.Info(ctx, "Getting the users: "+users.GetUsername())
 			if strings.EqualFold(users.GetUsername(), username.(string)) {
 				user_ref = users.GetUserRef()
 				break
@@ -782,10 +768,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// this is to propagate the value to read call which is defined at the end.
 		// we will use the user_ref to filter from the list of users in the env
-		tflog.Info(ctx, "~~~~~~~~Setting the user_ref"+user_ref)
+		tflog.Info(ctx, "Setting the user_ref: "+user_ref)
 		d.Set("user_ref", user_ref)
 
-		tflog.Info(ctx, "~~~~~~~~Updating the user"+user_ref)
+		tflog.Info(ctx, "Updating the user: "+user_ref)
 		resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
 		if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
 			revertChanges(d, changedKeys)
@@ -809,12 +795,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	if d.HasChanges(
 		"hosts",
 		"connector_port",
-		// "java_home",
-		// "hostname",
-		// "ssh_port",
-		// "toolkit_path",
-		// "nfs_addresses",
-		// "oracle_tde_keystores_root_path",
 	) {
 		tflog.Info(ctx, "hosts")
 		// host update
@@ -842,7 +822,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		for _, host := range hostsList {
 			if oldHostName == host.(map[string]interface{})["hostname"].(string) {
 				hostId = host.(map[string]interface{})["id"].(string)
-				tflog.Info(ctx, "<>>>>>><<<<<<<>>>>>> hostsId: "+hostId)
+				tflog.Info(ctx, "hostsId: "+hostId)
 				break
 			} else {
 				// if not found, proceed with enable and finally display the failure events
@@ -907,16 +887,16 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	if d.HasChanges(
 		"tags",
 	) { // tags update
-		tflog.Info(ctx, ">>>>>>>>>>>>tags")
+		tflog.Info(ctx, "tags")
 		if d.HasChange("tags") {
 			// delete old tag
-			tflog.Info(ctx, ">>>>>>>>>>>>delete tags")
+			tflog.Info(ctx, "delete tags")
 			oldTag, newTag := d.GetChange("tags")
 			if len(toTagArray(oldTag)) != 0 {
-				tflog.Info(ctx, "&&&&&&&&&&&>>>>>>>>>>>>delete tags"+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+				tflog.Info(ctx, "delete tags: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
-				tflog.Info(ctx, ">>DELETE TAG RESP: "+tagDelResp.Status)
+				tflog.Info(ctx, "DELETE TAG RESP: "+tagDelResp.Status)
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -925,7 +905,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			}
 			// create tag
 			if len(toTagArray(newTag)) != 0 {
-				tflog.Info(ctx, ">>>>>>>>>>>>create tags")
+				tflog.Info(ctx, "create tags")
 				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
@@ -953,7 +933,6 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	// return the error back
 	if updateFailure {
-		tflog.Error(ctx, "??????ERPRORORRRRRRRR???")
 		return diag.Errorf("[NOT OK] Update failed with error %s", failureEvents)
 	}
 
