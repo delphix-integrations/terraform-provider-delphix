@@ -127,6 +127,10 @@ func testAccCheckDctEnvConfigBasic(engineId string, username string, password st
 			hostname = "%s"
 			toolkit_path = "%s"
 		}
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
 	}
 	`, engineId, escape(username), escape(password), env_name, escape(hostname), escape(toolkitPath))
 }
@@ -194,6 +198,10 @@ func testAccEnvUpdatePositive(engineId string, username string, password string,
 			hostname = "%s"
 			toolkit_path = "%s"
 		}
+		tags {
+			key = "dlpx-changed"
+			value = "acc-test-changed"
+    	}
 	}
 	`, engineId, escape(username), escape(password), escape(hostname), escape(toolkitPath))
 }
@@ -210,6 +218,10 @@ func testAccEnvUpdateNegative(engineId string, username string, password string,
 			hostname = "%s"
 			toolkit_path = "%s"
 		}
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
 	}
 	`, engineId, escape(username), escape(password), env_name, escape(hostname), escape(toolkitPath))
 }

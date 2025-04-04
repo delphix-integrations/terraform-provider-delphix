@@ -85,6 +85,33 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
   sync_parameters = jsonencode({
     resync = true
   })
+	tags {
+		key = "dlpx"
+		value = "acc-test"
+	}
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
 }
 	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
 }
@@ -105,6 +132,33 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
   sync_parameters = jsonencode({
     resync = true
   })
+	tags {
+		key = "dlpx"
+		value = "acc-test"
+    }
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
 }
 	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
 }
