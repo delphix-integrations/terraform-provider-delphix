@@ -463,3 +463,58 @@ func enableDsource(ctx context.Context, client *dctapi.APIClient, dsourceId stri
 	}
 	return nil
 } //decide if continue or exit
+
+func toSourceOperationArray(array interface{}) []dctapi.SourceOperation {
+	items := []dctapi.SourceOperation{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		sourceOperation := dctapi.NewSourceOperation(item_map["name"].(string), item_map["command"].(string))
+		if item_map["shell"].(string) != "" {
+			sourceOperation.SetShell(item_map["shell"].(string))
+		}
+		sourceOperation.SetCredentialsEnvVars(toCredentialsEnvVariableArray(item_map["credentials_env_vars"]))
+		items = append(items, *sourceOperation)
+	}
+	return items
+}
+
+func toCredentialsEnvVariableArray(array interface{}) []dctapi.CredentialsEnvVariable {
+	items := []dctapi.CredentialsEnvVariable{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+
+		credentialsEnvVariable_item := dctapi.NewCredentialsEnvVariable(item_map["base_var_name"].(string))
+		if item_map["password"].(string) != "" {
+			credentialsEnvVariable_item.SetPassword(item_map["password"].(string))
+		}
+		if item_map["vault"].(string) != "" {
+			credentialsEnvVariable_item.SetVault(item_map["vault"].(string))
+		}
+		if item_map["hashicorp_vault_engine"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_engine"].(string))
+		}
+		if item_map["hashicorp_vault_secret_path"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretPath(item_map["hashicorp_vault_secret_path"].(string))
+		}
+		if item_map["hashicorp_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultUsernameKey(item_map["hashicorp_vault_username_key"].(string))
+		}
+		if item_map["hashicorp_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretKey(item_map["hashicorp_vault_secret_key"].(string))
+		}
+		if item_map["azure_vault_name"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultName(item_map["azure_vault_name"].(string))
+		}
+		if item_map["azure_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultUsernameKey(item_map["azure_vault_username_key"].(string))
+		}
+		if item_map["azure_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultSecretKey(item_map["azure_vault_secret_key"].(string))
+		}
+		if item_map["cyberark_vault_query_string"].(string) != "" {
+			credentialsEnvVariable_item.SetCyberarkVaultQueryString(item_map["cyberark_vault_query_string"].(string))
+		}
+		items = append(items, *credentialsEnvVariable_item)
+	}
+	return items
+}

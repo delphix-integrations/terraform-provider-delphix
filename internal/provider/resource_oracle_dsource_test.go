@@ -21,7 +21,7 @@ func TestOracleDsource_create_positive(t *testing.T) {
 			testOracleDsourcePreCheck(t, sourcevalue, groupId, name)
 		},
 		Providers:    testAccProviders,
-		CheckDestroy: testDsourceDestroy,
+		CheckDestroy: testOracleDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testOracleDsourceBasic(name, sourcevalue, groupId),
@@ -31,10 +31,10 @@ func TestOracleDsource_create_positive(t *testing.T) {
 			},
 			{
 				// positive update test case
-				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId),
+				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId), // changing the name to update-name
 				Check: resource.ComposeTestCheckFunc(
 					testOracleDsourceExists("delphix_oracle_dsource.test_oracle_dsource", sourcevalue),
-					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "name", "update_name"),
+					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "name", "update_name"), // asserting the updated name
 					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "group_id", groupId)),
 			},
 			{

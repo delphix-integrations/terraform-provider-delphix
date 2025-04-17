@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -72,9 +73,21 @@ func resourceOracleDsource() *schema.Resource {
 					return d.Id() != ""
 				},
 			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -86,6 +99,15 @@ func resourceOracleDsource() *schema.Resource {
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					ignore_tag_changes, _ := d.GetOk("ignore_tag_changes")
+					if ignore_tag_changes.(bool) {
+						return true
+					} else {
+						tflog.Debug(context.Background(), fmt.Sprintf("\n [DEBUG] tag changes suppressed : %v", ignore_tag_changes))
+						return false
+					}
 				},
 			},
 			"ops_pre_sync": {
@@ -907,6 +929,20 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
 	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
+
+	// get the tags and set it
+	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(ctx, dsource_id).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		if len(resTagsDsrc.GetTags()) != 0 {
+			tflog.Debug(ctx, DLPX+"Tags are present")
+			d.Set("tags", flattenTags(resTagsDsrc.GetTags()))
+		}
+	}
 	return diags
 }
 
@@ -1039,11 +1075,11 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 
 	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+		tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+		return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	if d.HasChanges(

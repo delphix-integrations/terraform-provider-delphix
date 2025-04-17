@@ -132,3 +132,17 @@ var isDestructiveEnvUpdate = map[string]bool{
 	"tags":           false,
 	"hosts":          true,
 }
+
+var updatableAppdataDsourceKeys = map[string]bool{
+	"name":                     true,
+	"description":              true,
+	"staging_environment":      true,
+	"staging_environment_user": true,
+	"environment_user":         true,
+	"parameters":               true,
+	"sync_policy_id":           true,
+	"retention_policy_id":      true,
+	"ops_pre_sync":             true,
+	"ops_post_sync":            true,
+	"tags":                     true,
+}

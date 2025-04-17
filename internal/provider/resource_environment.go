@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -192,20 +193,41 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"value": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					ignore_tag_changes, _ := d.GetOk("ignore_tag_changes")
+					if ignore_tag_changes.(bool) {
+						return true
+					} else {
+						tflog.Debug(context.Background(), fmt.Sprintf("\n [DEBUG] tag changes suppressed : %v", ignore_tag_changes))
+						return false
+					}
 				},
 			},
 			"id": {
