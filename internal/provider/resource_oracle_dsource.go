@@ -923,7 +923,7 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
 	d.Set("is_appdata", result.GetIsAppdata())
 	d.Set("sync_policy_id", result.GetSyncPolicyId())
-	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
+	d.Set("retention_policy_id", result.GetRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
 	d.Set("exported_data_directory", result.GetExportedDataDirectory())
 	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
@@ -1073,13 +1073,15 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
-	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+	if res != nil {
+		job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+		if isJobTerminalFailure(job_status) {
+			return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+		}
 	}
 
 	if d.HasChanges(
@@ -1128,15 +1130,16 @@ func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, me
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	if res != nil {
+		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+		if isJobTerminalFailure(job_status) {
+			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-	}
-
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
 	})

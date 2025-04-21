@@ -248,6 +248,7 @@ func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.
 			tflog.Error(ctx, DLPX+ERROR+"An error occurred: "+nerr.Error())
 			diags = diag.FromErr(nerr)
 		} else {
+			tflog.Info(ctx, DLPX+INFO+"Error: "+resBody)
 			diags = diag.Errorf(resBody)
 		}
 		return diags

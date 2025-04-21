@@ -360,6 +360,9 @@ func resourceEnvironment() *schema.Resource {
 				Computed: true,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -734,20 +737,27 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 			revertChanges(d, changedKeys)
 			updateFailure = true
-			failureEvents = append(failureEvents, httpRes.Body.Close().Error())
+			if len(diags) > 0 {
+				failureEvents = append(failureEvents, diags[0].Summary)
+			} else {
+				tflog.Warn(ctx, "UpdateEnvironment Diagnostics is empty or nil; skipping appending to failureEvents")
+			}
 		}
 
-		job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+res.Job.GetId()+"!")
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			failureEvents = append(failureEvents, job_err)
-			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+		// if the above api call fails, no point in polling as res will be nil
+		if res != nil {
+			job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+res.Job.GetId()+"!")
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				failureEvents = append(failureEvents, job_err)
+				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+			}
 		}
 	}
 	if d.HasChanges(
@@ -798,21 +808,28 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
 			revertChanges(d, changedKeys)
 			updateFailure = true
-			failureEvents = append(failureEvents, httpResEnvUser.Body.Close().Error())
+			if len(diags) > 0 {
+				failureEvents = append(failureEvents, diags[0].Summary)
+			} else {
+				tflog.Warn(ctx, "UpdateEnvironmentUser Diagnostics is empty or nil; skipping appending to failureEvents")
+			}
 		}
 
-		job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
+		if resEnvUser != nil {
+			job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+resEnvUser.Job.GetId()+"!")
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				failureEvents = append(failureEvents, job_err)
+				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
+			}
 		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+resEnvUser.Job.GetId()+"!")
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			failureEvents = append(failureEvents, job_err)
-			// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
-		}
+
 	}
 	if d.HasChanges(
 		"hosts",
@@ -888,20 +905,26 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
 				revertChanges(d, changedKeys)
 				updateFailure = true
-				failureEvents = append(failureEvents, hostHttpRes.Body.Close().Error())
+				if len(diags) > 0 {
+					failureEvents = append(failureEvents, diags[0].Summary)
+				} else {
+					tflog.Warn(ctx, "UpdateHost Diagnostics is empty or nil; skipping appending to failureEvents")
+				}
 			}
 
-			job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
-			if job_err != "" {
-				tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
-			}
-			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+hostUpdateRes.Job.GetId()+"!")
-				revertChanges(d, changedKeys)
-				updateFailure = true
-				failureEvents = append(failureEvents, job_err)
-				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+			if hostUpdateRes != nil {
+				job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
+				if job_err != "" {
+					tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+				}
+				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+hostUpdateRes.Job.GetId()+"!")
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					failureEvents = append(failureEvents, job_err)
+					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+				}
 			}
 		}
 
@@ -922,7 +945,11 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
-					failureEvents = append(failureEvents, tagDelResp.Body.Close().Error())
+					if len(diags) > 0 {
+						failureEvents = append(failureEvents, diags[0].Summary)
+					} else {
+						tflog.Warn(ctx, "DeleteEnvironmentTags Diagnostics is empty or nil; skipping appending to failureEvents")
+					}
 				}
 			}
 			// create tag
