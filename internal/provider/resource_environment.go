@@ -2,8 +2,8 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -160,6 +160,12 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Default:  "UNIX",
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"database_type": {
 				Type:     schema.TypeString,
@@ -197,12 +203,6 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
-						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
-					}
-					return d.Id() != ""
-				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -220,14 +220,11 @@ func resourceEnvironment() *schema.Resource {
 						},
 					},
 				},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					ignore_tag_changes, _ := d.GetOk("ignore_tag_changes")
-					if ignore_tag_changes.(bool) {
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
 						return true
-					} else {
-						tflog.Debug(context.Background(), fmt.Sprintf("\n [DEBUG] tag changes suppressed : %v", ignore_tag_changes))
-						return false
 					}
+					return false
 				},
 			},
 			"id": {
@@ -559,6 +556,11 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		}
 		return nil
 	}
+	_, os_type_exists := d.GetOk("os_type")
+	if !os_type_exists {
+		// its an import or upgrade, set to default value
+		d.Set("os_type", "UNIX")
+	}
 
 	envRes, _ := apiRes.(*dctapi.Environment)
 	//d.SetId(envRes.GetId())
@@ -576,20 +578,34 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	d.Set("cluster_home", envRes.GetClusterHome())
 	d.Set("hosts", flattenHosts(envRes.GetHosts()))
 	d.Set("repositories", flattenHostRepositories(envRes.GetRepositories()))
-	d.Set("tags", flattenTags(envRes.Tags))
 
 	if user_ref, has_user_ref := d.GetOk("user_ref"); has_user_ref {
 		// this is set from update
-		tflog.Info(ctx, "~~~~~~~~Setting username in state(read)")
+		tflog.Info(ctx, "Setting username in state(read)")
 		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, envId).Execute()
 		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
-			return diag.Errorf("unable to retrieve user list")
-		}
-
-		for _, users := range resUserList.GetUsers() {
-			if strings.EqualFold(users.GetUserRef(), user_ref.(string)) {
-				d.Set("username", users.GetUsername())
+			tflog.Error(ctx, DLPX+ERROR+"Failed to fetch user list for environment: "+envId+". Error: "+diags[0].Summary)
+			// return diag.Errorf("unable to retrieve user list")
+		} else {
+			for _, users := range resUserList.GetUsers() {
+				if strings.EqualFold(users.GetUserRef(), user_ref.(string)) {
+					d.Set("username", users.GetUsername())
+				}
 			}
+		}
+	}
+
+	// get the tags and set it
+	resTagsEnv, httpRes, err := client.EnvironmentsAPI.GetTagsEnvironment(ctx, envId).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		if len(resTagsEnv.GetTags()) != 0 {
+			tflog.Debug(ctx, DLPX+"Tags are present")
+			d.Set("tags", flattenTags(resTagsEnv.GetTags()))
 		}
 	}
 
@@ -715,7 +731,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		"description",
 	) {
 		// env update
-		tflog.Info(ctx, "env")
+		tflog.Info(ctx, "Proceeding to update environment")
 		envUpdateParam := dctapi.NewEnvironmentUpdateParameters()
 		if d.HasChange("name") {
 			if v, has_v := d.GetOk("name"); has_v {
@@ -732,31 +748,32 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				envUpdateParam.SetDescription(v.(string))
 			}
 		}
-
-		res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(ctx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
-		if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			if len(diags) > 0 {
-				failureEvents = append(failureEvents, diags[0].Summary)
-			} else {
-				tflog.Warn(ctx, "UpdateEnvironment Diagnostics is empty or nil; skipping appending to failureEvents")
-			}
-		}
-
-		// if the above api call fails, no point in polling as res will be nil
-		if res != nil {
-			job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-			if job_err != "" {
-				tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
-			}
-			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+res.Job.GetId()+"!")
+		if !isStructEmpty(envUpdateParam) {
+			res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(ctx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
+			if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 				revertChanges(d, changedKeys)
 				updateFailure = true
-				failureEvents = append(failureEvents, job_err)
-				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+				if len(diags) > 0 {
+					failureEvents = append(failureEvents, diags[0].Summary)
+				} else {
+					tflog.Warn(ctx, "UpdateEnvironment Diagnostics is empty or nil; skipping appending to failureEvents")
+				}
+			}
+
+			// if the above api call fails, no point in polling as res will be nil
+			if res != nil {
+				job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+				if job_err != "" {
+					tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+				}
+				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+res.Job.GetId()+"!")
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					failureEvents = append(failureEvents, job_err)
+					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+				}
 			}
 		}
 	}
@@ -764,7 +781,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		"username",
 		"password",
 	) {
-		tflog.Info(ctx, "envUser")
+		tflog.Info(ctx, "Proceeding to update environment user")
 		// envUser Update
 		envUserUpdateParam := dctapi.NewEnvironmentUserParams()
 		if d.HasChange("username") || d.HasChange("password") {
@@ -785,17 +802,19 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		var user_ref string
 
-		username, _ := d.GetChange("username")
+		username, old_username := d.GetChange("username")
 		for _, users := range resUserList.GetUsers() {
 			tflog.Info(ctx, "Getting the users: "+users.GetUsername())
 			if strings.EqualFold(users.GetUsername(), username.(string)) {
 				user_ref = users.GetUserRef()
 				break
+			} else {
+				if strings.EqualFold(users.GetUsername(), old_username.(string)) {
+					tflog.Info(ctx, "Setting the old user-ref: "+users.GetUserRef())
+					user_ref = users.GetUserRef()
+					break
+				}
 			}
-		}
-		if user_ref == "" {
-			revertChanges(d, changedKeys)
-			return diag.Errorf("no matching user found in the environment list to update")
 		}
 
 		// this is to propagate the value to read call which is defined at the end.
@@ -803,31 +822,34 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		tflog.Info(ctx, "Setting the user_ref: "+user_ref)
 		d.Set("user_ref", user_ref)
 
-		tflog.Info(ctx, "Updating the user: "+user_ref)
-		resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
-		if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
-			revertChanges(d, changedKeys)
-			updateFailure = true
-			if len(diags) > 0 {
-				failureEvents = append(failureEvents, diags[0].Summary)
-			} else {
-				tflog.Warn(ctx, "UpdateEnvironmentUser Diagnostics is empty or nil; skipping appending to failureEvents")
-			}
-		}
-
-		if resEnvUser != nil {
-			job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
-			if job_err != "" {
-				tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
-			}
-			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-			if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-				tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+resEnvUser.Job.GetId()+"!")
+		if !isStructEmpty(envUserUpdateParam) {
+			tflog.Info(ctx, "Updating the user: "+user_ref)
+			resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
+			if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
 				revertChanges(d, changedKeys)
 				updateFailure = true
-				failureEvents = append(failureEvents, job_err)
-				// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
+				if len(diags) > 0 {
+					failureEvents = append(failureEvents, diags[0].Summary)
+				} else {
+					tflog.Warn(ctx, "UpdateEnvironmentUser Diagnostics is empty or nil; skipping appending to failureEvents")
+				}
 			}
+
+			if resEnvUser != nil {
+				job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
+				if job_err != "" {
+					tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
+				}
+				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+resEnvUser.Job.GetId()+"!")
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					failureEvents = append(failureEvents, job_err)
+					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
+				}
+			}
+
 		}
 
 	}
@@ -835,7 +857,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		"hosts",
 		"connector_port",
 	) {
-		tflog.Info(ctx, "hosts")
+		tflog.Info(ctx, "Proceeding to update environment hosts")
 		// host update
 		var hostId string
 
@@ -901,47 +923,47 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			// 	}
 			// }
 
-			hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
-			if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
-				revertChanges(d, changedKeys)
-				updateFailure = true
-				if len(diags) > 0 {
-					failureEvents = append(failureEvents, diags[0].Summary)
-				} else {
-					tflog.Warn(ctx, "UpdateHost Diagnostics is empty or nil; skipping appending to failureEvents")
-				}
-			}
-
-			if hostUpdateRes != nil {
-				job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
-				if job_err != "" {
-					tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
-				}
-				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+hostUpdateRes.Job.GetId()+"!")
+			if !isStructEmpty(hostUpdateParam) {
+				hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
+				if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
-					failureEvents = append(failureEvents, job_err)
-					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+					if len(diags) > 0 {
+						failureEvents = append(failureEvents, diags[0].Summary)
+					} else {
+						tflog.Warn(ctx, "UpdateHost Diagnostics is empty or nil; skipping appending to failureEvents")
+					}
+				}
+
+				if hostUpdateRes != nil {
+					job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
+					if job_err != "" {
+						tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+					}
+					tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+					if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+						tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+hostUpdateRes.Job.GetId()+"!")
+						revertChanges(d, changedKeys)
+						updateFailure = true
+						failureEvents = append(failureEvents, job_err)
+						// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+					}
 				}
 			}
 		}
-
 	}
-	if d.HasChanges(
-		"tags",
-	) { // tags update
-		tflog.Info(ctx, "tags")
-		if d.HasChange("tags") {
+
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
 			// delete old tag
-			tflog.Info(ctx, "delete tags")
-			oldTag, newTag := d.GetChange("tags")
-			if len(toTagArray(oldTag)) != 0 {
-				tflog.Info(ctx, "delete tags: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+			tflog.Debug(ctx, "deleting old tags")
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
-				tflog.Info(ctx, "DELETE TAG RESP: "+tagDelResp.Status)
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -953,16 +975,15 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				}
 			}
 			// create tag
-			if len(toTagArray(newTag)) != 0 {
-				tflog.Info(ctx, "create tags")
-				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+			if len(toTagArray(newTags)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
 				}
 			}
 		}
-
 	}
 
 	if destructiveUpdate {

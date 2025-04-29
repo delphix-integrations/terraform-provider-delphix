@@ -52,6 +52,7 @@ var updatableVdbKeys = map[string]bool{
 	"mount_point":                   true,
 	"tags":                          true,
 	"database_name":                 true,
+	"ignore_tag_changes":            true,
 }
 
 var isDestructiveVdbUpdate = map[string]bool{
@@ -89,6 +90,7 @@ var isDestructiveVdbUpdate = map[string]bool{
 	"new_dbid":                      false,
 	"mount_point":                   true,
 	"tags":                          false,
+	"ignore_tag_changes":            false,
 }
 
 var updatableOracleDsourceKeys = map[string]bool{
@@ -109,28 +111,31 @@ var updatableOracleDsourceKeys = map[string]bool{
 	"ops_pre_sync":               true,
 	"ops_pre_log_sync":           true,
 	"ops_post_sync":              true,
+	"ignore_tag_changes":         true,
 }
 
 var updatableEnvKeys = map[string]bool{
-	"name":           true,
-	"cluster_home":   true,
-	"connector_port": true,
-	"username":       true,
-	"password":       true,
-	"description":    true,
-	"tags":           true,
-	"hosts":          true,
+	"name":               true,
+	"cluster_home":       true,
+	"connector_port":     true,
+	"username":           true,
+	"password":           true,
+	"description":        true,
+	"tags":               true,
+	"hosts":              true,
+	"ignore_tag_changes": true,
 }
 
 var isDestructiveEnvUpdate = map[string]bool{
-	"name":           false,
-	"cluster_home":   true,
-	"connector_port": true,
-	"username":       true,
-	"password":       true,
-	"description":    false,
-	"tags":           false,
-	"hosts":          true,
+	"name":               false,
+	"cluster_home":       true,
+	"connector_port":     true,
+	"username":           true,
+	"password":           true,
+	"description":        false,
+	"tags":               false,
+	"hosts":              true,
+	"ignore_tag_changes": false,
 }
 
 var updatableAppdataDsourceKeys = map[string]bool{
@@ -145,4 +150,5 @@ var updatableAppdataDsourceKeys = map[string]bool{
 	"ops_pre_sync":             true,
 	"ops_post_sync":            true,
 	"tags":                     true,
+	"ignore_tag_changes":       true,
 }

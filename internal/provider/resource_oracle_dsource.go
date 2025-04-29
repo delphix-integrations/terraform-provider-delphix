@@ -2,8 +2,8 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -77,12 +77,6 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
-						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
-					}
-					return d.Id() != ""
-				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -100,14 +94,11 @@ func resourceOracleDsource() *schema.Resource {
 						},
 					},
 				},
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					ignore_tag_changes, _ := d.GetOk("ignore_tag_changes")
-					if ignore_tag_changes.(bool) {
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
 						return true
-					} else {
-						tflog.Debug(context.Background(), fmt.Sprintf("\n [DEBUG] tag changes suppressed : %v", ignore_tag_changes))
-						return false
 					}
+					return false
 				},
 			},
 			"ops_pre_sync": {
@@ -1065,35 +1056,36 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		updateOracleDsource.SetHooks(*ndsh)
 	}
 
-	res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
+	if !isStructEmpty(updateOracleDsource) {
+		res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
 
-	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-		// revert and set the old value to the changed keys
-		revertChanges(d, changedKeys)
-		return diags
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
+		}
+
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
 	}
 
-	if res != nil {
-		job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-		if isJobTerminalFailure(job_status) {
-			return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
-		}
-	}
-
-	if d.HasChanges(
-		"tags",
-	) { // tags update
-		tflog.Debug(ctx, "updating tags")
-		if d.HasChange("tags") {
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
 			// delete old tag
 			tflog.Debug(ctx, "deleting old tags")
-			oldTag, newTag := d.GetChange("tags")
-			if len(toTagArray(oldTag)) != 0 {
-				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
@@ -1102,9 +1094,9 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 				}
 			}
 			// create tag
-			if len(toTagArray(newTag)) != 0 {
+			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags

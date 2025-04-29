@@ -519,3 +519,14 @@ func toCredentialsEnvVariableArray(array interface{}) []dctapi.CredentialsEnvVar
 	}
 	return items
 }
+
+// isStructEmpty checks if all fields in a struct are at their zero values
+func isStructEmpty(v interface{}) bool {
+	val := reflect.ValueOf(v).Elem() // Get the underlying value of the pointer
+	for i := 0; i < val.NumField(); i++ {
+		if !val.Field(i).IsZero() {
+			return false // If any field is not zero, the struct is not empty
+		}
+	}
+	return true
+}
