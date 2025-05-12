@@ -35,11 +35,23 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"source_value": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"sync_policy_id": {
 				Type:     schema.TypeString,
@@ -65,15 +77,22 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"link_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					tflog.Info(context.Background(), "In DiffSuppressFunc of link_type")
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating link_type is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"staging_mount_base": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment_user": {
 				Type:     schema.TypeString,
@@ -81,7 +100,7 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"environment_user": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"ignore_tag_changes": {
 				Type:     schema.TypeBool,
@@ -287,11 +306,17 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"sync_parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating sync_parameters is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			// Output
 			"id": {
@@ -392,6 +417,9 @@ func resourceAppdataDsource() *schema.Resource {
 					return d.Id() != ""
 				},
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
