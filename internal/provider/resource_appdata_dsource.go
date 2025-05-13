@@ -35,11 +35,23 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"source_value": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"sync_policy_id": {
 				Type:     schema.TypeString,
@@ -65,15 +77,15 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"link_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_mount_base": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment_user": {
 				Type:     schema.TypeString,
@@ -81,7 +93,7 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"environment_user": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"ignore_tag_changes": {
 				Type:     schema.TypeBool,
@@ -287,11 +299,11 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"sync_parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			// Output
 			"id": {
@@ -392,6 +404,9 @@ func resourceAppdataDsource() *schema.Resource {
 					return d.Id() != ""
 				},
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
@@ -561,11 +576,11 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	ops_post_sync_Raw, _ := d.Get("ops_post_sync").([]interface{})
 	oldOpsPostSync := toSourceOperationArray(ops_post_sync_Raw)
 
-	_, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
-	if !rollback_on_failure_exists {
-		// its an import or upgrade, set to default value
-		d.Set("rollback_on_failure", false)
-	}
+	// _, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
+	// if !rollback_on_failure_exists {
+	// 	// its an import or upgrade, set to default value
+	// 	d.Set("rollback_on_failure", false)
+	// }
 
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())

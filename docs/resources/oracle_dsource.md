@@ -41,7 +41,7 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
 
 ## Argument References 
 
- ### General Linking Requirements 
+### General Linking Requirements 
 
 * `name` - The unique name of the dSource. If empty, a name is randomly generated. [Updatable] 
 * `source_value` - (Required) ID or name of the source to link. 
