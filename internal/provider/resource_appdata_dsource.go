@@ -36,8 +36,8 @@ func resourceAppdataDsource() *schema.Resource {
 			"source_value": {
 				Type:     schema.TypeString,
 				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
 						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
 					}
 					return d.Id() != ""
@@ -46,8 +46,8 @@ func resourceAppdataDsource() *schema.Resource {
 			"group_id": {
 				Type:     schema.TypeString,
 				Optional: true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
 						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
 					}
 					return d.Id() != ""
@@ -78,6 +78,13 @@ func resourceAppdataDsource() *schema.Resource {
 			"link_type": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					tflog.Info(context.Background(), "In DiffSuppressFunc of link_type")
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating link_type is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"staging_mount_base": {
 				Type:     schema.TypeString,
@@ -304,6 +311,12 @@ func resourceAppdataDsource() *schema.Resource {
 			"sync_parameters": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating sync_parameters is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			// Output
 			"id": {

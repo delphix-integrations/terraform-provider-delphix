@@ -112,6 +112,7 @@ var updatableOracleDsourceKeys = map[string]bool{
 	"ops_pre_log_sync":           true,
 	"ops_post_sync":              true,
 	"ignore_tag_changes":         true,
+	"rollback_on_failure":        true,
 }
 
 var updatableEnvKeys = map[string]bool{
@@ -151,4 +152,5 @@ var updatableAppdataDsourceKeys = map[string]bool{
 	"ops_post_sync":            true,
 	"tags":                     true,
 	"ignore_tag_changes":       true,
+	"rollback_on_failure":      true,
 }
