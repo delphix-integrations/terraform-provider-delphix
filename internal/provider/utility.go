@@ -212,14 +212,14 @@ func flattenDSourceHooks(hooks []dctapi.Hook, oldList []dctapi.SourceOperation) 
 
 func flattenTags(tags []dctapi.Tag) []interface{} {
 	if tags != nil {
-		returnedTags := make([]interface{}, len(tags))
+		result := make([]interface{}, len(tags))
 		for i, tag := range tags {
-			returnedTag := make(map[string]interface{})
-			returnedTag["key"] = tag.GetKey()
-			returnedTag["value"] = tag.GetValue()
-			returnedTags[i] = returnedTag
+			tagMap := make(map[string]interface{})
+			tagMap["key"] = tag.GetKey()
+			tagMap["value"] = tag.GetValue()
+			result[i] = tagMap
 		}
-		return returnedTags
+		return result
 	}
 	return make([]interface{}, 0)
 }
