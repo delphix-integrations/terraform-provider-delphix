@@ -39,60 +39,6 @@ resource "delphix_environment" "unix_env_name" {
  } 
 ```
 
-### Create UNIX cluster
-```hcl
-resource "delphix_environment" "unix_cluster" { 
-     engine_id = 2 
-     os_type = "UNIX" 
-     name = "unixcluster" 
-     description = "This is a unix target." 
-     username = "xxx" 
-     password = "xxx" 
-     hosts { 
-        hostname = "db.host.com" 
-        toolkit_path = "/home/delphix" 
-     } 
-     is_cluster = true     
-     cluster_home = "/u01/app/19.0.0.0/grid" 
- } 
-```
-
-### Creating UNIX standalone target environment using HashiCorp Vault 
-```hcl
-resource "delphix_environment" "unix_with_hashi_vault" { 
-     engine_id = 2 
-     os_type = "UNIX" 
-     name = "unixtgt" 
-     hosts { 
-        hostname = "xxx" 
-        toolkit_path = "/home/delphix" 
-     } 
-     vault = "vault-name" 
-     hashicorp_vault_engine       = "xxx" 
-     hashicorp_vault_secret_path  = "xxx" 
-     hashicorp_vault_username_key = "xxx" 
-     hashicorp_vault_secret_key   = "xxx" 
- 
-     description = "This is unix target." 
- } 
-```  
-
-### Creating UNIX standalone target environment using CyberArk Vault 
-```hcl
-resource "delphix_environment" "unix_with_ca_vault" { 
-     engine_id = 2 
-     os_type = "UNIX" 
-     name = "unixtgt" 
-     description = "This is unix target." 
-     hosts { 
-        hostname = "xxx" 
-        toolkit_path = "/home/delphix" 
-     } 
-     vault = "vault-name" 
-     cyberark_query_string = "xxx" 
- } 
-``` 
-
 ### Creating a WINDOWS standalone target environment 
 ```hcl
 resource "delphix_environment" "win_tgt" { 
@@ -109,7 +55,6 @@ resource "delphix_environment" "win_tgt" {
      connector_port = 9100  
  } 
 ```
-
 ### Creating a WINDOWS standalone source environment 
 ```hcl
 resource "delphix_environment" "win_standalone" { 
@@ -122,64 +67,6 @@ resource "delphix_environment" "win_standalone" {
         hostname = "db.host.com" 
      }  
      staging_environment = delphix_environment.wintgt.id 
- } 
-```
-
-### Creating a WINDOWS cluster source environment
-```hcl
-resource "delphix_environment" "winsrc_cluster" { 
-     engine_id = 2 
-     is_target = false 
-     os_type = "WINDOWS" 
-     name = "winsrc-cluster" 
-     username = "xxx" 
-     password = "xxx" 
-     hosts { 
-        hostname = "xxx" 
-     } 
-     staging_environment = delphix_environment.wintgt.id 
-     is_cluster = true 
- } 
-``` 
-
-### Creating a WINDOWS failover cluster that can be used as target 
-```hcl
-resource "delphix_environment" "win_fc_cluster_0" { 
-     engine_id = 2 
-     os_type = "WINDOWS" 
-     name = "fc-cluster-0" 
-     description = "This is an FC cluster" 
-     username = "xxx" 
-     password = "xxx" 
-     hosts { 
-        hostname = "xxx" 
-     } 
-     connector_port = 9100 
- } 
- resource "delphix_environment" "win_fc_cluster_1" { 
-     engine_id = 2 
-     os_type = "WINDOWS" 
-     name = "fc-cluster-1" 
-     description = "This is an FC cluster." 
-     username = "xxx" 
-     password = "xxx" 
-     hosts { 
-        hostname = "xxx" 
-     } 
-     connector_port = 9100 
- } 
-resource "delphix_environment" "win_fc_tgt_cluster" { 
-     engine_id = 2 
-     is_target = true 
-     os_type = "WINDOWS" 
-     name = "fc-tgt-cluster" 
-     username = "xxx" 
-     password = "xxx" 
-     hosts { 
-        hostname = "db.host.com" 
-     } 
-     staging_environment = delphix_environment.fc-cluster-1.id 
-     is_cluster = true 
  } 
 ```
 
@@ -239,8 +126,8 @@ resource "delphix_environment" "win_fc_tgt_cluster" {
    * `value` - (Required) Value of the tag 
 * `ignore_tag_changes` – This flag enables whether changes in the tags are identified by terraform. By default, it is true, i.e, changes in tags of the resource are ignored. 
 
-## Import (Beta) 
-Use the import block to add Appdata dSources created directly in DCT into a Terraform state file.  
+## Import
+Use the import block to add Environments created directly in DCT into a Terraform state file.  
 
 For example:  
 ```hcl
@@ -248,10 +135,122 @@ import {
     to = delphix_environment.env_import_demo
     id = "env_id"    
 }   
-```
-
-This is a beta feature. Delphix offers no guarantees of support or compatibility.  
+``` 
 
 ## Limitations 
 Not all properties are supported through the update command. Properties that are not supported by the update command are presented via an error message at runtime.
 
+## Appendix
+Here are some additional examples:
+
+### Create UNIX cluster
+```hcl
+resource "delphix_environment" "unix_cluster" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixcluster" 
+     description = "This is a unix target." 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com" 
+        toolkit_path = "/home/delphix" 
+     } 
+     is_cluster = true     
+     cluster_home = "/u01/app/19.0.0.0/grid" 
+ } 
+```
+
+### Creating UNIX standalone target environment using HashiCorp Vault 
+```hcl
+resource "delphix_environment" "unix_with_hashi_vault" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixtgt" 
+     hosts { 
+        hostname = "xxx" 
+        toolkit_path = "/home/delphix" 
+     } 
+     vault = "vault-name" 
+     hashicorp_vault_engine       = "xxx" 
+     hashicorp_vault_secret_path  = "xxx" 
+     hashicorp_vault_username_key = "xxx" 
+     hashicorp_vault_secret_key   = "xxx" 
+ 
+     description = "This is unix target." 
+ } 
+```  
+
+### Creating UNIX standalone target environment using CyberArk Vault 
+```hcl
+resource "delphix_environment" "unix_with_ca_vault" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixtgt" 
+     description = "This is unix target." 
+     hosts { 
+        hostname = "xxx" 
+        toolkit_path = "/home/delphix" 
+     } 
+     vault = "vault-name" 
+     cyberark_query_string = "xxx" 
+ } 
+``` 
+
+### Creating a WINDOWS cluster source environment
+```hcl
+resource "delphix_environment" "winsrc_cluster" { 
+     engine_id = 2 
+     is_target = false 
+     os_type = "WINDOWS" 
+     name = "winsrc-cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     staging_environment = delphix_environment.wintgt.id 
+     is_cluster = true 
+ } 
+``` 
+
+### Creating a WINDOWS failover cluster that can be used as target 
+```hcl
+resource "delphix_environment" "win_fc_cluster_0" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "fc-cluster-0" 
+     description = "This is an FC cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     connector_port = 9100 
+ } 
+ resource "delphix_environment" "win_fc_cluster_1" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "fc-cluster-1" 
+     description = "This is an FC cluster." 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     connector_port = 9100 
+ } 
+resource "delphix_environment" "win_fc_tgt_cluster" { 
+     engine_id = 2 
+     is_target = true 
+     os_type = "WINDOWS" 
+     name = "fc-tgt-cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com" 
+     } 
+     staging_environment = delphix_environment.fc-cluster-1.id 
+     is_cluster = true 
+ } 
+```

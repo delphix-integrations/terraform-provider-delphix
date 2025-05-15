@@ -142,7 +142,7 @@ Any combination of the following hooks can be provided on the Oracle dSource res
     * `azure_vault_secret_key` - Azure vault key in the key-value store.  
     * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
 
-## Import (Beta)  
+## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  
 
 For example:  
@@ -152,7 +152,6 @@ import {
     id = "dsource_id"   
 }  
 ``` 
-*This is a beta feature. Delphix offers no guarantees of support or compatibility.* 
 
 ## Limitations 
 

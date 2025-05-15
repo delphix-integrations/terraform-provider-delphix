@@ -184,7 +184,7 @@ The following arguments apply to all dSources but they are not often necessary f
   * `value` - (Required) Value of the tag 
 * `ignore_tag_changes` – This flag enables whether changes in the tags are identified by terraform. By default, it is true, i.e, changes in tags of the resource are ignored. 
 
-## Import (Beta) 
+## Import
 Use the import block to add Appdata dSources created directly in DCT into a Terraform state file.  
 
 For example:  
@@ -194,8 +194,6 @@ import {
     id = "dsource_id"    
 }   
 ```
-
-This is a beta feature. Delphix offers no guarantees of support or compatibility.  
 
 ## Limitations 
 Not all properties are supported through the update command. Properties that are not supported by the update command are presented via an error message at runtime.
