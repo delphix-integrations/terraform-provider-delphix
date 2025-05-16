@@ -10,6 +10,14 @@ Creating a vdb group and assigning vdb with vdb_id = my_vdb_id
 resource "delphix_vdb_group" "vdb_group_name" {
   name  = "my vdb group"
   vdb_ids = ["my_vdb_id"]
+  tags {
+    key = "environment"
+    value = "production"
+  }
+  tags {
+    key = "project"
+    value = "terraform"
+  }
 }
 ```
 
@@ -20,6 +28,10 @@ resource "delphix_vdb_group" "vdb_group_name" {
 * `name` - A unique name for the entity.
 
 * `vdb_ids` - The list of VDB IDs in this VDBGroup.
+
+* `tags` - The tags to be created for the VDB group. This is a map of 2 parameters:
+  * `key` - The key of the tag.
+  * `value` - The value of the tag.
 
 ## Attribute Reference
 

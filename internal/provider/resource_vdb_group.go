@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -18,6 +19,9 @@ func resourceVdbGroup() *schema.Resource {
 		ReadContext:   resourceVdbGroupRead,
 		UpdateContext: resourceVdbGroupUpdate,
 		DeleteContext: resourceVdbGroupDelete,
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 
 		Schema: map[string]*schema.Schema{
 			"id": {
@@ -38,6 +42,7 @@ func resourceVdbGroup() *schema.Resource {
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -105,24 +110,39 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
-
 	vdbGroupId := d.Id()
 
-	if d.HasChange("name") || d.HasChange("vdb_ids") {
-		updateVdbGroupReq := *dctapi.NewUpdateVDBGroupParameters()
-		if d.HasChange("name") {
-			updateVdbGroupReq.SetName(d.Get("name").(string))
-		}
-		if d.HasChange("vdb_ids") {
-			updateVdbGroupReq.SetVdbIds(toStringArray(d.Get("vdb_ids")))
-		}
-
-		_, httpRes, err := client.VDBGroupsAPI.UpdateVdbGroupById(ctx, vdbGroupId).UpdateVDBGroupParameters(updateVdbGroupReq).Execute()
-		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-			return diags
-		}
+	// Existing update logic
+	updateVdbGroupReq := *dctapi.NewUpdateVDBGroupParameters()
+	if d.HasChange("name") {
+		updateVdbGroupReq.SetName(d.Get("name").(string))
+	}
+	if d.HasChange("vdb_ids") {
+		updateVdbGroupReq.SetVdbIds(toStringArray(d.Get("vdb_ids")))
 	}
 
+	_, httpRes, err := client.VDBGroupsAPI.UpdateVdbGroupById(ctx, vdbGroupId).UpdateVDBGroupParameters(updateVdbGroupReq).Execute()
+	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+		return diags
+	}
+
+	// Polling logic for name/vdb_ids update
+	maxAttempts := 10
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		status, err := PollVdbGroupStatus(ctx, client, vdbGroupId)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		if status == "RUNNING" {
+			break
+		}
+		if status == "FAILED" || status == "CANCELED" {
+			return diag.Errorf("VDB group update failed with status: %s", status)
+		}
+		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
+	}
+
+	// Tag update logic
 	if d.HasChange("tags") {
 		oldTags, newTags := d.GetChange("tags")
 		oldTagList := oldTags.([]interface{})
@@ -152,63 +172,83 @@ func resourceVdbGroupUpdate(ctx context.Context, d *schema.ResourceData, meta in
 			newTagMap[key][value] = true
 		}
 
-		// Delete removed tags
-		for key, oldValues := range oldTagMap {
-			newValues, exists := newTagMap[key]
-			if !exists {
-				// Key doesn't exist in new tags, delete all values for this key
+		// If newTagList is empty, delete all existing tags
+		if len(newTagList) == 0 {
+			for key := range oldTagMap {
 				deleteTag := *dctapi.NewDeleteTag()
 				deleteTag.SetKey(key)
 				httpRes, err := client.VDBGroupsAPI.DeleteVdbGroupTags(ctx, vdbGroupId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 					return diags
 				}
-			} else {
-				// Key exists, delete only values that are not in new tags
-				for oldValue := range oldValues {
-					if !newValues[oldValue] {
-						deleteTag := *dctapi.NewDeleteTag()
-						deleteTag.SetKey(key)
-						deleteTag.SetValue(oldValue)
-						httpRes, err := client.VDBGroupsAPI.DeleteVdbGroupTags(ctx, vdbGroupId).DeleteTag(deleteTag).Execute()
-						if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-							return diags
+			}
+		} else {
+			// Delete removed tags
+			for key, oldValues := range oldTagMap {
+				newValues, exists := newTagMap[key]
+				if !exists {
+					// Key doesn't exist in new tags, delete all values for this key
+					deleteTag := *dctapi.NewDeleteTag()
+					deleteTag.SetKey(key)
+					httpRes, err := client.VDBGroupsAPI.DeleteVdbGroupTags(ctx, vdbGroupId).DeleteTag(deleteTag).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				} else {
+					// Key exists, delete only values that are not in new tags
+					for oldValue := range oldValues {
+						if !newValues[oldValue] {
+							deleteTag := *dctapi.NewDeleteTag()
+							deleteTag.SetKey(key)
+							deleteTag.SetValue(oldValue)
+							httpRes, err := client.VDBGroupsAPI.DeleteVdbGroupTags(ctx, vdbGroupId).DeleteTag(deleteTag).Execute()
+							if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+								return diags
+							}
 						}
 					}
 				}
 			}
-		}
 
-		// Create new tags
-		var tags []dctapi.Tag
-		for key, newValues := range newTagMap {
-			oldValues, exists := oldTagMap[key]
-			if !exists {
-				// Key doesn't exist in old tags, create all values
-				for value := range newValues {
-					tag := *dctapi.NewTag(key, value)
-					tags = append(tags, tag)
-				}
-			} else {
-				// Key exists, create only new values
-				for value := range newValues {
-					if !oldValues[value] {
+			// Create new tags
+			var tags []dctapi.Tag
+			for key, newValues := range newTagMap {
+				oldValues, exists := oldTagMap[key]
+				if !exists {
+					// Key doesn't exist in old tags, create all values
+					for value := range newValues {
 						tag := *dctapi.NewTag(key, value)
 						tags = append(tags, tag)
 					}
+				} else {
+					// Key exists, create only new values
+					for value := range newValues {
+						if !oldValues[value] {
+							tag := *dctapi.NewTag(key, value)
+							tags = append(tags, tag)
+						}
+					}
 				}
 			}
-		}
-		if len(tags) > 0 {
-			tagsRequest := *dctapi.NewTagsRequest(tags)
-			_, httpRes, err := client.VDBGroupsAPI.CreateVdbGroupsTags(ctx, vdbGroupId).TagsRequest(tagsRequest).Execute()
-			if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-				return diags
+			if len(tags) > 0 {
+				tagsRequest := *dctapi.NewTagsRequest(tags)
+				_, httpRes, err := client.VDBGroupsAPI.CreateVdbGroupsTags(ctx, vdbGroupId).TagsRequest(tagsRequest).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+					return diags
+				}
 			}
 		}
 	}
 
 	return resourceVdbGroupRead(ctx, d, meta)
+}
+
+func PollVdbGroupStatus(ctx context.Context, client *dctapi.APIClient, vdbGroupId string) (string, error) {
+	res, _, err := client.VDBGroupsAPI.GetVdbGroup(ctx, vdbGroupId).Execute()
+	if err != nil {
+		return "", err
+	}
+	return res.GetStatus(), nil
 }
 
 func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

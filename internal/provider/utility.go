@@ -21,6 +21,8 @@ var SLEEP_TIME = 10
 // Input is job status, context and the client
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
+	const maxRetries = 180 // 30 minutes with 10 second sleep
+	const sleepTime = 10   // seconds
 
 	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
@@ -33,9 +35,12 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		return "", resBody
 	}
 
-	var i = 0
-	for res.GetStatus() == Pending || res.GetStatus() == Started {
-		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
+	for i := 0; i < maxRetries; i++ {
+		if res.GetStatus() != Pending && res.GetStatus() != Started {
+			return res.GetStatus(), res.GetErrorDetails()
+		}
+
+		time.Sleep(time.Duration(sleepTime) * time.Second)
 		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
@@ -49,11 +54,10 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			tflog.Error(ctx, DLPX+ERROR+err.Error())
 			return "", resBody
 		}
-		i++
 		tflog.Info(ctx, DLPX+INFO+"DCT-JobId:"+job_id+" has Status:"+res.GetStatus())
 	}
 
-	return res.GetStatus(), res.GetErrorDetails()
+	return "", "Job polling timed out after " + strconv.Itoa(maxRetries*sleepTime) + " seconds"
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -212,14 +216,14 @@ func flattenDSourceHooks(hooks []dctapi.Hook, oldList []dctapi.SourceOperation) 
 
 func flattenTags(tags []dctapi.Tag) []interface{} {
 	if tags != nil {
-		result := make([]interface{}, len(tags))
+		returnedTags := make([]interface{}, len(tags))
 		for i, tag := range tags {
-			tagMap := make(map[string]interface{})
-			tagMap["key"] = tag.GetKey()
-			tagMap["value"] = tag.GetValue()
-			result[i] = tagMap
+			returnedTag := make(map[string]interface{})
+			returnedTag["key"] = tag.GetKey()
+			returnedTag["value"] = tag.GetValue()
+			returnedTags[i] = returnedTag
 		}
-		return result
+		return returnedTags
 	}
 	return make([]interface{}, 0)
 }

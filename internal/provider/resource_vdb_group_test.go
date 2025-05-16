@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
+// TestAccVdbGroup_create_positive tests the basic creation of a VDB group with a single VDB
 func TestAccVdbGroup_create_positive(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
@@ -26,7 +27,16 @@ func TestAccVdbGroup_create_positive(t *testing.T) {
 	})
 }
 
+// TestAccVdbGroup_tags tests various tag management scenarios:
+// 1. Initial tag creation with multiple tags (including multiple values for same key)
+// 2. Tag updates including:
+//   - Modifying an existing tag's value (environment: test -> prod)
+//   - Adding a new tag (owner: team-a)
+//   - Removing a tag (purpose: testing)
+//
+// 3. Complete tag removal (setting tags to empty)
 func TestAccVdbGroup_tags(t *testing.T) {
+	var vdbGroupId string
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,
@@ -50,11 +60,23 @@ func TestAccVdbGroup_tags(t *testing.T) {
 						"key":   "purpose",
 						"value": "testing",
 					}),
+					// Store the VDB group ID for later verification
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["delphix_vdb_group.test"]
+						if !ok {
+							return fmt.Errorf("Not found: delphix_vdb_group.test")
+						}
+						vdbGroupId = rs.Primary.ID
+						return nil
+					},
 				),
 			},
 			{
 				// Update tags - add new tag, modify existing tag, remove tag
-				Config: testAccCheckDctVDBGroupConfigWithTagsUpdated(),
+				Config:            testAccCheckDctVDBGroupConfigWithTagsUpdated(),
+				ImportStateVerify: true,
+				ImportState:       true,
+				ResourceName:      "delphix_vdb_group.test",
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("delphix_vdb_group.test", "tags.#", "2"),
 					resource.TestCheckTypeSetElemNestedAttrs("delphix_vdb_group.test", "tags.*", map[string]string{
@@ -65,20 +87,29 @@ func TestAccVdbGroup_tags(t *testing.T) {
 						"key":   "owner",
 						"value": "team-a",
 					}),
+					// Verify the VDB group ID hasn't changed
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "id", vdbGroupId),
 				),
 			},
 			{
 				// Remove all tags
-				Config: testAccCheckDctVDBGroupConfigBasicWithName("my-vdb-group-name-2"),
+				Config:            testAccCheckDctVDBGroupConfigBasicWithName("my-vdb-group-name-2"),
+				ImportStateVerify: true,
+				ImportState:       true,
+				ResourceName:      "delphix_vdb_group.test",
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("delphix_vdb_group.test", "tags.#", "0"),
+					// Verify the VDB group ID hasn't changed
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "id", vdbGroupId),
 				),
 			},
 		},
 	})
 }
 
+// TestAccVdbGroup_update_name tests the ability to rename a VDB group
 func TestAccVdbGroup_update_name(t *testing.T) {
+	var vdbGroupId string
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,
@@ -88,18 +119,94 @@ func TestAccVdbGroup_update_name(t *testing.T) {
 				Config: testAccCheckDctVDBGroupConfigBasicWithName("my-vdb-group-original"),
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("delphix_vdb_group.test", "name", "my-vdb-group-original"),
+					// Store the VDB group ID for later verification
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["delphix_vdb_group.test"]
+						if !ok {
+							return fmt.Errorf("Not found: delphix_vdb_group.test")
+						}
+						vdbGroupId = rs.Primary.ID
+						return nil
+					},
 				),
 			},
 			{
-				Config: testAccCheckDctVDBGroupConfigBasicWithName("my-vdb-group-renamed"),
+				Config:            testAccCheckDctVDBGroupConfigBasicWithName("my-vdb-group-renamed"),
+				ImportStateVerify: true,
+				ImportState:       true,
+				ResourceName:      "delphix_vdb_group.test",
 				Check: resource.ComposeTestCheckFunc(
 					resource.TestCheckResourceAttr("delphix_vdb_group.test", "name", "my-vdb-group-renamed"),
+					// Verify the VDB group ID hasn't changed
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "id", vdbGroupId),
 				),
 			},
 		},
 	})
 }
 
+// TestAccVdbGroup_update_vdb_ids tests VDB group membership changes:
+// 1. Initial creation with one VDB
+// 2. Update to use a different VDB
+// 3. Update to use multiple VDBs
+func TestAccVdbGroup_update_vdb_ids(t *testing.T) {
+	var vdbGroupId string
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccVdbPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckVdbGroupDestroy,
+		Steps: []resource.TestStep{
+			{
+				// Create VDB group with first VDB
+				Config: testAccCheckDctVDBGroupConfigWithTwoVdbs("my-vdb-group-vdbid", "vdb3"),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "vdb_ids.#", "1"),
+					resource.TestCheckResourceAttrPair("delphix_vdb_group.test", "vdb_ids.0", "delphix_vdb.vdb3", "id"),
+					// Store the VDB group ID for later verification
+					func(s *terraform.State) error {
+						rs, ok := s.RootModule().Resources["delphix_vdb_group.test"]
+						if !ok {
+							return fmt.Errorf("Not found: delphix_vdb_group.test")
+						}
+						vdbGroupId = rs.Primary.ID
+						return nil
+					},
+				),
+			},
+			{
+				// Update to use second VDB
+				Config:            testAccCheckDctVDBGroupConfigWithTwoVdbs("my-vdb-group-vdbid", "vdb4"),
+				ImportStateVerify: true,
+				ImportState:       true,
+				ResourceName:      "delphix_vdb_group.test",
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "vdb_ids.#", "1"),
+					resource.TestCheckResourceAttrPair("delphix_vdb_group.test", "vdb_ids.0", "delphix_vdb.vdb4", "id"),
+					// Verify the VDB group ID hasn't changed
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "id", vdbGroupId),
+				),
+			},
+			{
+				// Update to use both VDBs
+				Config:            testAccCheckDctVDBGroupConfigWithMultipleVdbs("my-vdb-group-vdbid"),
+				ImportStateVerify: true,
+				ImportState:       true,
+				ResourceName:      "delphix_vdb_group.test",
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "vdb_ids.#", "2"),
+					resource.TestCheckResourceAttrPair("delphix_vdb_group.test", "vdb_ids.0", "delphix_vdb.vdb3", "id"),
+					resource.TestCheckResourceAttrPair("delphix_vdb_group.test", "vdb_ids.1", "delphix_vdb.vdb4", "id"),
+					// Verify the VDB group ID hasn't changed
+					resource.TestCheckResourceAttr("delphix_vdb_group.test", "id", vdbGroupId),
+				),
+			},
+		},
+	})
+}
+
+// Helper Functions
+
+// testAccCheckDctVDBGroupConfigBasic creates a basic VDB group with a single VDB
 func testAccCheckDctVDBGroupConfigBasic() string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -116,6 +223,10 @@ func testAccCheckDctVDBGroupConfigBasic() string {
 	`, datasource_id)
 }
 
+// testAccCheckDctVDBGroupConfigWithTags creates a VDB group with initial tags:
+// - environment: test
+// - environment: dev (multiple values for same key)
+// - purpose: testing
 func testAccCheckDctVDBGroupConfigWithTags() string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -146,6 +257,10 @@ func testAccCheckDctVDBGroupConfigWithTags() string {
 	`, datasource_id)
 }
 
+// testAccCheckDctVDBGroupConfigWithTagsUpdated updates the tags to:
+// - environment: prod (modified value)
+// - owner: team-a (new tag)
+// Note: purpose: testing is removed
 func testAccCheckDctVDBGroupConfigWithTagsUpdated() string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -172,6 +287,8 @@ func testAccCheckDctVDBGroupConfigWithTagsUpdated() string {
 	`, datasource_id)
 }
 
+// testAccCheckDctVDBGroupConfigBasicWithName creates a VDB group with no tags
+// Used for testing tag removal and name updates
 func testAccCheckDctVDBGroupConfigBasicWithName(groupName string) string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -188,6 +305,7 @@ func testAccCheckDctVDBGroupConfigBasicWithName(groupName string) string {
 	`, datasource_id, groupName)
 }
 
+// testAccCheckDctVDBGroupConfigBasicWithVdbId creates a VDB group with a specific VDB
 func testAccCheckDctVDBGroupConfigBasicWithVdbId(vdbName string, groupName string) string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -204,6 +322,7 @@ func testAccCheckDctVDBGroupConfigBasicWithVdbId(vdbName string, groupName strin
 	`, vdbName, datasource_id, vdbName, groupName, vdbName)
 }
 
+// testAccCheckDctVDBGroupConfigWithTwoVdbs creates a VDB group with one of two possible VDBs
 func testAccCheckDctVDBGroupConfigWithTwoVdbs(groupName, vdbName string) string {
 	datasource_id := os.Getenv("DATASOURCE_ID")
 	return fmt.Sprintf(`
@@ -226,6 +345,30 @@ func testAccCheckDctVDBGroupConfigWithTwoVdbs(groupName, vdbName string) string 
 	`, datasource_id, datasource_id, groupName, vdbName)
 }
 
+// testAccCheckDctVDBGroupConfigWithMultipleVdbs creates a VDB group with multiple VDBs
+func testAccCheckDctVDBGroupConfigWithMultipleVdbs(groupName string) string {
+	datasource_id := os.Getenv("DATASOURCE_ID")
+	return fmt.Sprintf(`
+	resource "delphix_vdb" "vdb3" {
+		auto_select_repository = true
+		source_data_id         = "%s"
+		name                   = "TESTVDB3"
+		provision_type         = "snapshot"
+	}
+	resource "delphix_vdb" "vdb4" {
+		auto_select_repository = true
+		source_data_id         = "%s"
+		name                   = "TESTVDB4"
+		provision_type         = "snapshot"
+	}
+	resource "delphix_vdb_group" "test" {
+		name                   = "%s"
+		vdb_ids                = [delphix_vdb.vdb3.id, delphix_vdb.vdb4.id]
+	}
+	`, datasource_id, datasource_id, groupName)
+}
+
+// testAccCheckDctVdbGroupResourceExists verifies that a VDB group exists and contains the expected VDB
 func testAccCheckDctVdbGroupResourceExists(vdbResourceName string, vdbGroupResourceName string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		vdbGroupResource, ok := s.RootModule().Resources[vdbGroupResourceName]
@@ -264,6 +407,7 @@ func testAccCheckDctVdbGroupResourceExists(vdbResourceName string, vdbGroupResou
 	}
 }
 
+// testAccCheckVdbGroupDestroy verifies that a VDB group has been properly destroyed
 func testAccCheckVdbGroupDestroy(s *terraform.State) error {
 	client := testAccProvider.Meta().(*apiClient).client
 
@@ -285,26 +429,4 @@ func testAccCheckVdbGroupDestroy(s *terraform.State) error {
 	}
 
 	return nil
-}
-
-func TestAccVdbGroup_update_vdb_ids(t *testing.T) {
-	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccVdbPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCheckVdbGroupDestroy,
-		Steps: []resource.TestStep{
-			{
-				Config: testAccCheckDctVDBGroupConfigWithTwoVdbs("my-vdb-group-vdbid", "vdb3"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("delphix_vdb_group.test", "vdb_ids.#", "1"),
-				),
-			},
-			{
-				Config: testAccCheckDctVDBGroupConfigWithTwoVdbs("my-vdb-group-vdbid", "vdb4"),
-				Check: resource.ComposeTestCheckFunc(
-					resource.TestCheckResourceAttr("delphix_vdb_group.test", "vdb_ids.#", "1"),
-				),
-			},
-		},
-	})
 }
