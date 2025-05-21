@@ -27,18 +27,18 @@ func Test_Acc_Appdata_Dsource(t *testing.T) {
 		CheckDestroy: testDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      testDsourceBasic(sourceId, groupId, false, name, environmentUser, stagingEnvironment, "", "dlpx", "acc-test"),
+				Config:      testDsourceBasic(sourceId, groupId, false, false, name, environmentUser, stagingEnvironment, "", "dlpx", "acc-test"),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 			{
-				Config: testDsourceBasic(sourceId, groupId, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
+				Config: testDsourceBasic(sourceId, groupId, false, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId)),
 			},
 			{
 				// positive update test case
-				Config: testDsourceBasic(sourceId, groupId, false, "update_name", environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
+				Config: testDsourceBasic(sourceId, groupId, false, false, "update_name", environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "name", "update_name"),
@@ -46,7 +46,7 @@ func Test_Acc_Appdata_Dsource(t *testing.T) {
 			},
 			{
 				// updating a tag and expecting no plan changes
-				Config: testDsourceBasic(sourceId, groupId, false, "update_name", environmentUser, stagingEnvironment, parameters, "key1", "value1"),
+				Config: testDsourceBasic(sourceId, groupId, false, false, "update_name", environmentUser, stagingEnvironment, parameters, "key1", "value1"),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId),
@@ -56,7 +56,7 @@ func Test_Acc_Appdata_Dsource(t *testing.T) {
 			},
 			{
 				// updating a tag and expecting plan changes
-				Config: testDsourceBasic(sourceId, groupId, true, "update_name", environmentUser, stagingEnvironment, parameters, "key-upd", "value-upd"),
+				Config: testDsourceBasic(sourceId, groupId, false, true, "update_name", environmentUser, stagingEnvironment, parameters, "key-upd", "value-upd"),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId),
@@ -68,8 +68,8 @@ func Test_Acc_Appdata_Dsource(t *testing.T) {
 				// },
 			},
 			{
-				// negative update test case
-				Config:      testDsourceBasic("sourceId", groupId, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
+				// negative update test case, we are updating make_account_owner to true
+				Config:      testDsourceBasic(sourceId, groupId, true, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 		},
@@ -111,13 +111,13 @@ func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name str
 	}
 }
 
-func testDsourceBasic(sourceId string, groupId string, ignore_tag_changes bool, name string, environmentUser string, stagingEnvironment string, parameters string, key string, value string) string {
+func testDsourceBasic(sourceId string, groupId string, make_current_account_owner bool, ignore_tag_changes bool, name string, environmentUser string, stagingEnvironment string, parameters string, key string, value string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
   source_value                  = "%s"
   group_id                   = "%s"
   log_sync_enabled           = false
-  make_current_account_owner = true
+  make_current_account_owner = "%v"
   link_type                  = "AppDataStaged"
   ignore_tag_changes	   	= %v
   name                       = "%s"
@@ -157,7 +157,7 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
     }
   }
 }
-	`, sourceId, groupId, ignore_tag_changes, name, environmentUser, stagingEnvironment, parameters, key, value)
+	`, sourceId, groupId, make_current_account_owner, ignore_tag_changes, name, environmentUser, stagingEnvironment, parameters, key, value)
 }
 
 func testDsourceExists(n string, sourceId string) resource.TestCheckFunc {
