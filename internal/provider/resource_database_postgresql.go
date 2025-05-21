@@ -124,12 +124,6 @@ func resourceSource() *schema.Resource {
 						},
 					},
 				},
-				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
-					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
-						return true
-					}
-					return false
-				},
 			},
 		},
 		Importer: &schema.ResourceImporter{

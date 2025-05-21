@@ -1702,9 +1702,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var updateFailure, destructiveUpdate bool = false, false
 	var nonUpdatableField []string
 
-	// var vdbs []dctapi.VDB
-	// var vdbDiags diag.Diagnostics
-
 	// if changedKeys contains non updatable field set a flag
 	for _, key := range changedKeys {
 		if !updatableVdbKeys[key] {

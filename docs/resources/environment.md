@@ -5,7 +5,7 @@ Environments can either be a source (where data comes from), staging (where data
 Each environment has its own properties and information depending on the operating system, installation, purpose, etc. 
 The Delphix Environment resource allows Terraform to create, update, and delete Environments. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
 Updating existing Delphix Environment resource parameters via the `apply` command is supported for the parameters specified below.   
-Note: In DCT, these are called Infrastructure Connections. 
+Note: In DCT, Environment are frequently referred to as Infrastructure Connections. 
 
 ## Example Usage
 
@@ -79,16 +79,16 @@ resource "delphix_environment" "win_standalone" {
 * `engine_id` - (Required) The DCT ID of the Engine on which to create the environment. This ID can be obtained by querying the DCT engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID. 
 * `is_cluster` - Whether the environment to be created is a cluster. 
 * `cluster_home` - Absolute path to cluster home directory. This parameter is (Required) for UNIX cluster environments. [Updatable] 
-* `staging_environment` - Id of the environment where Delphix (Windows) Connector is installed. This is a required parameter when creating Windows source environments. 
-* `connector_port` - Specify port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments. [Updatable] 
-* `is_target` - Whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments. 
+* `staging_environment` - ID of the environment where Delphix (Windows) Connector is installed. This is a required parameter when creating Windows source environments. 
+* `connector_port` - The port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments. [Updatable] 
+* `is_target` - Indicates whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments. 
 
 ### Host Arguments 
 * `hostname` - (Required) Host Name or IP Address of the host that being added to Delphix. [Updatable] 
 * `ssh_port` - ssh port of the environment. [Updatable] 
-* `toolkit_path` - The path where Delphix toolkit can be pushed. [Updatable] 
+* `toolkit_path` - The path where Delphix Toolkit can be pushed. [Updatable] 
 * `java_home` - The path to the user managed Java Development Kit (JDK). If not specified, then the OpenJDK will be used. [Updatable] 
-* `nfs_addresses` - Array of ip address or hostnames. Valid values are a list of addresses. For eg: ["192.168.10.2"] [Updatable] 
+* `nfs_addresses` - Array of IP address or hostnames. Valid values are a list of addresses. For eg: ["192.168.10.2"] [Updatable] 
 
 ### General Authentication Arguments 
 * `dsp_keystore_path` - DSP keystore path. 
@@ -96,7 +96,7 @@ resource "delphix_environment" "win_standalone" {
 * `dsp_keystore_alias` - DSP keystore alias. 
 * `dsp_truststore_path` - DSP truststore path. 
 * `dsp_truststore_password` - DSP truststore password. 
-* `use_engine_public_key` - Whether to use public key authentication. 
+* `use_engine_public_key` - Indicates whether to use public key authentication. 
 
 ### SQL Server Authentication Arguments 
 * `username` - OS username to enable a connection from the engine. [Updatable] 
@@ -107,7 +107,7 @@ resource "delphix_environment" "win_standalone" {
 * `hashicorp_vault_username_key` - Key for the username in the key-value store. 
 * `hashicorp_vault_secret_key` - Key for the password in the key-value store. 
 * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
-* `use_kerberos_authentication` - Whether to use Kerberos authentication. 
+* `use_kerberos_authentication` - Indicates whether to use Kerberos authentication. 
 
 ### SAP ASE (Sybase) Authentication Arguments 
 * `ase_db_username` - Username for the SAP ASE database. 
@@ -124,7 +124,7 @@ resource "delphix_environment" "win_standalone" {
 * `tags` - The tags to be created for this environment. This is a map of 2 parameters: [Updatable] 
    * `key` - (Required) Key of the tag 
    * `value` - (Required) Value of the tag 
-* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by terraform. By default, it is true, i.e, changes in tags of the resource are ignored. 
+* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
 ## Import
 Use the import block to add Environments created directly in DCT into a Terraform state file.  

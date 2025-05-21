@@ -1,25 +1,23 @@
 # Resource: <resource name> delphix_appdata_dsource
 
 In Delphix terminology, a dSource is an internal, read-only database copy that the Delphix Continuous Data Engine uses to create and update virtual copies of your database.   
-A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. 
-The AppData dSource resource allows Terraform to create, update, and delete AppData dSources. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
-Updating existing dSource resource parameters via the `apply` command is supported for the parameters listed below.   
+A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. The AppData dSource resource in Terraform allows you to create, update, delete and import AppData dSources. Updating existing dSource resource parameters via the apply command is supported for the parameters listed below.    
 For Oracle, refer to the Oracle dSource resource. The Delphix Provider does not currently support SQL Server or SAP ASE. 
 
 ## Note 
 * `status` and `enabled` are computed values and are subject to change in the tfstate file based on the dSource state. 
-* Parameters `credentials_env_vars` within `ops_pre_sync` and `ops_post_sync` object blocks are not updatable. Any changes reflected on the state file do not reflect the actual value of the actual infrastructure. 
+* Parameters `credentials_env_vars` within `ops_pre_sync` and `ops_post_sync` object blocks are not updatable. Therefore, any changes made on a Terraform state file do not reflect the actual value of the actual infrastructure 
 * Sensitive values in `credentials_env_vars` are stored as plain text in the state file. We recommend following Terraform’s sensitive input variables documentation. 
-* `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection 
+* `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection.
 * Only valid for DCT versions 2025.1 and earlier: 
-  * `Make_current_account_owner`,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during the creation of dsource. Note, they can only be used once and are not applicable to updates. 
+  * `Make_current_account_owner`,`wait_time` and `skip_wait_for_snapshot_creation` are applicable only during the creation of dsource. Note, these parameters are single-use and not applicable to updates. 
   * Any new dSource created post Version>=3.2.1 can set wait_time to wait for snapshot creation, dSources created prior to this version will not support this capability. 
 
 ## Example Usage
 
 The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show different ingestion configuration examples. 
 
-# Link dSource using external backup.  
+# Link dSource using external backup  
  
 ```hcl
 resource "delphix_appdata_dsource" "pg_using_external_backup" { 
@@ -49,7 +47,7 @@ resource "delphix_appdata_dsource" "pg_using_external_backup" {
 } 
 ```
 
-# Link dSource using Delphix Initiated Backup. 
+# Link dSource using Delphix Initiated Backup 
  
 ```hcl
 resource "delphix_appdata_dsource" "pg_using_delphix_initiated_backup" { 
@@ -81,7 +79,7 @@ resource "delphix_appdata_dsource" "pg_using_delphix_initiated_backup" {
 } 
 ```
 
-# Link dSource using Single Database Ingestion. 
+# Link dSource using Single Database Ingestion
  
 ```hcl
 resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" { 
@@ -125,7 +123,7 @@ resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" {
 * `source_value` - (Required) ID or Name of the Source to link. 
 * `description` - The notes/description for the dSource. [Updatable] 
 * `group_id` - (Required) ID of the dataset group where this dSource should belong to. 
-* `rollback_on_failure` - dSource linking operation when fails during SnapSync creates a tainted dSource on the engine. Setting this flag to true will remove the tainted dsource from state as well as engine. By default, it is set to false, where the tainted dsource is maintained on the terraform state. 
+* `rollback_on_failure` -  When a dSource linking operation fails during SnapSync, it results in a tainted dsource on the engine. By setting this flag to true, the tainted dSource will be removed from both the Terraform state and the engine. By default, the flag is to false, meaning the tainted dSource is maintained on the Terraform state. 
 
 ### Full Backup and Transactional Log requirements 
 * `log_sync_enabled` - (Required) True if LogSync should run for this database.  
@@ -141,7 +139,7 @@ resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" {
 * `staging_mount_base` - The base mount point for the NFS mount on the staging environment.  
 * `environment_user` - (Required) The OS user to use for linking. [Updatable] 
 * `staging_environment` - (Required) The environment used as an intermediate stage to pull data into Delphix. [Updatable] 
-* `staging_environment_user` - The environment user used to access the staging environment. [Updatable] 
+* `staging_environment_user` - Specifies the environment user that accesses the staging environment. [Updatable] 
 * `parameters` - The JSON payload is based on the type of dSource being created. Different data sources require different parameters. Available parameters can be found within the data connector’s schema.json. [Updatable] 
 * `sync_parameters` - The JSON payload conforming to the snapshot parameters definition in a Continuous Data plugin. 
 * `sync_policy_id` - The ID of the SnapSync policy for the dSource. [Updatable] 
@@ -178,11 +176,11 @@ The following arguments enable the user to control how the first ingestion and s
 
 ### Advanced 
 The following arguments apply to all dSources but they are not often necessary for simple sources. 
-* `make_current_account_owner` - (Required) True/False. Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. 
-* `tags` - The tags to be created for dSource. This is a map of 2 parameters: 
+* `make_current_account_owner` - (Required) True/False. Indicates whether the account creating this reporting schedule must be configured as owner of the reporting schedule. 
+* `tags` - The tags to be created for dSource. This is a map of two parameters: 
   * `key` - (Required) Key of the tag 
   * `value` - (Required) Value of the tag 
-* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by terraform. By default, it is true, i.e, changes in tags of the resource are ignored. 
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
 ## Import
 Use the import block to add Appdata dSources created directly in DCT into a Terraform state file.  
@@ -196,4 +194,4 @@ import {
 ```
 
 ## Limitations 
-Not all properties are supported through the update command. Properties that are not supported by the update command are presented via an error message at runtime.
+Not all properties can be updated using the update command. Attempts to update an unsupported property will return a runtime error message. 

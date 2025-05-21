@@ -116,6 +116,7 @@ The following arguments apply to all dSources but they are not often necessary f
 * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
 ### Hooks
 Any combination of the following hooks can be provided on the Oracle dSource resource. The available arguments are identical for each hook and are consolidated in a single list to save space. 

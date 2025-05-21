@@ -162,7 +162,7 @@ func resourceEnvironment() *schema.Resource {
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
 					if old != new {
-						tflog.Info(context.Background(), "updating ignore_tag_changes is not allowed. plan changes are suppressed")
+						tflog.Info(context.Background(), "updating os_type is not allowed. plan changes are suppressed")
 					}
 					return d.Id() != ""
 				},
