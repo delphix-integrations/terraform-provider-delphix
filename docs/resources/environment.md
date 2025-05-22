@@ -1,10 +1,14 @@
 # Resource: <resource name> delphix_environment
 
-In Delphix, an environment is either a single instance host or cluster of hosts that run database software. 
-Environments can either be a source (where data comes from), staging (where data are prepared/masked) or target (where data are delivered and used by developers and testers). 
-Each environment has its own properties and information depending on the operating system, installation, purpose, etc. 
-The Delphix Environment resource allows Terraform to create, update, and delete Environments. This specifically enables the `apply`, `import`, and `destroy` Terraform commands. 
-Updating existing Delphix Environment resource parameters via the `apply` command is supported for the parameters specified below.   
+In Delphix, an environment is either a single instance host or a cluster of hosts that runs your databases. Environments can either be: 
+- Source: where data originates. 
+- Staging: where data is prepared for ingestion. . 
+- Target: where data is delivered and used by developers and testers. 
+   - Note: Sometimes “Staging” is considered an intermediary environment which temporarily hosts a database for masking, subsetting, or synthetic data purposes. In virtualization, this is considered a Target environment. 
+  
+Each environment has unique properties and information depending on the operating system, installation, purpose, etc.
+The Delphix Environment resource (delphix_environment) in Terraform allows you to create, update, and delete Environments by enabling the apply, import, and destroy Terraform commands. Updating existing Delphix Environment resource parameters via the apply command is supported for the parameters specified below.
+
 Note: In DCT, Environment are frequently referred to as Infrastructure Connections. 
 
 ## Example Usage
