@@ -57,6 +57,10 @@ func testsourceBasic(repo_value string, name string) string {
 resource "delphix_database_postgresql" "new_dsource" {
   repository_value                  = "%s"
   name                       = "%s"
+  tags {
+		key = "dlpx"
+		value = "acc-test"
+    }
 }
 	`, repo_value, name)
 }
@@ -89,6 +93,10 @@ func testsourceUpdate(repo_value string, name string) string {
 resource "delphix_database_postgresql" "new_dsource" {
   repository_value                  = "%s"
   name                       = "%s"
+  tags {
+		key = "dlpx"
+		value = "acc-test"
+    }
 }
 	`, repo_value, name)
 }

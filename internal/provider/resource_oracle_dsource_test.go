@@ -21,7 +21,7 @@ func TestOracleDsource_create_positive(t *testing.T) {
 			testOracleDsourcePreCheck(t, sourcevalue, groupId, name)
 		},
 		Providers:    testAccProviders,
-		CheckDestroy: testDsourceDestroy,
+		CheckDestroy: testOracleDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testOracleDsourceBasic(name, sourcevalue, groupId),
@@ -31,10 +31,10 @@ func TestOracleDsource_create_positive(t *testing.T) {
 			},
 			{
 				// positive update test case
-				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId),
+				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId), // changing the name to update-name
 				Check: resource.ComposeTestCheckFunc(
 					testOracleDsourceExists("delphix_oracle_dsource.test_oracle_dsource", sourcevalue),
-					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "name", "update_name"),
+					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "name", "update_name"), // asserting the updated name
 					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "group_id", groupId)),
 			},
 			{
@@ -69,7 +69,45 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "%s"
   source_value               = "%s"
   group_id                   = "%s"
+  tags {
+	key = "dlpx"
+	value = "acc-test"
+    }
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
+
+  ops_pre_log_sync {
+    name            = "string-change-opsprelogsync22"
+    command         = "ls -lrt"
+    shell           = "shell"
+    credentials_env_vars {
+      base_var_name = "mypassopsprelogsynct"
+      password = "password_test"
+    }
+  }
 }
+  
 	`, name, sourceValue, groupId)
 }
 
@@ -79,6 +117,43 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "%s"
   source_value               = "%s"
   description                = "%s"
+  tags {
+	key = "dlpx"
+	value = "acc-test"
+	}
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
+
+  ops_pre_log_sync {
+    name            = "string-change-opsprelogsync22"
+    command         = "ls -lrt"
+    shell           = "shell"
+    credentials_env_vars {
+      base_var_name = "mypassopsprelogsynct"
+      password = "password_test"
+    }
+  }
 }
 	`, name, sourceValue, description)
 }

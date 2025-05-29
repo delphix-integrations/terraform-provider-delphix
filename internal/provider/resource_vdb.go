@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
 
@@ -579,20 +580,32 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"value": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
 				},
 			},
 			"appdata_source_params": {
@@ -998,16 +1011,17 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 
 	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1246,16 +1260,17 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 
 	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == "FAILED" {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
+			return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == "FAILED" {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
-		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1479,16 +1494,17 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 
 	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
+			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1686,9 +1702,6 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var updateFailure, destructiveUpdate bool = false, false
 	var nonUpdatableField []string
 
-	// var vdbs []dctapi.VDB
-	// var vdbDiags diag.Diagnostics
-
 	// if changedKeys contains non updatable field set a flag
 	for _, key := range changedKeys {
 		if !updatableVdbKeys[key] {
@@ -1808,7 +1821,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	if nvdh != nil {
+	if nvdh != nil && !isStructEmpty(nvdh) {
 		updateVDBParam.SetHooks(*nvdh)
 	}
 
@@ -1902,34 +1915,36 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		json.Unmarshal([]byte(d.Get("config_params").(string)), &config_params)
 		updateVDBParam.SetConfigParams(config_params)
 	}
+	if !isStructEmpty(updateVDBParam) {
+		res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
-	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
+		}
 
-	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-		// revert and set the old value to the changed keys
-		revertChanges(d, changedKeys)
-		return diags
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
-	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
-	}
-
-	if d.HasChanges(
-		"tags",
-	) { // tags update
-		tflog.Debug(ctx, "updating tags")
-		if d.HasChange("tags") {
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
 			// delete old tag
 			tflog.Debug(ctx, "deleting old tags")
-			oldTag, newTag := d.GetChange("tags")
-			if len(toTagArray(oldTag)) != 0 {
-				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
@@ -1938,9 +1953,9 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 				}
 			}
 			// create tag
-			if len(toTagArray(newTag)) != 0 {
+			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1948,6 +1963,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			}
 		}
 	}
+
 	if destructiveUpdate {
 		if diags := enableVDB(ctx, client, vdbId); diags != nil {
 			return diags //if failure should we enable

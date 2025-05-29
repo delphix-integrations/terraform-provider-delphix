@@ -41,7 +41,7 @@ resource "delphix_oracle_dsource" "test_oracle_dsource" {
 
 ## Argument References 
 
- ### General Linking Requirements 
+### General Linking Requirements 
 
 * `name` - The unique name of the dSource. If empty, a name is randomly generated. [Updatable] 
 * `source_value` - (Required) ID or name of the source to link. 
@@ -116,6 +116,7 @@ The following arguments apply to all dSources but they are not often necessary f
 * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
 ### Hooks
 Any combination of the following hooks can be provided on the Oracle dSource resource. The available arguments are identical for each hook and are consolidated in a single list to save space. 
@@ -142,7 +143,7 @@ Any combination of the following hooks can be provided on the Oracle dSource res
     * `azure_vault_secret_key` - Azure vault key in the key-value store.  
     * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
 
-## Import (Beta)  
+## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  
 
 For example:  
@@ -152,7 +153,6 @@ import {
     id = "dsource_id"   
 }  
 ``` 
-*This is a beta feature. Delphix offers no guarantees of support or compatibility.* 
 
 ## Limitations 
 

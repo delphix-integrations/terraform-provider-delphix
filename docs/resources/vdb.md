@@ -224,8 +224,9 @@ This is a map of two required parameters:
     * `key` - Key of the tag.  
     * `value` - Value of the tag.  
 * `make_current_account_owner` - Default True. Boolean to determine if the account provisioning this VDB will be the "Owner" of the VDB.  
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
-## Import (Beta)  
+## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add VDBs created directly in DCT into a Terraform state file.  
 
 For example:  
@@ -235,7 +236,6 @@ import {
     id = "vdb_id"   
 }  
 ``` 
-*This is a beta feature. Delphix offers no guarantees of support or compatibility.* 
 
 ## Limitations 
 
