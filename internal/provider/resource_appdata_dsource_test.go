@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func TestDsource_create_positive(t *testing.T) {
+func Test_Acc_Appdata_Dsource(t *testing.T) {
 	sourceId := os.Getenv("DSOURCE_SOURCE_ID")
 	groupId := os.Getenv("DSOURCE_GROUP_ID")
 	name := os.Getenv("DSOURCE_NAME")
@@ -27,24 +27,66 @@ func TestDsource_create_positive(t *testing.T) {
 		CheckDestroy: testDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, ""),
+				Config:      testDsourceBasic(sourceId, groupId, false, false, name, environmentUser, stagingEnvironment, "", "dlpx", "acc-test"),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 			{
-				Config: testDsourceBasic(sourceId, groupId, name, environmentUser, stagingEnvironment, parameters),
+				Config: testDsourceBasic(sourceId, groupId, false, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
 				Check: resource.ComposeTestCheckFunc(
 					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
 					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId)),
 			},
 			{
-				Config: testDsourceUpdate(sourceId, groupId, "update_same_dsource", environmentUser, stagingEnvironment, parameters),
-				Check:  resource.ComposeAggregateTestCheckFunc(
-				// irrelevant
+				// positive update test case
+				Config: testDsourceBasic(sourceId, groupId, false, false, "update_name", environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
+				Check: resource.ComposeTestCheckFunc(
+					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "name", "update_name"),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId)),
+			},
+			{
+				// updating a tag and expecting no plan changes
+				Config: testDsourceBasic(sourceId, groupId, false, false, "update_name", environmentUser, stagingEnvironment, parameters, "key1", "value1"),
+				Check: resource.ComposeTestCheckFunc(
+					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "tags.0.key", "key1"),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "tags.0.value", "value1"),
 				),
+			},
+			{
+				// updating a tag and expecting plan changes
+				Config: testDsourceBasic(sourceId, groupId, false, true, "update_name", environmentUser, stagingEnvironment, parameters, "key-upd", "value-upd"),
+				Check: resource.ComposeTestCheckFunc(
+					testDsourceExists("delphix_appdata_dsource.new_data_dsource", sourceId),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "source_id", sourceId),
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "tags.0.key", "key1"),     // since ignore_tag_changes is true, the key should not change
+					resource.TestCheckResourceAttr("delphix_appdata_dsource.new_data_dsource", "tags.0.value", "value1"), // since ignore_tag_changes is true, the value should not change
+				),
+				// PreConfig: func() {
+				// 	fmt.Printf("[DEBUG] Applying configuration: %s", testDsourceBasic(sourceId, groupId, true, "update_name", environmentUser, stagingEnvironment, parameters, "key-upd", "value-upd"))
+				// },
+			},
+			{
+				// negative update test case, we are updating make_account_owner to true
+				Config:      testDsourceBasic(sourceId, groupId, true, false, name, environmentUser, stagingEnvironment, parameters, "dlpx", "acc-test"),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 		},
 	})
+}
+
+// DEBUG: use this in check to see the resource state during test
+func checkState(n string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		rs, ok := s.RootModule().Resources[n]
+		if !ok {
+			return fmt.Errorf("Resource not found: %s", n)
+		}
+
+		fmt.Printf("[DEBUG] Current state for %s: %v\n", n, rs.Primary.Attributes)
+		return nil
+	}
 }
 
 func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) {
@@ -69,15 +111,17 @@ func testDsourcePreCheck(t *testing.T, sourceId string, groupId string, name str
 	}
 }
 
-func testDsourceBasic(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) string {
+func testDsourceBasic(sourceId string, groupId string, make_current_account_owner bool, ignore_tag_changes bool, name string, environmentUser string, stagingEnvironment string, parameters string, key string, value string) string {
 	return fmt.Sprintf(`
 resource "delphix_appdata_dsource" "new_data_dsource" {
   source_value                  = "%s"
   group_id                   = "%s"
   log_sync_enabled           = false
-  make_current_account_owner = true
+  make_current_account_owner = "%v"
   link_type                  = "AppDataStaged"
+  ignore_tag_changes	   	= %v
   name                       = "%s"
+  rollback_on_failure	= true
   staging_mount_base         = ""
   environment_user           = "%s"
   staging_environment        = "%s"
@@ -85,28 +129,35 @@ resource "delphix_appdata_dsource" "new_data_dsource" {
   sync_parameters = jsonencode({
     resync = true
   })
+	tags {
+		key = "%s"
+		value = "%s"
+	}
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
 }
-	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
-}
-
-func testDsourceUpdate(sourceId string, groupId string, name string, environmentUser string, stagingEnvironment string, parameters string) string {
-	return fmt.Sprintf(`
-resource "delphix_appdata_dsource" "new_data_dsource" {
-  source_value                  = "%s"
-  group_id                   = "%s"
-  log_sync_enabled           = false
-  make_current_account_owner = true
-  link_type                  = "AppDataStaged"
-  name                       = "%s"
-  staging_mount_base         = ""
-  environment_user           = "%s"
-  staging_environment        = "%s"
-  parameters = jsonencode(%s)
-  sync_parameters = jsonencode({
-    resync = true
-  })
-}
-	`, sourceId, groupId, name, environmentUser, stagingEnvironment, parameters)
+	`, sourceId, groupId, make_current_account_owner, ignore_tag_changes, name, environmentUser, stagingEnvironment, parameters, key, value)
 }
 
 func testDsourceExists(n string, sourceId string) resource.TestCheckFunc {

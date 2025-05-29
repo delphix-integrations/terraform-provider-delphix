@@ -1,213 +1,261 @@
 # Resource: <resource name> delphix_environment
 
-In Delphix, an environment is either a single instance host or cluster of hosts that run database software.
+In Delphix, an environment is either a single instance host or a cluster of hosts that runs your databases. Environments can either be: 
+- Source: where data originates. 
+- Staging: where data is prepared for ingestion. . 
+- Target: where data is delivered and used by developers and testers. 
+   - Note: Sometimes “Staging” is considered an intermediary environment which temporarily hosts a database for masking, subsetting, or synthetic data purposes. In virtualization, this is considered a Target environment. 
+  
+Each environment has unique properties and information depending on the operating system, installation, purpose, etc.
+The Delphix Environment resource (delphix_environment) in Terraform allows you to create, update, and delete Environments by enabling the apply, import, and destroy Terraform commands. Updating existing Delphix Environment resource parameters via the apply command is supported for the parameters specified below.
 
-Environments can either be a source (where data comes from), staging (where data are prepared/masked) or target (where data are delivered and used by developers and testers).
-
-Each environment has its own properties and information depending on the type of environment it is
+Note: In DCT, environment are frequently referred to as Infrastructure Connections. 
 
 ## Example Usage
 
 ### Create UNIX standalone environment
+```hcl
+resource "delphix_environment" "unix_env_name" { 
+     engine_id = 2 
+     os_type = "UNIX"  
+     name = "my-env" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com"        
+        toolkit_path = "/home/delphix" 
+        ssh_port = 22                   
+        java_home = "/java/home"       
+     } 
+     is_cluster = false 
+     cluster_home = "/home/ghrid" 
+     staging_environment = "stage" 
+     connector_port = 5312 
+     ase_db_password = "test" 
+     ase_db_username = "user-123" 
+     dsp_keystore_alias = "alias" 
+     dsp_keystore_password = "pass" 
+     dsp_keystore_path = "path" 
+     dsp_truststore_password = "pass" 
+     dsp_truststore_path = "/work" 
+     description = "desc" 
+     is_target = false 
+ } 
+```
 
+### Creating a WINDOWS standalone target environment 
 ```hcl
-resource "delphix_environment" "unix_env_name" {
-     engine_id = 2
-     os_name = "UNIX"
-     username = "xxx"
-     password = "xxx"
-     hostname = "db.host.com"
-     toolkit_path = "/home/delphix"
-     name = "my-env"
-     is_cluster = false
-     cluster_home = "/home/ghrid"
-     staging_environment = "stage"
-     connector_port = 5312
-     ssh_port = 22
-     ase_db_password = "test"
-     ase_db_username = "user-123"
-     java_home = "/java/home"
-     dsp_keystore_alias = "alias"
-     dsp_keystore_password = "pass"
-     dsp_keystore_path = "path"
-     dsp_truststore_password = "pass"
-     dsp_truststore_path = "/work"
-     description = "desc"
-     is_target = false
- }
+resource "delphix_environment" "win_tgt" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "wintgt" 
+     description = "This is a windows target." 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+        ssh_port = 22 
+     } 
+     connector_port = 9100  
+ } 
 ```
-### Create UNIX cluster
+### Creating a WINDOWS standalone source environment 
 ```hcl
-resource "delphix_environment" "unixcluster" {
-     engine_id = 2
-     os_name = "UNIX"
-     username = "xxx"
-     password = "xxx"
-     hostname = "db.host.com"
-     toolkit_path = "/home/delphix"
-     name = "unixcluster"
-     description = "This is a unix target."
-     is_cluster = true    
-     cluster_home = "/u01/app/19.0.0.0/grid"
- }
-```
-### Creating UNIX standalone target environment using HashiCorp Vault
-```hcl
-resource "delphix_environment" "wintgt" {
-     engine_id = 2
-     os_name = "UNIX"
-     hostname = "xxx"
-     toolkit_path = "/home/delphix"
-     name = "unixtgt"
-
-     vault = "vault-name"
-     hashicorp_vault_engine       = "xxx"
-     hashicorp_vault_secret_path  = "xxx"
-     hashicorp_vault_username_key = "xxx"
-     hashicorp_vault_secret_key   = "xxx"
-
-     description = "This is unix target."
- }
-```
-### Creating UNIX standalone target environment using CyberArk Vault
-```hcl
-resource "delphix_environment" "wintgt" {
-     engine_id = 2
-     os_name = "UNIX"
-     hostname = "xxx"
-     toolkit_path = "/home/delphix"
-     name = "unixtgt"
-
-     vault = "vault-name"
-     cyberark_query_string = "xxx"
-
-     description = "This is unix target."
- }
-```
-### Creating a WINDOWS standalone target environment
-```hcl
-resource "delphix_environment" "wintgt" {
-     engine_id = 2
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "xxx"
-     name = "wintgt"
-     connector_port = 9100
-     ssh_port = 22
-     description = "This is a windows target."
- }
-```
-### Creating a WINDOWS standalone source environment
-```hcl
-resource "delphix_environment" "WindowsSrc" {
-     engine_id = 2
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "db.host.com"
-     name = "WindowsSrc"
-     staging_environment = delphix_environment.wintgt.id
- }
-```
-### Creating a WINDOWS cluster source environment
-```hcl
-resource "delphix_environment" "winsrc-cluster" {
-     engine_id = 2
-     is_target = false
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "xxx"
-     name = "winsrc-cluster"
-     staging_environment = delphix_environment.wintgt.id
-     is_cluster = true
- }
-```
-### Creating a WINDOWS failover cluster that can be used as target
-```hcl
-resource "delphix_environment" "fc-cluster-0" {
-     engine_id = 2
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "xxx"
-     name = "fc-cluster-0"
-     connector_port = 9100
-     description = "This is an FC cluster"
- }
- resource "delphix_environment" "fc-cluster-1" {
-     engine_id = 2
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "xxx"
-     name = "fc-cluster-1"
-     connector_port = 9100
-     description = "This is an FC cluster."
- }
-resource "delphix_environment" "fc-tgt-cluster" {
-     engine_id = 2
-     is_target = true
-     os_name = "WINDOWS"
-     username = "xxx"
-     password = "xxx"
-     hostname = "db.host.com"
-     name = "fc-tgt-cluster"
-     staging_environment = delphix_environment.fc-cluster-1.id
-     is_cluster = true
- }
-
+resource "delphix_environment" "win_standalone" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "WindowsSrc" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com" 
+     }  
+     staging_environment = delphix_environment.wintgt.id 
+ } 
 ```
 
 ## Argument Reference
 
-* `engine_id` - (Required) The DCT ID of the Engine on which to create the environment. This ID can be obtained by querying the DCT engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID.
-* `os_name` - (Required) Operating system type of the environment. Valid values are `[UNIX, WINDOWS]`
-* `hostname` - (Required) Host Name or IP Address of the host that being added to Delphix.
-* `name` - The name of the environment.
-* `is_cluster` - Whether the environment to be created is a cluster.
-* `cluster_home` - Absolute path to cluster home drectory. This parameter is (Required) for UNIX cluster environments.
-* `staging_environment` - Id of the environment where Delphix Connector is installed. This is a (Required) parameter when creating Windows source environments.
-* `connector_port` - Specify port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments.
-* `is_target` - Whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments.
-* `ssh_port` - ssh port of the environment.
-* `toolkit_path` - The path where Delphix toolkit can be pushed.
-* `username` - OS username for Delphix.
-* `password` - OS user's password.
-* `vault` - The name or reference of the vault from which to read the host credentials.
-* `hashicorp_vault_engine` - Vault engine name where the credential is stored.
-* `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.
-* `hashicorp_vault_username_key` - Key for the username in the key-value store.
-* `hashicorp_vault_secret_key` - Key for the password in the key-value store.
-* `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
-* `use_kerberos_authentication` - Whether to use kerberos authentication.
-* `use_engine_public_key` - Whether to use public key authentication.
-* `nfs_addresses` - Array of ip address or hostnames. Valid values are a list of addresses. For eg: `["192.168.10.2"]`
-* `ase_db_username` - Username for the SAP ASE database.
-* `ase_db_password` - Password for the SAP ASE database.
-* `ase_db_vault` - The name or reference of the vault from which to read the ASE database credentials.
-* `ase_db_hashicorp_vault_engine` - Vault engine name where the credential is stored.
-* `ase_db_hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.
-* `ase_db_hashicorp_vault_username_key` - Key for the username in the key-value store.
-* `ase_db_hashicorp_vault_secret_key` - Key for the password in the key-value store.
-* `ase_db_cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
-* `ase_db_use_kerberos_authentication` - Whether to use kerberos authentication for ASE DB discovery.
-* `java_home` - The path to the user managed Java Development Kit (JDK). If not specified, then the OpenJDK will be used.
-* `dsp_keystore_path` - DSP keystore path.
-* `dsp_keystore_password` - DSP keystore password.
-* `dsp_keystore_alias` - DSP keystore alias.
-* `dsp_truststore_path` - DSP truststore path.
-* `dsp_truststore_password` - DSP truststore password.
-* `description` - The environment description.
-* `tags` - The tags to be created for this environment. This is a map of 2 parameters:
-  * `key` - (Required) Key of the tag
-  * `value` - (Required) Value of the tag
+### General Linking Requirements 
+* `name` - The name of the environment. [Updatable] 
+* `description` - The environment description. [Updatable] 
+* `os_type` - (Required) Operating system type of the environment. Valid values are [UNIX, WINDOWS] 
+* `engine_id` - (Required) The ID of the Engine on which to create the environment. The ID can be obtained by querying the DCT Engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID. 
+* `is_cluster` - Whether the environment to be created is a cluster. 
+* `cluster_home` - Absolute path to cluster home directory. This parameter is (Required) for UNIX cluster environments. [Updatable] 
+* `staging_environment` - ID of the environment where Delphix (Windows) Connector is installed. This is a required parameter when creating Windows source environments. 
+* `connector_port` - The port on which Delphix connector will run. This is a (Required) parameter when creating Windows target environments. [Updatable] 
+* `is_target` - Indicates whether the environment to be created is a target cluster environment. This property is used only when creating Windows cluster environments. 
 
-## Attribute Reference
+### Host Arguments 
+* `hostname` - (Required) Host Name or IP Address of the host that being added to Delphix. [Updatable] 
+* `ssh_port` - ssh port of the environment. [Updatable] 
+* `toolkit_path` - The path where the Delphix Toolkit can be placed. [Updatable] 
+* `oracle_tde_keystores_root_path` - The path to the root of the Oracle TDE keystores artifact directories. [Updatable]
+* `java_home` - The path to the user managed Java Development Kit (JDK). If not specified, then the OpenJDK will be used. [Updatable] 
+* `nfs_addresses` - Array of IP address or hostnames. Valid values are a list of addresses. For eg: ["192.168.10.2"] [Updatable] 
 
-* `namespace` - The namespace of this environment for replicated and restored objects.
-* `engine_id` - A reference to the Engine that this Environment connection is associated with.
-* `enabled` - True if this environment is enabled.
-* `hosts` - The hosts that are part of this environment.
-* `repositories` - The repositories that are part of this environment.
+### General Authentication Arguments 
+* `dsp_keystore_path` - DSP keystore path. 
+* `dsp_keystore_password` - DSP keystore password. 
+* `dsp_keystore_alias` - DSP keystore alias. 
+* `dsp_truststore_path` - DSP truststore path. 
+* `dsp_truststore_password` - DSP truststore password. 
+* `use_engine_public_key` - Indicates whether to use public key authentication. 
+
+### SQL Server Authentication Arguments 
+* `username` - OS username to enable a connection from the engine. [Updatable] 
+* `password` - OS user's password. [Updatable] 
+* `vault` - The name or reference of the vault from which to read the host credentials. 
+* `hashicorp_vault_engine` – The Hashicorp Vault engine name where the credential is stored. 
+* `hashicorp_vault_secret_path` - Path in the Hashicorp Vault engine where the credential is stored. 
+* `hashicorp_vault_username_key` - Key for the username in the key-value store. 
+* `hashicorp_vault_secret_key` - Key for the password in the key-value store. 
+* `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
+* `use_kerberos_authentication` - Indicates whether to use Kerberos authentication. 
+
+### SAP ASE (Sybase) Authentication Arguments 
+* `ase_db_username` - Username for the SAP ASE database. 
+* `ase_db_password` - Password for the SAP ASE database. 
+* `ase_db_vault` - The name or reference of the vault from which to read the SAP ASE database credentials. 
+* `ase_db_hashicorp_vault_engine` – The Hashicorp Vault engine name where the credential is stored. 
+* `ase_db_hashicorp_vault_secret_path` - Path in the Hashicorp Vault engine where the credential is stored. 
+* `ase_db_hashicorp_vault_username_key` - Key for the username in the key-value store. 
+* `ase_db_hashicorp_vault_secret_key` - Key for the password in the key-value store. 
+* `ase_db_cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
+* `ase_db_use_kerberos_authentication` - Whether to use Kerberos authentication for SAP ASE DB discovery. 
+
+### Advanced Arguments 
+* `tags` - The tags to be created for this environment. This is a map of two parameters: [Updatable] 
+   * `key` - (Required) Key of the tag 
+   * `value` - (Required) Value of the tag 
+* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+
+## Import
+Use the import block to add Environments created directly in DCT into a Terraform state file.  
+
+For example:  
+```hcl
+import {    
+    to = delphix_environment.env_import_demo
+    id = "env_id"    
+}   
+``` 
+
+## Limitations 
+Not all properties are supported through the update command. Properties that are not supported by the update command are presented via an error message at runtime.
+
+## Appendix
+Here are some additional examples:
+
+### Create UNIX cluster
+```hcl
+resource "delphix_environment" "unix_cluster" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixcluster" 
+     description = "This is a unix target." 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com" 
+        toolkit_path = "/home/delphix" 
+     } 
+     is_cluster = true     
+     cluster_home = "/u01/app/19.0.0.0/grid" 
+ } 
+```
+
+### Creating UNIX standalone target environment using HashiCorp Vault 
+```hcl
+resource "delphix_environment" "unix_with_hashi_vault" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixtgt" 
+     hosts { 
+        hostname = "xxx" 
+        toolkit_path = "/home/delphix" 
+     } 
+     vault = "vault-name" 
+     hashicorp_vault_engine       = "xxx" 
+     hashicorp_vault_secret_path  = "xxx" 
+     hashicorp_vault_username_key = "xxx" 
+     hashicorp_vault_secret_key   = "xxx" 
+ 
+     description = "This is unix target." 
+ } 
+```  
+
+### Creating UNIX standalone target environment using CyberArk Vault 
+```hcl
+resource "delphix_environment" "unix_with_ca_vault" { 
+     engine_id = 2 
+     os_type = "UNIX" 
+     name = "unixtgt" 
+     description = "This is unix target." 
+     hosts { 
+        hostname = "xxx" 
+        toolkit_path = "/home/delphix" 
+     } 
+     vault = "vault-name" 
+     cyberark_query_string = "xxx" 
+ } 
+``` 
+
+### Creating a WINDOWS cluster source environment
+```hcl
+resource "delphix_environment" "winsrc_cluster" { 
+     engine_id = 2 
+     is_target = false 
+     os_type = "WINDOWS" 
+     name = "winsrc-cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     staging_environment = delphix_environment.wintgt.id 
+     is_cluster = true 
+ } 
+``` 
+
+### Creating a WINDOWS failover cluster that can be used as target 
+```hcl
+resource "delphix_environment" "win_fc_cluster_0" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "fc-cluster-0" 
+     description = "This is an FC cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     connector_port = 9100 
+ } 
+ resource "delphix_environment" "win_fc_cluster_1" { 
+     engine_id = 2 
+     os_type = "WINDOWS" 
+     name = "fc-cluster-1" 
+     description = "This is an FC cluster." 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "xxx" 
+     } 
+     connector_port = 9100 
+ } 
+resource "delphix_environment" "win_fc_tgt_cluster" { 
+     engine_id = 2 
+     is_target = true 
+     os_type = "WINDOWS" 
+     name = "fc-tgt-cluster" 
+     username = "xxx" 
+     password = "xxx" 
+     hosts { 
+        hostname = "db.host.com" 
+     } 
+     staging_environment = delphix_environment.fc-cluster-1.id 
+     is_cluster = true 
+ } 
+```

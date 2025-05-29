@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -72,9 +73,15 @@ func resourceOracleDsource() *schema.Resource {
 					return d.Id() != ""
 				},
 			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -86,6 +93,12 @@ func resourceOracleDsource() *schema.Resource {
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
 				},
 			},
 			"ops_pre_sync": {
@@ -901,12 +914,26 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
 	d.Set("is_appdata", result.GetIsAppdata())
 	d.Set("sync_policy_id", result.GetSyncPolicyId())
-	d.Set("retention_policy_id", result.GetReplicaRetentionPolicyId())
+	d.Set("retention_policy_id", result.GetRetentionPolicyId())
 	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
 	d.Set("exported_data_directory", result.GetExportedDataDirectory())
 	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
 	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
+
+	// get the tags and set it
+	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(ctx, dsource_id).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		if len(resTagsDsrc.GetTags()) != 0 {
+			tflog.Debug(ctx, DLPX+"Tags are present")
+			d.Set("tags", flattenTags(resTagsDsrc.GetTags()))
+		}
+	}
 	return diags
 }
 
@@ -1029,33 +1056,36 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		updateOracleDsource.SetHooks(*ndsh)
 	}
 
-	res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
+	if !isStructEmpty(updateOracleDsource) {
+		res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
 
-	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-		// revert and set the old value to the changed keys
-		revertChanges(d, changedKeys)
-		return diags
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
+		}
+
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
-	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
-	}
-
-	if d.HasChanges(
-		"tags",
-	) { // tags update
-		tflog.Debug(ctx, "updating tags")
-		if d.HasChange("tags") {
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
 			// delete old tag
 			tflog.Debug(ctx, "deleting old tags")
-			oldTag, newTag := d.GetChange("tags")
-			if len(toTagArray(oldTag)) != 0 {
-				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTag)[0].GetKey()+" "+toTagArray(oldTag)[0].GetValue())
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
 				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
@@ -1064,9 +1094,9 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 				}
 			}
 			// create tag
-			if len(toTagArray(newTag)) != 0 {
+			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTag))).Execute()
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1092,15 +1122,16 @@ func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, me
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	if res != nil {
+		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+		if isJobTerminalFailure(job_status) {
+			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-	}
-
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
 	})

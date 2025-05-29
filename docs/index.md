@@ -14,7 +14,7 @@ If you are a DCT customer, you can also request support from the [Delphix Suppor
  
 | Product                        | Version  | 
 |--------------------------------|----------| 
-| Data Control Tower (DCT)       | v2025.1.2+ | 
+| Data Control Tower (DCT)       | v2025.2.0+ | 
 | Delphix Continuous Data Engine | v29.0.0.0+ | 
  
 Note: The DCT and Continuous Data versions above guarantees full provider support. However, each resource might support older versions. Refer to the specific resource documentation page for more information. 
@@ -40,7 +40,7 @@ terraform {
   required_providers { 
     delphix = { 
       source = "delphix-integrations/delphix" 
-      version = "3.4.0" 
+      version = "4.0.0" 
     } 
   } 
 } 
@@ -79,4 +79,6 @@ Consult the Resources section for details on individual resources, such as VDB, 
 | delphix_oracle_dsource                      | v 3.1.0          | v 10.0.0    |
 | delphix_database_postgresql                 | v 3.2.0          | v 14.0.0    |
 | delphix_vdb update<br>delphix_database_postgresql import | v 3.3.0   | v 22.0.0    |
-| delphix_oracle_dsource update<br>delphix_oracle_dsource import | v 3.4.0   | v 2025.1.2    |
+| delphix_oracle_dsource update<br>delphix_oracle_dsource import | v 3.4.1   | v 2025.1.2    |
+| delphix_appdata_dsource update<br>delphix_appdata_dsource import | v 4.0.0   | v 2025.2.0    |
+| delphix_environment update<br>delphix_environment import | v 4.0.0   | v 2025.2.0    |

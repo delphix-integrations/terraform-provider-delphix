@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"strings"
 
 	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -33,11 +35,33 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"source_value": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
+			},
+			"sync_policy_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"retention_policy_id": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -53,15 +77,22 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"link_type": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					tflog.Info(context.Background(), "In DiffSuppressFunc of link_type")
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating link_type is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"staging_mount_base": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"staging_environment_user": {
 				Type:     schema.TypeString,
@@ -69,11 +100,17 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"environment_user": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -85,6 +122,12 @@ func resourceAppdataDsource() *schema.Resource {
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
 				},
 			},
 			"ops_pre_sync": {
@@ -103,7 +146,16 @@ func resourceAppdataDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -174,7 +226,16 @@ func resourceAppdataDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -245,11 +306,17 @@ func resourceAppdataDsource() *schema.Resource {
 			},
 			"parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
 			},
 			"sync_parameters": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, oldValue, newValue string, d *schema.ResourceData) bool {
+					if oldValue != newValue {
+						tflog.Info(context.Background(), "updating sync_parameters is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			// Output
 			"id": {
@@ -332,69 +399,29 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeInt,
 				Default:  0,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating wait_time is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"skip_wait_for_snapshot_creation": {
 				Type:     schema.TypeBool,
 				Default:  false,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating skip_wait_for_snapshot_creation is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
-}
-
-func toSourceOperationArray(array interface{}) []dctapi.SourceOperation {
-	items := []dctapi.SourceOperation{}
-	for _, item := range array.([]interface{}) {
-		item_map := item.(map[string]interface{})
-		sourceOperation := dctapi.NewSourceOperation(item_map["name"].(string), item_map["command"].(string))
-		if item_map["shell"].(string) != "" {
-			sourceOperation.SetShell(item_map["shell"].(string))
-		}
-		sourceOperation.SetCredentialsEnvVars(toCredentialsEnvVariableArray(item_map["credentials_env_vars"]))
-		items = append(items, *sourceOperation)
-	}
-	return items
-}
-
-func toCredentialsEnvVariableArray(array interface{}) []dctapi.CredentialsEnvVariable {
-	items := []dctapi.CredentialsEnvVariable{}
-	for _, item := range array.([]interface{}) {
-		item_map := item.(map[string]interface{})
-
-		credentialsEnvVariable_item := dctapi.NewCredentialsEnvVariable(item_map["base_var_name"].(string))
-		if item_map["password"].(string) != "" {
-			credentialsEnvVariable_item.SetPassword(item_map["password"].(string))
-		}
-		if item_map["vault"].(string) != "" {
-			credentialsEnvVariable_item.SetVault(item_map["vault"].(string))
-		}
-		if item_map["hashicorp_vault_engine"].(string) != "" {
-			credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_engine"].(string))
-		}
-		if item_map["hashicorp_vault_secret_path"].(string) != "" {
-			credentialsEnvVariable_item.SetHashicorpVaultSecretPath(item_map["hashicorp_vault_secret_path"].(string))
-		}
-		if item_map["hashicorp_vault_username_key"].(string) != "" {
-			credentialsEnvVariable_item.SetHashicorpVaultUsernameKey(item_map["hashicorp_vault_username_key"].(string))
-		}
-		if item_map["hashicorp_vault_secret_key"].(string) != "" {
-			credentialsEnvVariable_item.SetHashicorpVaultSecretKey(item_map["hashicorp_vault_secret_key"].(string))
-		}
-		if item_map["azure_vault_name"].(string) != "" {
-			credentialsEnvVariable_item.SetAzureVaultName(item_map["azure_vault_name"].(string))
-		}
-		if item_map["azure_vault_username_key"].(string) != "" {
-			credentialsEnvVariable_item.SetAzureVaultUsernameKey(item_map["azure_vault_username_key"].(string))
-		}
-		if item_map["azure_vault_secret_key"].(string) != "" {
-			credentialsEnvVariable_item.SetAzureVaultSecretKey(item_map["azure_vault_secret_key"].(string))
-		}
-		if item_map["cyberark_vault_query_string"].(string) != "" {
-			credentialsEnvVariable_item.SetCyberarkVaultQueryString(item_map["cyberark_vault_query_string"].(string))
-		}
-		items = append(items, *credentialsEnvVariable_item)
-	}
-	return items
 }
 
 func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -409,16 +436,22 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("source_value"); has_v {
 		appDataDSourceLinkSourceParameters.SetSourceId(v.(string))
 	}
+	if v, has_v := d.GetOk("sync_policy_id"); has_v {
+		appDataDSourceLinkSourceParameters.SetSyncPolicyId(v.(string))
+	}
+	if v, has_v := d.GetOk("retention_policy_id"); has_v {
+		appDataDSourceLinkSourceParameters.SetRetentionPolicyId(v.(string))
+	}
 	if v, has_v := d.GetOk("group_id"); has_v {
 		appDataDSourceLinkSourceParameters.SetGroupId(v.(string))
 	}
 	if v, has_v := d.GetOk("description"); has_v {
 		appDataDSourceLinkSourceParameters.SetDescription(v.(string))
 	}
-	if v, has_v := d.GetOkExists("log_sync_enabled"); has_v {
+	if v, has_v := d.GetOk("log_sync_enabled"); has_v {
 		appDataDSourceLinkSourceParameters.SetLogSyncEnabled(v.(bool))
 	}
-	if v, has_v := d.GetOkExists("make_current_account_owner"); has_v {
+	if v, has_v := d.GetOk("make_current_account_owner"); has_v {
 		appDataDSourceLinkSourceParameters.SetMakeCurrentAccountOwner(v.(bool))
 	}
 	if v, has_v := d.GetOk("link_type"); has_v {
@@ -445,10 +478,10 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("ops_post_sync"); has_v {
 		appDataDSourceLinkSourceParameters.SetOpsPostSync(toSourceOperationArray(v))
 	}
-	if v, has_v := d.GetOkExists("excludes"); has_v {
+	if v, has_v := d.GetOk("excludes"); has_v {
 		appDataDSourceLinkSourceParameters.SetExcludes(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("follow_symlinks"); has_v {
+	if v, has_v := d.GetOk("follow_symlinks"); has_v {
 		appDataDSourceLinkSourceParameters.SetFollowSymlinks(toStringArray(v))
 	}
 	if v, has_v := d.GetOk("parameters"); has_v {
@@ -550,11 +583,17 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 		return diag.Errorf("Error occured in type casting.")
 	}
 
-	_, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
-	if !rollback_on_failure_exists {
-		// its an import or upgrade, set to default value
-		d.Set("rollback_on_failure", false)
-	}
+	ops_pre_sync_Raw, _ := d.Get("ops_pre_sync").([]interface{})
+	oldOpsPreSync := toSourceOperationArray(ops_pre_sync_Raw)
+
+	ops_post_sync_Raw, _ := d.Get("ops_post_sync").([]interface{})
+	oldOpsPostSync := toSourceOperationArray(ops_post_sync_Raw)
+
+	// _, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
+	// if !rollback_on_failure_exists {
+	// 	// its an import or upgrade, set to default value
+	// 	d.Set("rollback_on_failure", false)
+	// }
 
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())
@@ -570,25 +609,165 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	d.Set("engine_name", result.GetEngineName())
 	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
 	d.Set("is_appdata", result.GetIsAppdata())
+	d.Set("sync_policy_id", result.GetSyncPolicyId())
+	d.Set("retention_policy_id", result.GetRetentionPolicyId())
+	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
+	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 
+	// get the tags and set it
+	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(ctx, dsource_id).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		if len(resTagsDsrc.GetTags()) != 0 {
+			tflog.Debug(ctx, DLPX+"Tags are present")
+			d.Set("tags", flattenTags(resTagsDsrc.GetTags()))
+		}
+	}
 	return diags
 }
 
 func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
+	var diags diag.Diagnostics
+	var updateFailure bool = false
+	var nonUpdatableField []string
+	client := meta.(*apiClient).client
+	updateAppdataDsource := dctapi.NewUpdateAppDataDSourceParameters()
+
+	dsourceId := d.Get("id").(string)
+
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "ops_pre_sync") {
+			k = "ops_pre_sync"
+		}
+		if strings.Contains(k, "ops_post_sync") {
+			k = "ops_post_sync"
+		}
 		if d.HasChange(k) {
+			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
-	// revert and set the old value to the changed keys
+
+	// check if the changed keys are updatable
 	for _, key := range changedKeys {
-		old, _ := d.GetChange(key)
-		d.Set(key, old)
+		if !updatableAppdataDsourceKeys[key] {
+			updateFailure = true
+			tflog.Debug(ctx, "non updatable field: "+key)
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
 	}
 
-	return diag.Errorf("Action update not implemented for resource : dSource")
+	// if not updatable keys are provided, error out
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// set changed params in the updateOracleDsource
+	if d.HasChange("name") {
+		updateAppdataDsource.SetName(d.Get("name").(string))
+	}
+	if d.HasChange("description") {
+		updateAppdataDsource.SetDescription(d.Get("description").(string))
+	}
+	if d.HasChange("staging_environment") {
+		updateAppdataDsource.SetStagingEnvironment(d.Get("staging_environment").(string))
+	}
+	if d.HasChange("staging_environment_user") {
+		updateAppdataDsource.SetStagingEnvironmentUser(d.Get("staging_environment_user").(string))
+	}
+	if d.HasChange("environment_user") {
+		updateAppdataDsource.SetEnvironmentUser(d.Get("environment_user").(string))
+	}
+	if d.HasChange("parameters") {
+		if v, has_v := d.GetOk("parameters"); has_v {
+			params := make(map[string]interface{})
+			json.Unmarshal([]byte(v.(string)), &params)
+			updateAppdataDsource.SetParameters(params)
+		}
+	}
+	if d.HasChange("sync_policy_id") {
+		updateAppdataDsource.SetSyncPolicyId(d.Get("sync_policy_id").(string))
+	}
+	if d.HasChange("retention_policy_id") {
+		updateAppdataDsource.SetRetentionPolicyId(d.Get("retention_policy_id").(string))
+	}
+	if d.HasChange("ops_pre_sync") {
+		if v, has_v := d.GetOk("ops_pre_sync"); has_v {
+			updateAppdataDsource.SetOpsPreSync(toSourceOperationArray(v))
+		} else {
+			updateAppdataDsource.SetOpsPreSync([]dctapi.SourceOperation{})
+		}
+	}
+	if d.HasChange("ops_pre_sync") {
+		if v, has_v := d.GetOk("ops_post_sync"); has_v {
+			updateAppdataDsource.SetOpsPostSync(toSourceOperationArray(v))
+		} else {
+			updateAppdataDsource.SetOpsPostSync([]dctapi.SourceOperation{})
+		}
+	}
+	// check if the updateAppdataDsource is not empty
+	if !isStructEmpty(updateAppdataDsource) {
+		tflog.Debug(ctx, "updating appdata dsource")
+		res, httpRes, err := client.DSourcesAPI.UpdateAppdataDsourceById(ctx, dsourceId).UpdateAppDataDSourceParameters(*updateAppdataDsource).Execute()
+
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
+		}
+
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Appdata Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] Appdata Dsource Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
+	}
+
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTags)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+
+	return diags
 }
 
 func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -605,15 +784,16 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	if res != nil {
+		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+		if isJobTerminalFailure(job_status) {
+			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-	}
-
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
 	})

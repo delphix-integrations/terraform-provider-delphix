@@ -101,6 +101,65 @@ func testAccCheckDctVDBConfigBasic() string {
 	resource "delphix_vdb" "new" {
 		auto_select_repository = true
     	source_data_id         = "%s"
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
+		post_snapshot {
+			name            = "post_snap"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		pre_snapshot {
+			name            = "string"
+			command         = "ls -l"
+			shell           = "bash"
+		}
+		pre_stop {
+			name            = "string"
+			command         = "ls -ltr"
+			shell           = "bash"
+		}
+		configure_clone {
+			name            = "configure_clone"
+			command         = "ls -tr"
+			shell           = "bash"
+		}
+		post_refresh {
+			name            = "string"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		post_stop {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_rollback {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_start {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_rollback {
+			name            = "Pre_rollback"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_start {
+			name            = "pre_start"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_refresh {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
 	}
 	`, datasource_id)
 }
@@ -113,6 +172,65 @@ func testAccCheckDctVDBConfigAppDataBasic() string {
 		auto_select_repository = true
     	source_data_id         = "%s"
 		appdata_source_params  = jsonencode(%s)
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
+		post_snapshot {
+			name            = "post_snap"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		pre_snapshot {
+			name            = "string"
+			command         = "ls -l"
+			shell           = "bash"
+		}
+		pre_stop {
+			name            = "string"
+			command         = "ls -ltr"
+			shell           = "bash"
+		}
+		configure_clone {
+			name            = "configure_clone"
+			command         = "ls -tr"
+			shell           = "bash"
+		}
+		post_refresh {
+			name            = "string"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		post_stop {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_rollback {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_start {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_rollback {
+			name            = "Pre_rollback"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_start {
+			name            = "pre_start"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_refresh {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
 	}
 	`, appdata_datasource_id, appdata_source_params)
 }
@@ -177,6 +295,65 @@ func testAccCheckDctVDBBookmarkConfigBasic() string {
 	provision_type         = "bookmark"
 	auto_select_repository = true
 	bookmark_id            = "%s"
+	tags {
+		key = "dlpx"
+		value = "acc-test"
+    	}
+	post_snapshot {
+		name            = "post_snap"
+		command         = "ls -lrt"
+		shell           = "bash"
+	}
+	pre_snapshot {
+		name            = "string"
+		command         = "ls -l"
+		shell           = "bash"
+	}
+	pre_stop {
+		name            = "string"
+		command         = "ls -ltr"
+		shell           = "bash"
+	}
+	configure_clone {
+		name            = "configure_clone"
+		command         = "ls -tr"
+		shell           = "bash"
+	}
+	post_refresh {
+		name            = "string"
+		command         = "ls -lrt"
+		shell           = "bash"
+	}
+	post_stop {
+		name            = "string"
+		command         = "ls"
+		shell           = "bash"
+	}
+	post_rollback {
+		name            = "string"
+		command         = "ls"
+		shell           = "bash"
+	}
+	post_start {
+		name            = "string"
+		command         = "ls"
+		shell           = "bash"
+	}
+	pre_rollback {
+		name            = "Pre_rollback"
+		command         = "ls"
+		shell           = "bash"
+	}
+	pre_start {
+		name            = "pre_start"
+		command         = "ls"
+		shell           = "bash"
+	}
+	pre_refresh {
+		name            = "string"
+		command         = "ls"
+		shell           = "bash"
+	}
 	}
 	`, bookmark_id)
 
@@ -320,6 +497,65 @@ func testAccUpdateNegative(value bool) string {
 	resource "delphix_vdb" "new" {
 		auto_select_repository = "%t"
     	source_data_id         = "%s"
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+		}
+		post_snapshot {
+			name            = "post_snap"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		pre_snapshot {
+			name            = "string"
+			command         = "ls -l"
+			shell           = "bash"
+		}
+		pre_stop {
+			name            = "string"
+			command         = "ls -ltr"
+			shell           = "bash"
+		}
+		configure_clone {
+			name            = "configure_clone"
+			command         = "ls -tr"
+			shell           = "bash"
+		}
+		post_refresh {
+			name            = "string"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		post_stop {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_rollback {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_start {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_rollback {
+			name            = "Pre_rollback"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_start {
+			name            = "pre_start"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_refresh {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
 	}
 	`, value, datasource_id)
 }
@@ -332,6 +568,65 @@ func testAccUpdatePositive(name string, vdb_restart bool) string {
     	source_data_id         = "%s"
 		name = "%s"
 		vdb_restart = "%t"
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+		}
+		post_snapshot {
+			name            = "post_snap"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		pre_snapshot {
+			name            = "string"
+			command         = "ls -l"
+			shell           = "bash"
+		}
+		pre_stop {
+			name            = "string"
+			command         = "ls -ltr"
+			shell           = "bash"
+		}
+		configure_clone {
+			name            = "configure_clone"
+			command         = "ls -tr"
+			shell           = "bash"
+		}
+		post_refresh {
+			name            = "string"
+			command         = "ls -lrt"
+			shell           = "bash"
+		}
+		post_stop {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_rollback {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		post_start {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_rollback {
+			name            = "Pre_rollback"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_start {
+			name            = "pre_start"
+			command         = "ls"
+			shell           = "bash"
+		}
+		pre_refresh {
+			name            = "string"
+			command         = "ls"
+			shell           = "bash"
+		}
 	}
 	`, datasource_id, name, vdb_restart)
 }
