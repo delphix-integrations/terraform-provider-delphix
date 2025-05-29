@@ -9,7 +9,7 @@ In Delphix, an environment is either a single instance host or a cluster of host
 Each environment has unique properties and information depending on the operating system, installation, purpose, etc.
 The Delphix Environment resource (delphix_environment) in Terraform allows you to create, update, and delete Environments by enabling the apply, import, and destroy Terraform commands. Updating existing Delphix Environment resource parameters via the apply command is supported for the parameters specified below.
 
-Note: In DCT, Environment are frequently referred to as Infrastructure Connections. 
+Note: In DCT, environment are frequently referred to as Infrastructure Connections. 
 
 ## Example Usage
 
@@ -80,7 +80,7 @@ resource "delphix_environment" "win_standalone" {
 * `name` - The name of the environment. [Updatable] 
 * `description` - The environment description. [Updatable] 
 * `os_type` - (Required) Operating system type of the environment. Valid values are [UNIX, WINDOWS] 
-* `engine_id` - (Required) The DCT ID of the Engine on which to create the environment. This ID can be obtained by querying the DCT engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID. 
+* `engine_id` - (Required) The ID of the Engine on which to create the environment. The ID can be obtained by querying the DCT Engines API. A Delphix Engine must be registered with DCT first for it to create an Engine ID. 
 * `is_cluster` - Whether the environment to be created is a cluster. 
 * `cluster_home` - Absolute path to cluster home directory. This parameter is (Required) for UNIX cluster environments. [Updatable] 
 * `staging_environment` - ID of the environment where Delphix (Windows) Connector is installed. This is a required parameter when creating Windows source environments. 
@@ -90,7 +90,8 @@ resource "delphix_environment" "win_standalone" {
 ### Host Arguments 
 * `hostname` - (Required) Host Name or IP Address of the host that being added to Delphix. [Updatable] 
 * `ssh_port` - ssh port of the environment. [Updatable] 
-* `toolkit_path` - The path where Delphix Toolkit can be pushed. [Updatable] 
+* `toolkit_path` - The path where the Delphix Toolkit can be placed. [Updatable] 
+* `oracle_tde_keystores_root_path` - The path to the root of the Oracle TDE keystores artifact directories. [Updatable]
 * `java_home` - The path to the user managed Java Development Kit (JDK). If not specified, then the OpenJDK will be used. [Updatable] 
 * `nfs_addresses` - Array of IP address or hostnames. Valid values are a list of addresses. For eg: ["192.168.10.2"] [Updatable] 
 
@@ -125,7 +126,7 @@ resource "delphix_environment" "win_standalone" {
 * `ase_db_use_kerberos_authentication` - Whether to use Kerberos authentication for SAP ASE DB discovery. 
 
 ### Advanced Arguments 
-* `tags` - The tags to be created for this environment. This is a map of 2 parameters: [Updatable] 
+* `tags` - The tags to be created for this environment. This is a map of two parameters: [Updatable] 
    * `key` - (Required) Key of the tag 
    * `value` - (Required) Value of the tag 
 * `ignore_tag_changes` – This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
