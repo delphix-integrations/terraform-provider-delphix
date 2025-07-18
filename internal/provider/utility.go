@@ -23,6 +23,8 @@ var SLEEP_TIME = 10
 // Input is job status, context and the client
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
+	const maxRetries = 180 // 30 minutes with 10 second sleep
+	const sleepTime = 10   // seconds
 
 	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
@@ -35,9 +37,12 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		return "", resBody
 	}
 
-	var i = 0
-	for res.GetStatus() == Pending || res.GetStatus() == Started {
-		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
+	for i := 0; i < maxRetries; i++ {
+		if res.GetStatus() != Pending && res.GetStatus() != Started {
+			return res.GetStatus(), res.GetErrorDetails()
+		}
+
+		time.Sleep(time.Duration(sleepTime) * time.Second)
 		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
@@ -51,11 +56,10 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			tflog.Error(ctx, DLPX+ERROR+err.Error())
 			return "", resBody
 		}
-		i++
 		tflog.Info(ctx, DLPX+INFO+"DCT-JobId:"+job_id+" has Status:"+res.GetStatus())
 	}
 
-	return res.GetStatus(), res.GetErrorDetails()
+	return "", "Job polling timed out after " + strconv.Itoa(maxRetries*sleepTime) + " seconds"
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -529,4 +533,96 @@ func isStructEmpty(v interface{}) bool {
 		}
 	}
 	return true
+}
+
+// This is CustomizeDiff function that is used to specifically for tags where we want to delete all the tags and due to
+// Computed true, the value is computed on its own and all the tags cannot be deleted. To handle that we need to get user config
+// ie. Raw Config and override the computed value.
+func CustomizeDiffTags(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+	tflog.Debug(ctx, "CustomizeDiffTags: Start")
+	config := d.GetRawConfig()
+
+	if !config.IsKnown() || config.IsNull() {
+		return nil // Config is missing or unknown
+	}
+	ignore_tag_changes := config.GetAttr("ignore_tag_changes")
+	if (!ignore_tag_changes.IsKnown() && ignore_tag_changes.IsNull()) || ignore_tag_changes.True() {
+		return nil
+	}
+	attr := config.GetAttr("tags")
+	tflog.Debug(ctx, "CustomizeDiffTags: tags raw config value", map[string]interface{}{
+		"tags": attr.GoString(),
+	})
+	if !attr.IsKnown() || attr.IsNull() {
+		// Field is omitted in config
+		tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Tags field is not set, ignoring from attr block")
+		return nil
+	}
+
+	if attr.LengthInt() == 0 {
+		tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Tags field is empty, ignoring changes from length block")
+		// You can now trigger a diff or set a flag
+		err := d.SetNew("tags", []interface{}{})
+		if err != nil {
+			tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Error setting new tags value", map[string]interface{}{
+				"error": err,
+			})
+			return err
+		}
+	}
+
+	return nil
+}
+
+func HandleRawConfigReadContext(ctx context.Context, d *schema.ResourceData, apiRes interface{}) error {
+	tflog.Debug(ctx, "HandleRawConfigReadContext:Handling Raw Config Read Context")
+	config := d.GetRawConfig()
+	tflog.Debug(ctx, "HandleRawConfigReadContext:GOT Raw config")
+	if !config.IsKnown() || config.IsNull() {
+		tflog.Debug(ctx, "HandleRawConfigReadContext:Config is missing or unknown")
+		switch v := apiRes.(type) {
+		case *dctapi.VDBGroup:
+			d.Set("tags", flattenTags(v.GetTags()))
+		case *dctapi.VDB:
+			d.Set("tags", flattenTags(v.GetTags()))
+		case *dctapi.TagsResponse:
+			d.Set("tags", flattenTags(v.GetTags()))
+		default:
+			fmt.Println("Unknown type")
+		}
+
+	} else {
+		tflog.Debug(ctx, "Config is known and not null")
+		attr := config.GetAttr("tags")
+		var check bool = false
+		if !attr.IsKnown() || attr.IsNull() {
+			// Field is omitted in config
+			check = true
+			tflog.Info(ctx, "READ:Tags field is not set, ignoring from attr block")
+			//d.Set("tags", []interface{}{})
+			return nil
+		}
+
+		if attr.LengthInt() == 0 && !d.Get("ignore_tag_changes").(bool) {
+			tflog.Info(ctx, "READ:Tags field is empty, ignoring changes from length block")
+			check = true
+			// You can now trigger a diff or set a flag
+			d.Set("tags", []interface{}{})
+		}
+
+		if !check {
+			switch v := apiRes.(type) {
+			case *dctapi.VDBGroup:
+				d.Set("tags", flattenTags(v.GetTags()))
+			case *dctapi.VDB:
+				d.Set("tags", flattenTags(v.GetTags()))
+			case *dctapi.TagsResponse:
+				d.Set("tags", flattenTags(v.GetTags()))
+			default:
+				fmt.Println("Unknown type")
+			}
+		}
+	}
+
+	return nil
 }

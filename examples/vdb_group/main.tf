@@ -48,4 +48,12 @@ resource "delphix_vdb" "vdb_provision_loop" {
 resource "delphix_vdb_group" "this" {
   name    = "random"
   vdb_ids = sort(flatten([for vdb in delphix_vdb.example : vdb.id]))
+  tags {
+    key = "environment"
+    value = "production"
+  }
+  tags {
+    key = "project"
+    value = "terraform"
+  }
 }

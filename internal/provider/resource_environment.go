@@ -22,6 +22,7 @@ func resourceEnvironment() *schema.Resource {
 		ReadContext:   resourceEnvironmentRead,
 		UpdateContext: resourceEnvironmentUpdate,
 		DeleteContext: resourceEnvironmentDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -603,10 +604,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". HTTP Status: "+httpRes.Status)
 	} else {
 		// check if tags are returned and set them to the state
-		if len(resTagsEnv.GetTags()) != 0 {
-			tflog.Debug(ctx, DLPX+"Tags are present")
-			d.Set("tags", flattenTags(resTagsEnv.GetTags()))
-		}
+		HandleRawConfigReadContext(ctx, d, resTagsEnv)
 	}
 
 	return diags
@@ -955,6 +953,34 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, environmentId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceEnvironmentRead(ctx, d, meta)
+			}
+		}
 		oldTags, newTags := d.GetChange("tags")
 		if !reflect.DeepEqual(oldTags, newTags) {
 			tflog.Debug(ctx, "updating tags")
