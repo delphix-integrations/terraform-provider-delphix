@@ -22,6 +22,7 @@ func resourceOracleDsource() *schema.Resource {
 		ReadContext:   resourceOracleDsourceRead,
 		UpdateContext: resourceOracleDsourceUpdate,
 		DeleteContext: resourceOracleDsourceDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -847,7 +848,6 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
-
 	dsource_id := d.Id()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
@@ -929,17 +929,13 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". HTTP Status: "+httpRes.Status)
 	} else {
 		// check if tags are returned and set them to the state
-		if len(resTagsDsrc.GetTags()) != 0 {
-			tflog.Debug(ctx, DLPX+"Tags are present")
-			d.Set("tags", flattenTags(resTagsDsrc.GetTags()))
-		}
+		HandleRawConfigReadContext(ctx, d, resTagsDsrc)
 	}
 	return diags
 }
 
 func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	updateOracleDsource := dctapi.NewUpdateOracleDsourceParameters()
 
@@ -1079,6 +1075,34 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceOracleDsourceRead(ctx, d, meta)
+			}
+		}
 		oldTags, newTags := d.GetChange("tags")
 		if !reflect.DeepEqual(oldTags, newTags) {
 			tflog.Debug(ctx, "updating tags")
@@ -1105,7 +1129,7 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		}
 	}
 
-	return diags
+	return resourceOracleDsourceRead(ctx, d, meta)
 }
 
 func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {

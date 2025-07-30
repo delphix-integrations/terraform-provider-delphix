@@ -24,6 +24,7 @@ func resourceVdb() *schema.Resource {
 		ReadContext:   resourceVdbRead,
 		UpdateContext: resourceVdbUpdate,
 		DeleteContext: resourceVdbDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
@@ -1613,7 +1614,7 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		d.Set("database_name", result.GetDatabaseName())
 	}
 
-	d.Set("tags", flattenTags(result.GetTags()))
+	HandleRawConfigReadContext(ctx, d, result)
 	d.Set("vdb_restart", result.GetVdbRestart())
 
 	_, is_provision := d.GetOk("provision_type")
@@ -1642,7 +1643,6 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
@@ -1938,6 +1938,34 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceVdbRead(ctx, d, meta)
+			}
+		}
 		oldTags, newTags := d.GetChange("tags")
 		if !reflect.DeepEqual(oldTags, newTags) {
 			tflog.Debug(ctx, "updating tags")
@@ -1970,7 +1998,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 	}
 
-	return diags
+	return resourceVdbRead(ctx, d, meta)
 }
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
