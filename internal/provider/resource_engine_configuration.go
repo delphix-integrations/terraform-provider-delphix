@@ -109,12 +109,25 @@ func resourceEngineConfiguration() *schema.Resource {
 				Computed: true,
 			},
 			"enabled_features": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
 				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 			"toggleable_features": {
-				Type:     schema.TypeString,
+				Type:     schema.TypeList,
 				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"locales": {
+				Type:     schema.TypeList,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
 			// "apiVersion": {
 			// 	Type:     schema.TypeString,
@@ -281,6 +294,10 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 
 	var response SystemInfoResponse
 	sysErr := json.Unmarshal(body, &response)
+	// print("!!!!!!!!!!!!!!!OUTPUT RESPONSE")
+	// for k, v := range response.Result {
+	// 	tflog.Debug(ctx, DLPX+INFO+"result field", map[string]interface{}{"key": k, "value": v})
+	// }
 	if sysErr != nil {
 		tflog.Error(ctx, DLPX+ERROR+"Error unmarshalling", map[string]interface{}{"error": sysErr.Error()})
 	}
@@ -296,7 +313,7 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	d.Set("support_url", response.Result["supportURL"])
 	d.Set("build_title", response.Result["buildTitle"])
 	d.Set("build_timestamp", response.Result["buildTimestamp"])
-	d.Set("build_version", response.Result["buildVersion"])
+	// d.Set("build_version", response.Result["buildVersion"])
 	d.Set("enabled_features", response.Result["enabledFeatures"])
 	d.Set("toggleable_features", response.Result["toggleableFeatures"])
 	//d.Set("apiVersion", response.Result["apiVersion"])

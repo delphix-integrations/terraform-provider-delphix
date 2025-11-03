@@ -3,8 +3,8 @@ HOSTNAME=delphix.com
 NAMESPACE=dct
 NAME=delphix
 BINARY=terraform-provider-${NAME}
-VERSION=3.3.0-beta
-OS_ARCH=darwin_amd64
+VERSION=5.0.0-beta
+OS_ARCH=darwin_arm64
 
 default: install
 

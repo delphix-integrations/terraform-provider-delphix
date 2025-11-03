@@ -71,7 +71,7 @@ func testSourceDestroy(s *terraform.State) error {
 
 		sourceId := rs.Primary.ID
 
-		_, httpResp, _ := client.SourcesApi.GetSourceById(context.Background(), sourceId).Execute()
+		_, httpResp, _ := client.SourcesAPI.GetSourceById(context.Background(), sourceId).Execute()
 		if httpResp == nil {
 			return fmt.Errorf("Source has not been deleted")
 		}
@@ -107,7 +107,7 @@ func testSourceExists(n string, name string) resource.TestCheckFunc {
 		}
 
 		client := testAccProvider.Meta().(*apiClient).client
-		res, _, err := client.SourcesApi.GetSourceById(context.Background(), sourceId).Execute()
+		res, _, err := client.SourcesAPI.GetSourceById(context.Background(), sourceId).Execute()
 		if err != nil {
 			return err
 		}

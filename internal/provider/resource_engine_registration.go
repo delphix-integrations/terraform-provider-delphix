@@ -6,7 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -225,7 +225,7 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 		registerEngine.SetTags(toTagArray(v))
 	}
 
-	apiReq := client.ManagementApi.RegisterEngine(ctx)
+	apiReq := client.ManagementAPI.RegisterEngine(ctx)
 	apiRes, httpRes, err := apiReq.EngineRegistrationParameter(*registerEngine).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -248,12 +248,12 @@ func resourceEngineRegistrationRead(ctx context.Context, d *schema.ResourceData,
 	// aapiRes, httpRes, err := getEngineResp.Execute()
 
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.ManagementApi.GetRegisteredEngine(ctx, engineID).Execute()
+		return client.ManagementAPI.GetRegisteredEngine(ctx, engineID).Execute()
 	})
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.ManagementApi.GetRegisteredEngine(ctx, engineID).Execute()
+			return client.ManagementAPI.GetRegisteredEngine(ctx, engineID).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -291,7 +291,7 @@ func resourceEngineRegistrationDelete(ctx context.Context, d *schema.ResourceDat
 	client := meta.(*apiClient).client
 	engineID := d.Id()
 
-	apiRes, httpRes, err := client.ManagementApi.UnregisterEngine(ctx, engineID).Execute()
+	apiRes, httpRes, err := client.ManagementAPI.UnregisterEngine(ctx, engineID).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
@@ -309,7 +309,7 @@ func resourceEngineRegistrationDelete(ctx context.Context, d *schema.ResourceDat
 	// })
 
 	_, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.ManagementApi.GetRegisteredEngine(ctx, engineID).Execute()
+		return client.ManagementAPI.GetRegisteredEngine(ctx, engineID).Execute()
 	})
 
 	if diags != nil {

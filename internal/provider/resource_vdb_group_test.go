@@ -64,7 +64,7 @@ func testAccCheckDctVdbGroupResourceExists(vdbResourceName string, vdbGroupResou
 
 		client := testAccProvider.Meta().(*apiClient).client
 
-		res, _, err := client.VDBGroupsApi.GetVdbGroup(context.Background(), vdbGroupId).Execute()
+		res, _, err := client.VDBGroupsAPI.GetVdbGroup(context.Background(), vdbGroupId).Execute()
 		if err != nil {
 			return err
 		}
@@ -88,7 +88,7 @@ func testAccCheckVdbGroupDestroy(s *terraform.State) error {
 
 		vdbGroupId := rs.Primary.ID
 
-		_, httpResp, _ := client.VDBGroupsApi.GetVdbGroup(context.Background(), vdbGroupId).Execute()
+		_, httpResp, _ := client.VDBGroupsAPI.GetVdbGroup(context.Background(), vdbGroupId).Execute()
 		if httpResp == nil {
 			return fmt.Errorf("VDB Group has not been deleted")
 		}

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	dctapi "github.com/delphix/dct-sdk-go/v14"
+	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -21,7 +21,7 @@ var SLEEP_TIME = 10
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
 
-	res, httpRes, err := client.JobsApi.GetJobById(ctx, job_id).Execute()
+	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
 		resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
 		if resBodyErr != nil {
@@ -35,7 +35,7 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 	var i = 0
 	for res.GetStatus() == Pending || res.GetStatus() == Started {
 		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
-		res, httpRes, err = client.JobsApi.GetJobById(ctx, job_id).Execute()
+		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
 				return "", "Received nil response for Job ID " + job_id
@@ -183,7 +183,7 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		var api_err error
 		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
 		for attempt := 1; attempt <= maxAttempts; attempt++ {
-			snapshotRes, _, api_err = client.DSourcesApi.GetDsourceSnapshots(ctx, d.Id()).Execute()
+			snapshotRes, _, api_err = client.DSourcesAPI.GetDsourceSnapshots(ctx, d.Id()).Execute()
 			if api_err != nil {
 				tflog.Error(ctx, DLPX+ERROR+"Error fetching dSource snapshots: "+api_err.Error())
 				break // Exit the loop on error to avoid unnecessary retries
