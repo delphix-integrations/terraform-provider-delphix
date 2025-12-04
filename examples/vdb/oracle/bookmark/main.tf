@@ -45,7 +45,7 @@ resource "delphix_vdb" "example" {
   new_dbid                = true
   cluster_node_ids        = ["ORACLE_CLUSTER_NODE-ID"]
   auxiliary_template_id   = "aux-template-1"
-  oracle_instance_name    = "dbdhcp2"
+  instance_name    = "dbdhcp2"
   retention_policy_id     = "test_retention_policy"
   template_id             = "template-1"
   repository_id = ""
@@ -77,78 +77,56 @@ resource "delphix_vdb" "example" {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_start {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   configure_clone {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   tags {
     key   = "key-1"

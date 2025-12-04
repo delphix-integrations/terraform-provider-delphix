@@ -46,7 +46,7 @@ resource "delphix_vdb" "example" {
   file_mapping_rules              = "/datafile/dbdhcp3/oradata/dbdhcp3:/data\n/u03/app/ora11202/product/11.2.0/dbhome_1/dbs/dbv_R2V4.dbf:/data/dbv_R2V4.dbf"
   new_dbid                        = true
   auxiliary_template_id           = "aux-template-1"
-  oracle_instance_name            = "dbdhcp2"
+  instance_name            = "dbdhcp2"
   retention_policy_id             = "test_retention_policy"
   template_id                     = "template-1"
   listener_ids                    = ["id"]
@@ -78,78 +78,56 @@ resource "delphix_vdb" "example" {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_start {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_rollback {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   configure_clone {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_refresh {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   post_stop {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   pre_snapshot {
     name            = "string"
     command         = "string"
     shell           = "bash"
-    element_id      = "string"
-    has_credentials = true
   }
   tags {
     key   = "key-1"

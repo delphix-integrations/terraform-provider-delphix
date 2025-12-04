@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -110,6 +111,7 @@ func resourceSource() *schema.Resource {
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -123,6 +125,9 @@ func resourceSource() *schema.Resource {
 					},
 				},
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
@@ -153,9 +158,9 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
-	d.SetId(*apiRes.SourceId)
+	d.SetId(apiRes.GetSourceId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with Source creation. Error: "+job_err)
 	}
@@ -164,8 +169,8 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 		d.SetId("")
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id)
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId())
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	readDiags := resourceDatabasePostgressqlRead(ctx, d, meta)
@@ -178,7 +183,6 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 }
 
 func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-
 	client := meta.(*apiClient).client
 
 	source_id := d.Id()
@@ -186,6 +190,12 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
 		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
 	})
+
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"PostgreSQL source not found: "+source_id+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
 
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
@@ -208,7 +218,25 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("Error occured in type casting.")
 	}
 
+	repository_value := d.Get("repository_value").(string)
+
+	if repository_value == "" {
+		resEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, result.GetEnvironmentId()).Execute()
+
+		if diags := apiErrorResponseHelper(ctx, resEnv, httpRes, err); diags != nil {
+			return diags
+		}
+		if result.GetRepository() != "" {
+			for _, repo := range resEnv.Repositories {
+				if strings.EqualFold(repo.GetId(), result.GetRepository()) {
+					repository_value = repo.GetName()
+				}
+			}
+		}
+	}
+
 	d.Set("id", result.GetId())
+	d.Set("repository_value", repository_value)
 	d.Set("environment_id", result.GetEnvironmentId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
@@ -273,13 +301,13 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Source Update Job Polling failed but continuing with update. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Source-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] Source-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	return diags
@@ -296,13 +324,13 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+" Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Source-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] Source-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {

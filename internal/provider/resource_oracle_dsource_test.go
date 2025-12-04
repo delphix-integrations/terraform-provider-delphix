@@ -15,37 +15,42 @@ func TestOracleDsource_create_positive(t *testing.T) {
 	sourcevalue := os.Getenv("ORACLE_DSOURCE_SOURCE_VALUE")
 	groupId := os.Getenv("ORACLE_DSOURCE_GROUP_ID")
 	name := os.Getenv("ORACLE_DSOURCE_NAME")
-	environmentUser := os.Getenv("ORACLE_DSOURCE_ENV_USER")
 
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
-			testOracleDsourcePreCheck(t, sourcevalue, groupId, name, environmentUser)
+			testOracleDsourcePreCheck(t, sourcevalue, groupId, name)
 		},
 		Providers:    testAccProviders,
-		CheckDestroy: testDsourceDestroy,
+		CheckDestroy: testOracleDsourceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config:      testOracleDsourceBasic(name, "", groupId, environmentUser),
-				ExpectError: regexp.MustCompile(`.*`),
-			},
-			{
-				Config: testOracleDsourceBasic(name, sourcevalue, groupId, environmentUser),
+				Config: testOracleDsourceBasic(name, sourcevalue, groupId),
 				Check: resource.ComposeTestCheckFunc(
 					testOracleDsourceExists("delphix_oracle_dsource.test_oracle_dsource", sourcevalue),
 					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "source_id", sourcevalue)),
 			},
 			{
-				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId, environmentUser),
-				Check:  resource.ComposeAggregateTestCheckFunc(
-				// irrelevant
-				),
+				// positive update test case
+				Config: testOracleDsourceBasic("update_name", sourcevalue, groupId), // changing the name to update-name
+				Check: resource.ComposeTestCheckFunc(
+					testOracleDsourceExists("delphix_oracle_dsource.test_oracle_dsource", sourcevalue),
+					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "name", "update_name"), // asserting the updated name
+					resource.TestCheckResourceAttr("delphix_oracle_dsource.test_oracle_dsource", "group_id", groupId)),
+			},
+			{
+				// negative update test case
+				Config:      testOracleDsourceUpdateNegative(name, sourcevalue, "non-existent"),
+				ExpectError: regexp.MustCompile("Error running apply: exit status 1"),
+			},
+			{
+				Config:      testOracleDsourceBasic(name, "", groupId),
 				ExpectError: regexp.MustCompile(`.*`),
 			},
 		},
 	})
 }
 
-func testOracleDsourcePreCheck(t *testing.T, sourceId string, groupId string, name string, environmentUser string) {
+func testOracleDsourcePreCheck(t *testing.T, sourceId string, groupId string, name string) {
 	testAccPreCheck(t)
 	if sourceId == "" {
 		t.Fatal("ORACLE_DSOURCE_SOURCE_VALUE must be set for env acceptance tests")
@@ -56,39 +61,101 @@ func testOracleDsourcePreCheck(t *testing.T, sourceId string, groupId string, na
 	if name == "" {
 		t.Fatal("ORACLE_DSOURCE_NAME must be set for env acceptance tests")
 	}
-	if environmentUser == "" {
-		t.Fatal("ORACLE_DSOURCE_ENV_USER must be set for env acceptance tests")
-	}
 }
 
-func testOracleDsourceBasic(name string, sourceValue string, groupId string, environmentUser string) string {
+func testOracleDsourceBasic(name string, sourceValue string, groupId string) string {
 	return fmt.Sprintf(`
 resource "delphix_oracle_dsource" "test_oracle_dsource" {
   name                       = "%s"
   source_value               = "%s"
   group_id                   = "%s"
-  log_sync_enabled           = false
-  make_current_account_owner = true
-  environment_user_id        = "%s"
-  rman_channels              = 2
-  files_per_set              = 5
-  check_logical              = false
-  encrypted_linking_enabled  = false
-  compressed_linking_enabled = true
-  bandwidth_limit            = 0
-  number_of_connections      = 1
-  diagnose_no_logging_faults = true
-  pre_provisioning_enabled   = false
-  link_now                   = true
-  force_full_backup          = false
-  double_sync                = false
-  skip_space_check           = false
-  do_not_resume              = false
-  files_for_full_backup      = []
-  log_sync_mode              = "UNDEFINED"
-  log_sync_interval          = 5
+  tags {
+	key = "dlpx"
+	value = "acc-test"
+    }
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
+
+  ops_pre_log_sync {
+    name            = "string-change-opsprelogsync22"
+    command         = "ls -lrt"
+    shell           = "shell"
+    credentials_env_vars {
+      base_var_name = "mypassopsprelogsynct"
+      password = "password_test"
+    }
+  }
 }
-	`, name, sourceValue, groupId, environmentUser)
+  
+	`, name, sourceValue, groupId)
+}
+
+func testOracleDsourceUpdateNegative(name string, sourceValue string, description string) string {
+	return fmt.Sprintf(`
+resource "delphix_oracle_dsource" "test_oracle_dsource" {
+  name                       = "%s"
+  source_value               = "%s"
+  description                = "%s"
+  tags {
+	key = "dlpx"
+	value = "acc-test"
+	}
+  ops_pre_sync {
+    name            = "string-change-opspresync22"
+    command         = "ls -lr"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypass2t"
+      password = "password_test"
+    }
+    credentials_env_vars {
+      base_var_name = "mypass3t"
+      password = "password_test"
+    }
+  }
+  
+  ops_post_sync {
+    name            = "string-change-opspostsync22"
+    command         = "ls -lrta"
+    shell           = "bash"
+    credentials_env_vars {
+      base_var_name = "mypassopspostsynct"
+      password = "password_test"
+    }
+  }
+
+  ops_pre_log_sync {
+    name            = "string-change-opsprelogsync22"
+    command         = "ls -lrt"
+    shell           = "shell"
+    credentials_env_vars {
+      base_var_name = "mypassopsprelogsynct"
+      password = "password_test"
+    }
+  }
+}
+	`, name, sourceValue, description)
 }
 
 func testOracleDsourceExists(n string, sourceValue string) resource.TestCheckFunc {

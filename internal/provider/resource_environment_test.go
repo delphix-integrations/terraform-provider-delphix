@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
+
+var env_name = "test-acc-name"
 
 func TestAccEnvironment_positive(t *testing.T) {
 	engineId := os.Getenv("ACC_ENV_ENGINE_ID")
@@ -26,9 +29,63 @@ func TestAccEnvironment_positive(t *testing.T) {
 			{
 				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
 				Check: resource.ComposeTestCheckFunc(
-					// TODO: hostname isn't not set yet?
-					testAccCheckDctEnvResourceExists("delphix_environment.new_env", hostname),
-					resource.TestCheckResourceAttr("delphix_environment.new_env", "hostname", hostname)),
+					testAccCheckDctEnvResourceExists("delphix_environment.new_env", engineId),
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "name", env_name)),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_update_positive(t *testing.T) {
+	engineId := os.Getenv("ACC_ENV_ENGINE_ID")
+	username := os.Getenv("ACC_ENV_USERNAME")
+	password := os.Getenv("ACC_ENV_PASSWORD")
+	hostname := os.Getenv("ACC_ENV_HOSTNAME")
+	toolkitPath := os.Getenv("ACC_ENV_TOOLKIT_PATH")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccEnvPreCheck(t, engineId, username, password, hostname, toolkitPath) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckEnvDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctEnvResourceExists("delphix_environment.new_env", engineId),
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "name", env_name)),
+			},
+			{
+				// positive env update case
+				Config: testAccEnvUpdatePositive(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "name", "updated-name")),
+			},
+		},
+	})
+}
+
+func TestAccEnvironment_update_negative(t *testing.T) {
+	engineId := os.Getenv("ACC_ENV_ENGINE_ID")
+	username := os.Getenv("ACC_ENV_USERNAME")
+	password := os.Getenv("ACC_ENV_PASSWORD")
+	hostname := os.Getenv("ACC_ENV_HOSTNAME")
+	toolkitPath := os.Getenv("ACC_ENV_TOOLKIT_PATH")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccEnvPreCheck(t, engineId, username, password, hostname, toolkitPath) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckEnvDestroy,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccCheckDctEnvConfigBasic(engineId, username, password, hostname, toolkitPath),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckDctEnvResourceExists("delphix_environment.new_env", engineId),
+					resource.TestCheckResourceAttr("delphix_environment.new_env", "name", env_name)),
+			},
+			{
+				// negative update test case
+				Config:      testAccEnvUpdateNegative(engineId, username, password, "updated-hostname", toolkitPath),
+				ExpectError: regexp.MustCompile("Error running apply: exit status 1"),
 			},
 		},
 	})
@@ -54,7 +111,7 @@ func testAccEnvPreCheck(t *testing.T, engineId string, username string, password
 }
 
 func escape(s string) string {
-	// Escape backslash or terraform interepts it as a special character
+	// Escape backslash or terraform interprets it as a special character
 	return strings.ReplaceAll(s, "\\", "\\\\")
 }
 
@@ -62,17 +119,23 @@ func testAccCheckDctEnvConfigBasic(engineId string, username string, password st
 	return fmt.Sprintf(`
 	resource "delphix_environment" "new_env" {
 		engine_id = %s
-		os_name = "UNIX"
+		os_type = "UNIX"
 		username = "%s"
 		password = "%s"
-		hostname = "%s"
-		toolkit_path = "%s"
-		name = "test-acc-name"
+		name = "%s"
+		hosts {
+			hostname = "%s"
+			toolkit_path = "%s"
+		}
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
 	}
-	`, engineId, escape(username), escape(password), escape(hostname), escape(toolkitPath))
+	`, engineId, escape(username), escape(password), env_name, escape(hostname), escape(toolkitPath))
 }
 
-func testAccCheckDctEnvResourceExists(n string, hostname string) resource.TestCheckFunc {
+func testAccCheckDctEnvResourceExists(n string, engineId string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -91,9 +154,9 @@ func testAccCheckDctEnvResourceExists(n string, hostname string) resource.TestCh
 			return err
 		}
 
-		actualHostname := res.GetHosts()[0].GetHostname()
-		if actualHostname != hostname {
-			return fmt.Errorf("actualHostname %s does not match hostname %s", actualHostname, hostname)
+		dctEngineId := res.GetEngineId()
+		if dctEngineId != engineId {
+			return fmt.Errorf("dctEngineId %s does not match provided engineID %s", dctEngineId, engineId)
 		}
 
 		return nil
@@ -121,4 +184,44 @@ func testAccCheckEnvDestroy(s *terraform.State) error {
 	}
 
 	return nil
+}
+
+func testAccEnvUpdatePositive(engineId string, username string, password string, hostname string, toolkitPath string) string {
+	return fmt.Sprintf(`
+	resource "delphix_environment" "new_env" {
+		engine_id = %s
+		os_type = "UNIX"
+		username = "%s"
+		password = "%s"
+		name = "updated-name"
+		hosts {
+			hostname = "%s"
+			toolkit_path = "%s"
+		}
+		tags {
+			key = "dlpx-changed"
+			value = "acc-test-changed"
+    	}
+	}
+	`, engineId, escape(username), escape(password), escape(hostname), escape(toolkitPath))
+}
+
+func testAccEnvUpdateNegative(engineId string, username string, password string, hostname string, toolkitPath string) string {
+	return fmt.Sprintf(`
+	resource "delphix_environment" "new_env" {
+		engine_id = %s
+		os_type = "UNIX"
+		username = "%s"
+		password = "%s"
+		name = "%s"
+		hosts {
+			hostname = "%s"
+			toolkit_path = "%s"
+		}
+		tags {
+			key = "dlpx"
+			value = "acc-test"
+    	}
+	}
+	`, engineId, escape(username), escape(password), env_name, escape(hostname), escape(toolkitPath))
 }

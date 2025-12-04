@@ -1,192 +1,197 @@
 # Resource: <resource name> delphix_appdata_dsource
 
-In Delphix terminology, a dSource is a database that the Delphix Continuous Data Engine uses to create and update virtual copies of your database. 
-A dSource is created and managed by the Delphix Continuous Data Engine.
+In Delphix terminology, a dSource is an internal, read-only database copy that the Delphix Continuous Data Engine uses to create and update virtual copies of your database.   
+A dSource is created and managed by the Delphix Continuous Data Engine and syncs with your chosen source database. The AppData dSource resource in Terraform allows you to create, update, delete and import AppData dSources. Updating existing dSource resource parameters via the apply command is supported for the parameters listed below.    
+For Oracle, refer to the Oracle dSource resource. The Delphix Provider does not currently support SQL Server or SAP ASE. 
 
-The Appdata dSource resource allows Terraform to create and delete AppData dSources. This specifically enables the apply and destroy Terraform commands. Modification of existing dSource resources via the apply command is not supported. All supported parameters are listed below.
-
-## System Requirements
-
-* Data Control Tower v10.0.1+ is required for dSource management. Lower versions are not supported.
-* This Appdata dSource Resource only supports Appdata based datasource's , such as POSTGRES,SAP HANA, IBM Db2, etc.The below examples are shown from the PostgreSQL context. See the Oracle dSource Resource for the support of Oracle. The Delphix Provider does not support Oracle, SQL Server, or SAP ASE.
-
-## Upgrade Guide
-* Any new dSource created post Version>=3.2.1 can set `wait_time` to wait for snapshot creation , dSources created prior to this version will not support this capability 
-
-## Note
-* `status` and `enabled` are subject to change in the tfstate file based on the dSource state.
+## Note 
+* `status` and `enabled` are computed values and are subject to change in the tfstate file based on the dSource state. 
+* Parameters `credentials_env_vars` within `ops_pre_sync` and `ops_post_sync` object blocks are not updatable. Therefore, any changes made on a Terraform state file do not reflect the actual value of the actual infrastructure 
+* Sensitive values in `credentials_env_vars` are stored as plain text in the state file. We recommend following Terraform’s sensitive input variables documentation. 
+* `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection.
+* Only valid for DCT versions 2025.1 and earlier: 
+  * `Make_current_account_owner`,`wait_time` and `skip_wait_for_snapshot_creation` are applicable only during the creation of dsource. Note, these parameters are single-use and not applicable to updates. 
+  * Any new dSource created post Version>=3.2.1 can set wait_time to wait for snapshot creation, dSources created prior to this version will not support this capability. 
 
 ## Example Usage
 
-The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show working examples.
+The linking of a dSource can be configured through various ingestion approaches. Each configuration is customized to the connector and its supported options. The three PostgreSQL parameter sets below show different ingestion configuration examples. 
 
+# Link dSource using external backup  
+ 
 ```hcl
-# Link dSource using external backup. 
-
-resource "delphix_appdata_dsource" "dsource_name" {
-  source_value                  = SOURCE_VALUE
-  group_id                   = GROUP_ID
-  log_sync_enabled           = false
-  make_current_account_owner = true
-  link_type                  = LINK_TYPE
-  name                       = DSOURCE_NAME
-  staging_mount_base         = MOUNT_PATH
-  environment_user           = ENV_USER
-  staging_environment        = STAGING_ENV
-  parameters = jsonencode({
-    externalBackup: [ 
-            {
-                keepStagingInSync: false,
-                backupPath: BKP_PATH,
-                walLogPath: LOG_PATH
-            }
-    ],
-    postgresPort : PORT,
-    mountLocation : MOUNT_PATH
-  })
-  sync_parameters = jsonencode({
-    resync = true
-  })
-}
-
-# Link dSource using Delphix Initiated Backup.
-
-resource "delphix_appdata_dsource" "dsource_name" {
-  source_value                  = SOURCE_VALUE
-  group_id                   = GROUP_ID
-  log_sync_enabled           = false
-  make_current_account_owner = true
-  link_type                  = LINK_TYPE
-  name                       = DSOURCE_NAME
-  staging_mount_base         = MOUNT_PATH
-  environment_user           = ENV_USER
-  staging_environment        = STAGING_ENV
-  parameters = jsonencode({
-    delphixInitiatedBackupFlag : true,
-    delphixInitiatedBackup : [
-      {
-        userName : USERNAME,
-        postgresSourcePort : SOURCE_PORT,
-        userPass : PASSWORD,
-        sourceHostAddress : SOURCE_ADDRESS
-      }
-    ],
-    postgresPort : PORT,
-    mountLocation : MOUNT_PATH
-  })
-  sync_parameters = jsonencode({
-    resync = true
-  })
-}
-
-# Link dSource using Single Database Ingestion.
-
-resource "delphix_appdata_dsource" "dsource_name" {
-  source_value                  = SOURCE_VALUE
-  group_id                   = GROUP_ID
-  log_sync_enabled           = false
-  make_current_account_owner = true
-  link_type                  = LINK_TYPE
-  name                       = DSOURCE_NAME
-  staging_mount_base         = MOUNT_PATH
-  environment_user           = ENV_USER
-  staging_environment        = STAGING_ENV
-  parameters = jsonencode({
-    singleDatabaseIngestionFlag : true,
-    singleDatabaseIngestion : [
-        {
-            databaseUserName: DBUSER_NAME,
-            sourcePort: SOURCE_PORT,
-            dumpJobs: 2,
-            restoreJobs: 2,
-            databaseName: DB_NAME,
-            databaseUserPassword: DB_PASS,
-            dumpDir: DIR,
-            sourceHost: SOURCE_HOST
-            postgresqlFile: FILE
-        }
-    ],
-    postgresPort : PORT,
-    mountLocation : MOUNT_PATH
-  })
-  sync_parameters = jsonencode({
-    resync = true
-  })
-}
+resource "delphix_appdata_dsource" "pg_using_external_backup" { 
+  name                       = DSOURCE_NAME  
+  source_value               = SOURCE_VALUE 
+  group_id                   = DATASET_GROUP_ID 
+  log_sync_enabled           = false 
+  link_type                  = "AppDataStaged"
+  staging_mount_base         = MOUNT_PATH 
+  environment_user           = ENV_USER 
+  staging_environment        = STAGING_ENV 
+  parameters = jsonencode({ 
+    externalBackup: [  
+            { 
+                keepStagingInSync: false, 
+                backupPath: BKP_PATH, 
+                walLogPath: LOG_PATH 
+            } 
+    ], 
+    postgresPort : PORT, 
+    mountLocation : MOUNT_PATH 
+  }) 
+  sync_parameters = jsonencode({ 
+    resync = true 
+  }) 
+  make_current_account_owner = true 
+} 
 ```
+
+# Link dSource using Delphix Initiated Backup 
+ 
+```hcl
+resource "delphix_appdata_dsource" "pg_using_delphix_initiated_backup" { 
+  name                       = DSOURCE_NAME 
+  source_value               = SOURCE_VALUE 
+  group_id                   = DATASET_GROUP_ID 
+  log_sync_enabled           = false 
+  link_type                  = "AppDataStaged" 
+  staging_mount_base         = MOUNT_PATH 
+  environment_user           = ENV_USER 
+  staging_environment        = STAGING_ENV 
+  parameters = jsonencode({ 
+    delphixInitiatedBackupFlag : true, 
+    delphixInitiatedBackup : [ 
+      { 
+        userName : USERNAME, 
+        postgresSourcePort : SOURCE_PORT, 
+        userPass : PASSWORD, 
+        sourceHostAddress : SOURCE_ADDRESS 
+      } 
+    ], 
+    postgresPort : PORT, 
+    mountLocation : MOUNT_PATH 
+  }) 
+  sync_parameters = jsonencode({ 
+    resync = true 
+  }) 
+  make_current_account_owner = true 
+} 
+```
+
+# Link dSource using Single Database Ingestion
+ 
+```hcl
+resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" { 
+  name                       = DSOURCE_NAME 
+  source_value               = SOURCE_VALUE 
+  group_id                   = DATASET_GROUP_ID 
+  log_sync_enabled           = false 
+  link_type                  = "AppDataStaged" 
+  staging_mount_base         = MOUNT_PATH 
+  environment_user           = ENV_USER 
+  staging_environment        = STAGING_ENV 
+  parameters = jsonencode({ 
+    singleDatabaseIngestionFlag : true, 
+    singleDatabaseIngestion : [ 
+        { 
+            databaseUserName: DBUSER_NAME, 
+            sourcePort: SOURCE_PORT, 
+            dumpJobs: 2, 
+            restoreJobs: 2, 
+            databaseName: DB_NAME, 
+            databaseUserPassword: DB_PASS, 
+            dumpDir: DIR, 
+            sourceHost: SOURCE_HOST 
+            postgresqlFile: FILE 
+        } 
+    ], 
+    postgresPort : PORT, 
+    mountLocation : MOUNT_PATH 
+  }) 
+  sync_parameters = jsonencode({ 
+    resync = true 
+  })
+  make_current_account_owner = true 
+} 
+```  
 
 ## Argument Reference
 
-* `source_value` - (Required) Id or Name of the source to link.
+### General Linking Requirements 
+* `name` - The unique name of the dSource. If unset, a name is randomly generated. [Updatable] 
+* `source_value` - (Required) ID or Name of the Source to link. 
+* `description` - The notes/description for the dSource. [Updatable] 
+* `group_id` - (Required) ID of the dataset group where this dSource should belong to. 
+* `rollback_on_failure` -  When a dSource linking operation fails during SnapSync, it results in a tainted dsource on the engine. By setting this flag to true, the tainted dSource will be removed from both the Terraform state and the engine. By default, the flag is to false, meaning the tainted dSource is maintained on the Terraform state. 
 
-* `group_id` - (Required)  Id of the dataset group where this dSource should belong to.
+### Full Backup and Transactional Log requirements 
+* `log_sync_enabled` - (Required) True if LogSync should run for this database.  
+* `link_type` - (Required) The type of link to create. Default is AppDataDirect.  
+  * `AppDataDirect` - Represents the AppData specific parameters of a link request for a source directly replicated into the Delphix Continuous Data Engine.  
+  * `AppDataStaged` - Represents the AppData specific parameters of a link request for a source with a staging source.  
 
-* `log_sync_enabled` - (Required) True if LogSync should run for this database.
+#### AppDataDirect properties 
+* `excludes` - List of subdirectories in the source to exclude when syncing data.These paths are relative to the root of the source directory.  
+* `follow_symlinks` - List of symlinks in the source to follow when syncing data. These paths are relative to the root of the source directory. All other symlinks are preserved. 
 
-* `make_current_account_owner` - (Required) Whether the account creating this reporting schedule must be configured as owner of the reporting schedule.
+#### AppDataStaged properties 
+* `staging_mount_base` - The base mount point for the NFS mount on the staging environment.  
+* `environment_user` - (Required) The OS user to use for linking. [Updatable] 
+* `staging_environment` - (Required) The environment used as an intermediate stage to pull data into Delphix. [Updatable] 
+* `staging_environment_user` - Specifies the environment user that accesses the staging environment. [Updatable] 
+* `parameters` - The JSON payload is based on the type of dSource being created. Different data sources require different parameters. Available parameters can be found within the data connector’s schema.json. [Updatable] 
+* `sync_parameters` - The JSON payload conforming to the snapshot parameters definition in a Continuous Data plugin. 
+* `sync_policy_id` - The ID of the SnapSync policy for the dSource. [Updatable] 
+* `retention_policy_id` - The ID of the Retention policy for the dSource. [Updatable] 
 
-* `description` - (Optional) The notes/description for the dSource.
+### Hooks 
+Any combination of the following hooks can be provided on the AppData dSource resource. The available arguments are identical for each hook and are consolidated in a single list to save space.  
 
-* `link_type` - (Required) The type of link to create. Default is AppDataDirect.
-    * `AppDataDirect` - Represents the AppData specific parameters of a link request for a source directly replicated into the Delphix Engine.
-    * `AppDataStaged` - Represents the AppData specific parameters of a link request for a source with a staging source.
+#### Names 
+* `ops_pre_sync`: Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing. See argument list below.  
+* `ops_post_sync`: Operations to perform after syncing a created dSource. See argument list below. 
 
-* `name` - (Optional) The unique name of the dSource. If unset, a name is randomly generated.
+#### Arguments 
+* `name` - Name of the hook [Updatable]  
+* `command` - Command to be executed [Updatable]  
+* `shell` - Type of shell. Valid values are [bash, shell, expect, ps, psd] [Updatable]  
+* `credentials_env_vars` - List of environment variables that contain credentials for this operation  
+  * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or present in the type of credential or vault selected will not be set.  
+  * `password` - Password to assign to the environment variables.  
+  * `vault` - The name or reference of the vault to assign to the environment variables.  
+  * `hashicorp_vault_engine` - Vault engine name where the credential is stored.  
+  * `hashicorp_vault_secret_path` - Path in the vault engine where the credential is stored.  
+  * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.  
+  * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.  
+  * `azure_vault_name` - Azure key vault name.  
+  * `azure_vault_username_key` - Azure vault key in the key-value store.  
+  * `azure_vault_secret_key` - Azure vault key in the key-value store.  
+  * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
 
-* `staging_mount_base` - (Optional) The base mount point for the NFS mount on the staging environment [AppDataStaged only].
+### Initial Ingestion and Snapshot [Deprecated] 
+The following arguments enable the user to control how the first ingestion and snapshot (SnapSync) should be taken.   
+* `skip_wait_for_snapshot_creation` - In DCT v2025.1, waiting for Ingestion and Snapshotting (aka SnapSync) to complete is default functionality. Therefore, these the arguments skip_wait_for_snapshot_creation and wait_time are ignored. In future versions of the provider, we will look at re-implementing the skip SnapSync behavior  
+* `wait_time` - In DCT v2025.1, waiting for Ingestion and Snapshotting (aka SnapSync) to complete is default functionality. Therefore, these the arguments skip_wait_for_snapshot_creation and wait_time are ignored. In future versions of the provider, we will look at re-implementing the skip SnapSync behavior. 
 
-* `environment_user` - (Required) The OS user to use for linking.
+### Advanced 
+The following arguments apply to all dSources but they are not often necessary for simple sources. 
+* `make_current_account_owner` - (Required) True/False. Indicates whether the account creating this reporting schedule must be configured as owner of the reporting schedule. 
+* `tags` - The tags to be created for dSource. This is a map of two parameters: 
+  * `key` - (Required) Key of the tag 
+  * `value` - (Required) Value of the tag 
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
 
-* `staging_environment` - (Required) The environment used as an intermediate stage to pull data into Delphix [AppDataStaged only].
+## Import
+Use the import block to add Appdata dSources created directly in DCT into a Terraform state file.  
 
-* `staging_environment_user` - (Optional) The environment user used to access the staging environment [AppDataStaged only].
+For example:  
+```hcl
+import {    
+    to = delphix_appdata_dsource.dsrc_import_demo 
+    id = "dsource_id"    
+}   
+```
 
-* `tags` - (Optional) The tags to be created for dSource. This is a map of 2 parameters:
-    * `key` - (Required) Key of the tag
-    * `value` - (Required) Value of the tag
-
-* `ops_pre_sync` - (Optional) Operations to perform before syncing the created dSource. These operations can quiesce any data prior to syncing
-    * `name` - Name of the hook
-    * `command` - Command to be executed
-    * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
-    * `credentials_env_vars` - List of environment variables that will contain credentials for this operation
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set.
-        * `password` - Password to assign to the environment variables.
-        * `vault` - The name or reference of the vault to assign to the environment variables.
-        * `hashicorp_vault_engine` - Vault engine name where the credential is stored.
-        * `hashicorp_vault_secret_path` -  Path in the vault engine where the credential is stored.
-        * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.
-        * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.
-        * `azure_vault_name` - Azure key vault name.
-        * `azure_vault_username_key` - Azure vault key in the key-value store.
-        * `azure_vault_secret_key` - Azure vault key in the key-value store.
-        * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
-    
-* `ops_post_sync` - (Optional) Operations to perform after syncing a created dSource.
-    * `name` - Name of the hook
-    * `command` - Command to be executed
-    * `shell` - Type of shell. Valid values are `[bash, shell, expect, ps, psd]` 
-    * `credentials_env_vars` - List of environment variables that will contain credentials for this operation
-        * `base_var_name` - Base name of the environment variables. Variables are named by appending '_USER', '_PASSWORD', '_PUBKEY' and '_PRIVKEY' to this base name, respectively. Variables whose values are not entered or are not present in the type of credential or vault selected, will not be set.
-        * `password` - Password to assign to the environment variables.
-        * `vault` - The name or reference of the vault to assign to the environment variables.
-        * `hashicorp_vault_engine` - Vault engine name where the credential is stored.
-        * `hashicorp_vault_secret_path` -  Path in the vault engine where the credential is stored.
-        * `hashicorp_vault_username_key` - Hashicorp vault key for the username in the key-value store.
-        * `hashicorp_vault_secret_key` - Hashicorp vault key for the password in the key-value store.
-        * `azure_vault_name` - Azure key vault name.
-        * `azure_vault_username_key` - Azure vault key in the key-value store.
-        * `azure_vault_secret_key` - Azure vault key in the key-value store.
-        * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault.
-
-* `excludes` - (Optional) List of subdirectories in the source to exclude when syncing data.These paths are relative to the root of the source directory. [AppDataDirect only]
-
-* `follow_symlinks` - (Optional) List of symlinks in the source to follow when syncing data.These paths are relative to the root of the source directory. All other symlinks are preserved. [AppDataDirect only]
-
-* `parameters` - (Optional) The JSON payload is based on the type of dSource being created. Different data sources require different parameters.
-
-* `sync_parameters` - (Optional) The JSON payload conforming to the snapshot parameters definition in a LUA toolkit or platform plugin.
-
-* `skip_wait_for_snapshot_creation` - (Optional) By default this resource will wait for a snapshot to be created post-dSource creation. This ensure a snapshot is available during the VDB provisioning. This behavior can be skipped by setting this parameter to `true`.
-
-* `wait_time` - (Optional) By default this resource waits 0 minutes for a snapshot to be created. Increase the integer value as needed for larger dSource snapshots. This parameter can be ignored if 'skip_wait_for_snapshot_creation' is set to `true`.
+## Limitations 
+Not all properties can be updated using the update command. Attempts to update an unsupported property will return a runtime error message. 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
+	"strings"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -22,6 +24,7 @@ func resourceVdb() *schema.Resource {
 		ReadContext:   resourceVdbRead,
 		UpdateContext: resourceVdbUpdate,
 		DeleteContext: resourceVdbDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
@@ -92,10 +95,12 @@ func resourceVdb() *schema.Resource {
 			"database_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"cdb_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"cluster_node_ids": {
 				Type:     schema.TypeList,
@@ -151,11 +156,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -179,11 +184,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -207,11 +212,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -235,11 +240,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -263,11 +268,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -291,11 +296,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -319,11 +324,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -347,11 +352,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -375,11 +380,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -403,11 +408,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -431,11 +436,11 @@ func resourceVdb() *schema.Resource {
 						},
 						"element_id": {
 							Type:     schema.TypeString,
-							Optional: true,
+							Computed: true,
 						},
 						"has_credentials": {
 							Type:     schema.TypeBool,
-							Optional: true,
+							Computed: true,
 						},
 					},
 				},
@@ -443,10 +448,15 @@ func resourceVdb() *schema.Resource {
 			"vdb_restart": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"template_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+			},
+			"jdbc_connection_string": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 			"auxiliary_template_id": {
 				Type:     schema.TypeString,
@@ -456,9 +466,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"oracle_instance_name": {
+			"instance_name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"unique_name": {
 				Type:     schema.TypeString,
@@ -475,6 +486,7 @@ func resourceVdb() *schema.Resource {
 			"mount_point": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"open_reset_logs": {
 				Type:     schema.TypeBool,
@@ -520,6 +532,10 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
+			"masked": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
 			"listener_ids": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -557,20 +573,40 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"parent_dsource_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"root_parent_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"value": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
 				},
 			},
 			"appdata_source_params": {
@@ -580,7 +616,6 @@ func resourceVdb() *schema.Resource {
 			},
 			"appdata_config_params": {
 				Type:     schema.TypeString,
-				Optional: true,
 				Computed: true,
 			},
 			"make_current_account_owner": {
@@ -677,6 +712,9 @@ func resourceVdb() *schema.Resource {
 				},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
 	}
 }
 
@@ -690,21 +728,18 @@ func toHookArray(array interface{}) []dctapi.Hook {
 		if name != "" {
 			hook_item.SetName(item_map["name"].(string))
 		}
+		element_id := item_map["element_id"].(string)
+		if element_id != "" {
+			hook_item.SetElementId(element_id)
+		}
+		has_credentials := item_map["has_credentials"].(bool)
+		if has_credentials {
+			hook_item.SetHasCredentials(has_credentials)
+		}
 
 		// defaults to "bash" as per resource schema spec
 		hook_item.SetShell(item_map["shell"].(string))
 		items = append(items, *hook_item)
-	}
-	return items
-}
-
-func toTagArray(array interface{}) []dctapi.Tag {
-	items := []dctapi.Tag{}
-	for _, item := range array.([]interface{}) {
-		item_map := item.(map[string]interface{})
-		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
-
-		items = append(items, *tag_item)
 	}
 	return items
 }
@@ -814,7 +849,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBBySnapshotParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBBySnapshotParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -849,6 +884,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
@@ -972,18 +1010,19 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1052,7 +1091,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBByTimestampParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBByTimestampParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1087,6 +1126,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBByTimestampParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1217,18 +1259,19 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == "FAILED" {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
+			return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == "FAILED" {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+*apiRes.Job.Id+" Failed!")
-		return diag.Errorf("[NOT OK] Job %s Failed with error %s", *apiRes.Job.Id, job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1293,7 +1336,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("file_mapping_rules"); has_v {
 		provisionVDBFromBookmarkParameters.SetFileMappingRules(v.(string))
 	}
-	if v, has_v := d.GetOk("oracle_instance_name"); has_v {
+	if v, has_v := d.GetOk("instance_name"); has_v {
 		provisionVDBFromBookmarkParameters.SetOracleInstanceName(v.(string))
 	}
 	if v, has_v := d.GetOk("unique_name"); has_v {
@@ -1328,6 +1371,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
 		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
+	}
+	if v, has_v := d.GetOkExists("masked"); has_v {
+		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1447,18 +1493,19 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		return diags
 	}
 
-	d.SetId(*apiRes.VdbId)
+	d.SetId(apiRes.GetVdbId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
-	if job_err != "" {
-		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	if apiRes != nil {
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
+			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+		}
 	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
-	}
-
 	readDiags := resourceVdbRead(ctx, d, meta)
 
 	if readDiags.HasError() {
@@ -1511,6 +1558,12 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
 	})
 
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"VDB not found: "+vdbId+", removing from state. ")
+		d.SetId("")
+		return nil
+	}
+
 	if diags != nil {
 		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 			return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
@@ -1540,8 +1593,40 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("ip_address", result.GetIpAddress())
 	d.Set("fqdn", result.GetFqdn())
 	d.Set("parent_id", result.GetParentId())
+	d.Set("parent_dsource_id", result.GetParentDsourceId())
+	d.Set("root_parent_id", result.GetRootParentId())
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("instance_name", result.GetInstanceName())
+	d.Set("pre_refresh", flattenVDbHooks(result.GetHooks().PreRefresh))
+	d.Set("post_refresh", flattenVDbHooks(result.GetHooks().PostRefresh))
+	d.Set("configure_clone", flattenVDbHooks(result.GetHooks().ConfigureClone))
+	d.Set("pre_snapshot", flattenVDbHooks(result.GetHooks().PreSnapshot))
+	d.Set("post_snapshot", flattenVDbHooks(result.GetHooks().PostSnapshot))
+	d.Set("pre_start", flattenVDbHooks(result.GetHooks().PreStart))
+	d.Set("post_start", flattenVDbHooks(result.GetHooks().PostStart))
+	d.Set("pre_stop", flattenVDbHooks(result.GetHooks().PreStop))
+	d.Set("post_stop", flattenVDbHooks(result.GetHooks().PostStop))
+	d.Set("pre_rollback", flattenVDbHooks(result.GetHooks().PreRollback))
+	d.Set("post_rollback", flattenVDbHooks(result.GetHooks().PostRollback))
+
+	if !result.GetIsAppdata() {
+		d.Set("database_name", result.GetDatabaseName())
+	}
+
+	HandleRawConfigReadContext(ctx, d, result)
+	d.Set("vdb_restart", result.GetVdbRestart())
+
+	_, is_provision := d.GetOk("provision_type")
+	if !is_provision {
+		// its an import, set to default value
+		d.Set("provision_type", "snapshot")
+	}
+
+	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())
+	d.Set("cdb_id", result.GetCdbId())
+	d.Set("template_id", result.GetTemplateId())
+	d.Set("mount_point", result.GetMountPoint())
 
 	appdata_source_params, _ := json.Marshal(result.GetAppdataSourceParams())
 	d.Set("appdata_source_params", string(appdata_source_params))
@@ -1558,71 +1643,210 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
-	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
+
+	vdbId := d.Get("id").(string)
 
 	// get the changed keys
 	changedKeys := make([]string, 0, len(d.State().Attributes))
 	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "pre_refresh") {
+			k = "pre_refresh"
+		}
+		if strings.Contains(k, "post_refresh") {
+			k = "post_refresh"
+		}
+		if strings.Contains(k, "configure_clone") {
+			k = "configure_clone"
+		}
+		if strings.Contains(k, "pre_snapshot") {
+			k = "pre_snapshot"
+		}
+		if strings.Contains(k, "post_snapshot") {
+			k = "post_snapshot"
+		}
+		if strings.Contains(k, "pre_rollback") {
+			k = "pre_rollback"
+		}
+		if strings.Contains(k, "post_rollback") {
+			k = "post_rollback"
+		}
+		if strings.Contains(k, "pre_start") {
+			k = "pre_start"
+		}
+		if strings.Contains(k, "post_start") {
+			k = "post_start"
+		}
+		if strings.Contains(k, "pre_stop") {
+			k = "pre_stop"
+		}
+		if strings.Contains(k, "post_stop") {
+			k = "post_stop"
+		}
+		if strings.Contains(k, "additional_mount_points") {
+			k = "additional_mount_points"
+		}
+		if strings.Contains(k, "listener_ids") {
+			k = "listener_ids"
+		}
 		if d.HasChange(k) {
+			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
 	}
 
-	if d.HasChanges(
-		"auto_select_repository",
-		"source_data_id",
-		"id",
-		"database_type",
-		"database_version",
-		"status",
-		"ip_address",
-		"fqdn",
-		"parent_id",
-		"group_name",
-		"creation_date",
-		"target_group_id",
-		"database_name",
-		"truncate_log_on_checkpoint",
-		"repository_id",
-		"pre_refresh",
-		"post_refresh",
-		"pre_rollback",
-		"post_rollback",
-		"configure_clone",
-		"pre_snapshot",
-		"post_snapshot",
-		"pre_start",
-		"post_start",
-		"pre_stop",
-		"post_stop",
-		"file_mapping_rules",
-		"oracle_instance_name",
-		"unique_name",
-		"mount_point",
-		"open_reset_logs",
-		"snapshot_policy_id",
-		"retention_policy_id",
-		"recovery_model",
-		"online_log_groups",
-		"online_log_size",
-		"os_username",
-		"os_password",
-		"archive_log",
-		"custom_env_vars",
-		"custom_env_files",
-		"timestamp",
-		"timestamp_in_database_timezone",
-		"snapshot_id") {
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
 
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range changedKeys {
+		if !updatableVdbKeys[key] {
+			updateFailure = true
+			tflog.Debug(ctx, "non updatable field: "+key)
+			nonUpdatableField = append(nonUpdatableField, key)
 		}
+	}
 
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveVdbUpdate[key] {
+			tflog.Debug(ctx, "destructive updates for: "+key)
+			destructiveUpdate = true
+		}
+	}
+	if destructiveUpdate {
+		if diags := disableVDB(ctx, client, vdbId); diags != nil {
+			tflog.Error(ctx, "failure in disabling vdbs")
+			revertChanges(d, changedKeys)
+			return diags
+		}
+	}
+
+	nvdh := dctapi.NewVirtualDatasetHooks()
+
+	if d.HasChange("pre_refresh") {
+		if v, has_v := d.GetOk("pre_refresh"); has_v {
+			nvdh.SetPreRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPreRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_refresh") {
+		if v, has_v := d.GetOk("post_refresh"); has_v {
+			nvdh.SetPostRefresh(toHookArray(v))
+		} else {
+			nvdh.SetPostRefresh([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_rollback") {
+		if v, has_v := d.GetOk("pre_rollback"); has_v {
+			nvdh.SetPreRollback(toHookArray(v))
+		} else {
+			nvdh.SetPreRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_rollback") {
+		if v, has_v := d.GetOk("post_rollback"); has_v {
+			nvdh.SetPostRollback(toHookArray(v))
+		} else {
+			nvdh.SetPostRollback([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("configure_clone") {
+		if v, has_v := d.GetOk("configure_clone"); has_v {
+			nvdh.SetConfigureClone(toHookArray(v))
+		} else {
+			nvdh.SetConfigureClone([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_snapshot") {
+		if v, has_v := d.GetOk("pre_snapshot"); has_v {
+			nvdh.SetPreSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPreSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_snapshot") {
+		if v, has_v := d.GetOk("post_snapshot"); has_v {
+			nvdh.SetPostSnapshot(toHookArray(v))
+		} else {
+			nvdh.SetPostSnapshot([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_start") {
+		if v, has_v := d.GetOk("pre_start"); has_v {
+			nvdh.SetPreStart(toHookArray(v))
+		} else {
+			nvdh.SetPreStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_start") {
+		if v, has_v := d.GetOk("post_start"); has_v {
+			nvdh.SetPostStart(toHookArray(v))
+		} else {
+			nvdh.SetPostStart([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("pre_stop") {
+		if v, has_v := d.GetOk("pre_stop"); has_v {
+			nvdh.SetPreStop(toHookArray(v))
+		} else {
+			nvdh.SetPreStop([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("post_stop") {
+		if v, has_v := d.GetOk("post_stop"); has_v {
+			nvdh.SetPostStop(toHookArray(v))
+		} else {
+			nvdh.SetPostStop([]dctapi.Hook{})
+		}
+	}
+
+	if nvdh != nil && !isStructEmpty(nvdh) {
+		updateVDBParam.SetHooks(*nvdh)
+	}
+
+	if d.HasChange("mount_point") {
+		updateVDBParam.SetMountPoint(d.Get("mount_point").(string))
+	}
+
+	if d.HasChange("custom_env_files") {
+		if v, has_v := d.GetOk("custom_env_files"); has_v {
+			updateVDBParam.SetCustomEnvFiles(toStringArray(v))
+		} else {
+			updateVDBParam.SetCustomEnvFiles([]string{})
+		}
+	}
+	if d.HasChange("custom_env_vars") {
+		if v, has_v := d.GetOk("custom_env_vars"); has_v {
+			custom_env_vars := make(map[string]string)
+
+			for k, v := range v.(map[string]interface{}) {
+				custom_env_vars[k] = v.(string)
+			}
+			updateVDBParam.SetCustomEnvVars(custom_env_vars)
+		} else {
+			updateVDBParam.SetCustomEnvVars(map[string]string{})
+		}
 	}
 
 	if d.HasChange("template_id") {
@@ -1691,30 +1915,91 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		json.Unmarshal([]byte(d.Get("config_params").(string)), &config_params)
 		updateVDBParam.SetConfigParams(config_params)
 	}
+	if !isStructEmpty(updateVDBParam) {
+		res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
-	res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
-
-	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
 		}
-		return diags
+
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
-	if job_err != "" {
-		tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
-	}
-	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] VDB-Update %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceVdbRead(ctx, d, meta)
+			}
+		}
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTags)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
 	}
 
-	return diags
+	if destructiveUpdate {
+		if diags := enableVDB(ctx, client, vdbId); diags != nil {
+			return diags //if failure should we enable
+		}
+	}
+
+	return resourceVdbRead(ctx, d, meta)
 }
-
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 
@@ -1729,13 +2014,13 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*res.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error : "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, *res.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {

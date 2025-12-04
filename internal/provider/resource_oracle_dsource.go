@@ -2,6 +2,9 @@ package provider
 
 import (
 	"context"
+	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -16,22 +19,40 @@ func resourceOracleDsource() *schema.Resource {
 		Description: "Resource for Oracle dSource creation.",
 
 		CreateContext: resourceOracleDsourceCreate,
-		ReadContext:   resourceDsourceRead,
-		UpdateContext: resourceDsourceUpdate,
-		DeleteContext: resourceDsourceDelete,
+		ReadContext:   resourceOracleDsourceRead,
+		UpdateContext: resourceOracleDsourceUpdate,
+		DeleteContext: resourceOracleDsourceDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"rollback_on_failure": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
 			"source_value": {
 				Type:     schema.TypeString,
 				Required: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating source_value is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"group_id": {
 				Type:     schema.TypeString,
-				Required: true,
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating group_id is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"description": {
 				Type:     schema.TypeString,
@@ -40,14 +61,28 @@ func resourceOracleDsource() *schema.Resource {
 			"log_sync_enabled": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
+			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
 				Optional: true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -59,6 +94,12 @@ func resourceOracleDsource() *schema.Resource {
 							Optional: true,
 						},
 					},
+				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
 				},
 			},
 			"ops_pre_sync": {
@@ -77,7 +118,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -148,7 +198,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -396,7 +455,16 @@ func resourceOracleDsource() *schema.Resource {
 						"shell": {
 							Type:     schema.TypeString,
 							Optional: true,
-						}, "credentials_env_vars": {
+						},
+						"element_id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"has_credentials": {
+							Type:     schema.TypeBool,
+							Computed: true,
+						},
+						"credentials_env_vars": {
 							Type:     schema.TypeList,
 							Optional: true,
 							Elem: &schema.Resource{
@@ -456,19 +524,7 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"source_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"database_type": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"namespace_id": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
-			"namespace_name": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -488,10 +544,6 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"plugin_version": {
-				Type:     schema.TypeString,
-				Computed: true,
-			},
 			"creation_date": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -504,7 +556,15 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Computed: true,
 			},
+			"is_detached": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
 			"engine_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"source_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -520,24 +580,47 @@ func resourceOracleDsource() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"previous_timeflow_id": {
+			"is_appdata": {
+				Type:     schema.TypeBool,
+				Computed: true,
+			},
+			"sync_policy_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
-			"is_appdata": {
-				Type:     schema.TypeBool,
+			"retention_policy_id": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"exported_data_directory": {
+				Type:     schema.TypeString,
 				Computed: true,
 			},
 			"wait_time": {
 				Type:     schema.TypeInt,
 				Default:  0,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating wait_time is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
 			"skip_wait_for_snapshot_creation": {
 				Type:     schema.TypeBool,
 				Default:  false,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating skip_wait_for_snapshot_creation is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
 			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
@@ -710,7 +793,6 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if v, has_v := d.GetOk("ops_pre_log_sync"); has_v {
 		oracleDSourceLinkSourceParameters.SetOpsPreLogSync(toSourceOperationArray(v))
 	}
-
 	req := client.DSourcesAPI.LinkOracleDatabase(ctx)
 
 	apiRes, httpRes, err := req.OracleDSourceLinkSourceParameters(*oracleDSourceLinkSourceParameters).Execute()
@@ -718,24 +800,43 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		return diags
 	}
 
-	d.SetId(*apiRes.DsourceId)
+	d.SetId(apiRes.GetDsourceId())
 
-	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 
+	rollback_on_failure := d.Get("rollback_on_failure").(bool)
+
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-		d.SetId("")
-		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
-		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		if rollback_on_failure {
+			if job_res == Failed {
+				res := isSnapSyncFailure(apiRes.Job.GetId(), ctx, client)
+				if res {
+					deleteDiags := resourceOracleDsourceDelete(ctx, d, meta)
+					if deleteDiags.HasError() {
+						return deleteDiags
+					}
+					d.SetId("")
+				}
+			}
+		} else {
+			readDiags := resourceOracleDsourceRead(ctx, d, meta)
+
+			if readDiags.HasError() {
+				return readDiags
+			}
+		}
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
 	PollSnapshotStatus(d, ctx, client)
 
-	readDiags := resourceDsourceRead(ctx, d, meta)
+	readDiags := resourceOracleDsourceRead(ctx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -744,10 +845,320 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	return diags
 }
 
-func toIntArray(array interface{}) []int32 {
-	items := []int32{}
-	for _, item := range array.([]interface{}) {
-		items = append(items, int32(item.(int)))
+func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
+	client := meta.(*apiClient).client
+	dsource_id := d.Id()
+
+	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+	})
+
+	if res == nil {
+		tflog.Error(ctx, DLPX+ERROR+"Dsource not found: "+dsource_id+", removing from state. ")
+		d.SetId("")
+		return nil
 	}
-	return items
+
+	if diags != nil {
+		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
+			return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+		})
+		// This would imply error in poll for deletion so we just log and exit.
+		if diags != nil {
+			tflog.Error(ctx, DLPX+ERROR+"Error in polling of dSource for deletion.")
+		} else {
+			// diags will be nil in case of successful poll for deletion logic aka 404
+			tflog.Error(ctx, DLPX+ERROR+"Error reading the dSource "+dsource_id+", removing from state.")
+			d.SetId("")
+		}
+
+		return nil
+	}
+
+	result, ok := res.(*dctapi.DSource)
+	if !ok {
+		return diag.Errorf("Error occured in type casting.")
+	}
+
+	_, rollback_on_failure_exists := d.GetOk("rollback_on_failure")
+	if !rollback_on_failure_exists {
+		// its an import or upgrade, set to default value
+		d.Set("rollback_on_failure", false)
+	}
+
+	ops_pre_sync_Raw, _ := d.Get("ops_pre_sync").([]interface{})
+	oldOpsPreSync := toSourceOperationArray(ops_pre_sync_Raw)
+
+	ops_post_sync_Raw, _ := d.Get("ops_post_sync").([]interface{})
+	oldOpsPostSync := toSourceOperationArray(ops_post_sync_Raw)
+
+	ops_pre_log_sync_Raw, _ := d.Get("ops_pre_log_sync").([]interface{})
+	oldOpsPreLogSync := toSourceOperationArray(ops_pre_log_sync_Raw)
+
+	d.Set("id", result.GetId())
+	d.Set("database_type", result.GetDatabaseType())
+	d.Set("name", result.GetName())
+	d.Set("is_replica", result.GetIsReplica())
+	d.Set("database_version", result.GetDatabaseVersion())
+	d.Set("content_type", result.GetContentType())
+	d.Set("data_uuid", result.GetDataUuid())
+	d.Set("creation_date", result.GetCreationDate().String())
+	d.Set("group_name", result.GetGroupName())
+	d.Set("enabled", result.GetEnabled())
+	d.Set("is_detached", result.GetIsDetached())
+	d.Set("engine_id", result.GetEngineId())
+	d.Set("source_id", result.GetSourceId())
+	d.Set("status", result.GetStatus())
+	d.Set("engine_name", result.GetEngineName())
+	d.Set("current_timeflow_id", result.GetCurrentTimeflowId())
+	d.Set("is_appdata", result.GetIsAppdata())
+	d.Set("sync_policy_id", result.GetSyncPolicyId())
+	d.Set("retention_policy_id", result.GetRetentionPolicyId())
+	d.Set("log_sync_enabled", result.GetLogsyncEnabled())
+	d.Set("exported_data_directory", result.GetExportedDataDirectory())
+	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
+	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
+	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
+
+	// get the tags and set it
+	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(ctx, dsource_id).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		HandleRawConfigReadContext(ctx, d, resTagsDsrc)
+	}
+	return diags
+}
+
+func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+
+	client := meta.(*apiClient).client
+	updateOracleDsource := dctapi.NewUpdateOracleDsourceParameters()
+
+	dsourceId := d.Get("id").(string)
+
+	// get the changed keys
+	changedKeys := make([]string, 0, len(d.State().Attributes))
+	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.keydi
+			k = "tags"
+		}
+		if strings.Contains(k, "ops_pre_sync") {
+			k = "ops_pre_sync"
+		}
+		if strings.Contains(k, "ops_pre_log_sync") {
+			k = "ops_pre_log_sync"
+		}
+		if strings.Contains(k, "ops_post_sync") {
+			k = "ops_post_sync"
+		}
+		if d.HasChange(k) {
+			tflog.Debug(ctx, "changed keys"+k)
+			changedKeys = append(changedKeys, k)
+		}
+	}
+
+	var updateFailure bool = false
+	var nonUpdatableField []string
+
+	// check if the changed keys are updatable
+	for _, key := range changedKeys {
+		if !updatableOracleDsourceKeys[key] {
+			updateFailure = true
+			tflog.Debug(ctx, "non updatable field: "+key)
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
+	}
+
+	// if not updatable keys are provided, error out
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+
+	// set changed params in the updateOracleDsource
+	if d.HasChange("name") {
+		updateOracleDsource.SetName(d.Get("name").(string))
+	}
+	if d.HasChange("environment_user_id") {
+		updateOracleDsource.SetEnvironmentUserId(d.Get("environment_user_id").(string))
+	}
+	if d.HasChange("backup_level_enabled") {
+		updateOracleDsource.SetBackupLevelEnabled(d.Get("backup_level_enabled").(bool))
+	}
+	if d.HasChange("rman_channels") {
+		updateOracleDsource.SetRmanChannels(int32(d.Get("rman_channels").(int)))
+	}
+	if d.HasChange("files_per_set") {
+		updateOracleDsource.SetFilesPerSet(int32(d.Get("files_per_set").(int)))
+	}
+	if d.HasChange("check_logical") {
+		updateOracleDsource.SetCheckLogical(d.Get("check_logical").(bool))
+	}
+	if d.HasChange("encrypted_linking_enabled") {
+		updateOracleDsource.SetEncryptedLinkingEnabled(d.Get("encrypted_linking_enabled").(bool))
+	}
+	if d.HasChange("compressed_linking_enabled") {
+		updateOracleDsource.SetCompressedLinkingEnabled(d.Get("compressed_linking_enabled").(bool))
+	}
+	if d.HasChange("bandwidth_limit") {
+		updateOracleDsource.SetBandwidthLimit(int32(d.Get("bandwidth_limit").(int)))
+	}
+	if d.HasChange("number_of_connections") {
+		updateOracleDsource.SetNumberOfConnections(int32(d.Get("number_of_connections").(int)))
+	}
+	if d.HasChange("pre_provisioning_enabled") {
+		updateOracleDsource.SetPreProvisioningEnabled(d.Get("pre_provisioning_enabled").(bool))
+	}
+	if d.HasChange("diagnose_no_logging_faults") {
+		updateOracleDsource.SetDiagnoseNoLoggingFaults(d.Get("diagnose_no_logging_faults").(bool))
+	}
+	if d.HasChange("external_file_path") {
+		updateOracleDsource.SetExternalFilePath(d.Get("external_file_path").(string))
+	}
+
+	// update hooks
+	ndsh := dctapi.NewDSourceHooks()
+
+	if d.HasChange("ops_pre_sync") {
+		if v, has_v := d.GetOk("ops_pre_sync"); has_v {
+			ndsh.SetOpsPreSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPreSync([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("ops_pre_log_sync") {
+		if v, has_v := d.GetOk("ops_pre_log_sync"); has_v {
+			ndsh.SetOpsPreLogSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPreLogSync([]dctapi.Hook{})
+		}
+	}
+
+	if d.HasChange("ops_post_sync") {
+		if v, has_v := d.GetOk("ops_post_sync"); has_v {
+			ndsh.SetOpsPostSync(toHookArray(v))
+		} else {
+			ndsh.SetOpsPostSync([]dctapi.Hook{})
+		}
+	}
+
+	if ndsh != nil {
+		updateOracleDsource.SetHooks(*ndsh)
+	}
+
+	if !isStructEmpty(updateOracleDsource) {
+		res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
+
+		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+			// revert and set the old value to the changed keys
+			revertChanges(d, changedKeys)
+			return diags
+		}
+
+		if res != nil {
+			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			if job_err != "" {
+				tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
+			}
+			tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+			if isJobTerminalFailure(job_status) {
+				return diag.Errorf("[NOT OK] Oracle Dsource-Update %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
+			}
+		}
+	}
+
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceOracleDsourceRead(ctx, d, meta)
+			}
+		}
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+				}
+			}
+			// create tag
+			if len(toTagArray(newTags)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+
+	return resourceOracleDsourceRead(ctx, d, meta)
+}
+
+func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client := meta.(*apiClient).client
+
+	dsourceId := d.Id()
+
+	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
+	deleteDsourceParams.SetForce(false)
+
+	res, httpRes, err := client.DSourcesAPI.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+
+	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
+		return diags
+	}
+
+	if res != nil {
+		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
+		if job_err != "" {
+			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+		}
+		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+		if isJobTerminalFailure(job_status) {
+			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+		}
+	}
+	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+	})
+
+	return diags
 }

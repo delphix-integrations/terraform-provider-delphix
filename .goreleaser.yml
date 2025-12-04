@@ -1,17 +1,18 @@
 # Visit https://goreleaser.com for documentation on how to customize this
 # behavior.
+version: 2
 env:
-  - PROVIDER_VERSION=3.3.0-beta
+  - PROVIDER_VERSION=4.1.0
 before:
   hooks:
     # this is just an example and not a requirement for provider building/publishing
     - go mod tidy
 snapshot:
-  name_template: '{{ .Env.PROVIDER_VERSION }}'
+  version_template: '{{ .Env.PROVIDER_VERSION }}'
 builds:
 - env:
     # goreleaser does not work with CGO, it could also complicate
-    # usage by users in CI/CD systems like Terraform Cloud where
+    # usage by users in CI/CD systems like HCP Terraform where
     # they are unable to install libraries.
     - CGO_ENABLED=0
   mod_timestamp: '{{ .CommitTimestamp }}'
@@ -41,7 +42,7 @@ builds:
           - CP_TARGET={{ .Target }}
           - CP_VERSION={{ .Env.PROVIDER_VERSION }}
 archives:
-- format: zip
+- formats: [ 'zip' ]
   name_template: '{{ .ProjectName }}_{{ .Env.PROVIDER_VERSION }}_{{ .Os }}_{{ .Arch }}'
 checksum:
   extra_files:
@@ -68,4 +69,4 @@ release:
   # If you want to manually examine the release before its live, uncomment this line:
   # draft: true
 changelog:
-  skip: true
+  disable: true

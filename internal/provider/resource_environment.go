@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -20,6 +22,7 @@ func resourceEnvironment() *schema.Resource {
 		ReadContext:   resourceEnvironmentRead,
 		UpdateContext: resourceEnvironmentUpdate,
 		DeleteContext: resourceEnvironmentDelete,
+		CustomizeDiff: CustomizeDiffTags,
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -27,10 +30,6 @@ func resourceEnvironment() *schema.Resource {
 				Optional: true,
 			},
 			"engine_id": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"os_name": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -42,10 +41,6 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"hostname": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
 			"staging_environment": {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -56,10 +51,6 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"is_target": {
 				Type:     schema.TypeBool,
-				Optional: true,
-			},
-			"ssh_port": {
-				Type:     schema.TypeInt,
 				Optional: true,
 			},
 			"toolkit_path": {
@@ -134,22 +125,11 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			"nfs_addresses": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
 			"ase_db_username": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
 			"ase_db_password": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-			"java_home": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
@@ -177,14 +157,63 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"os_type": {
+				Type:     schema.TypeString,
+				Default:  "UNIX",
+				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new {
+						tflog.Info(context.Background(), "updating os_type is not allowed. plan changes are suppressed")
+					}
+					return d.Id() != ""
+				},
+			},
+			"database_type": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"version": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"oracle_base": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"bits": {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			"allow_provisioning": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"is_staging": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"is_replica": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"is_windows_target": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"ignore_tag_changes": {
+				Type:     schema.TypeBool,
+				Default:  true,
+				Optional: true,
+			},
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"value": {
 							Type:     schema.TypeString,
@@ -192,8 +221,26 @@ func resourceEnvironment() *schema.Resource {
 						},
 					},
 				},
+				DiffSuppressFunc: func(_, old, new string, d *schema.ResourceData) bool {
+					if ignore, ok := d.GetOk("ignore_tag_changes"); ok && ignore.(bool) {
+						return true
+					}
+					return false
+				},
+			},
+			"id": {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 			"namespace": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"namespace_name": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"namespace_id": {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
@@ -203,24 +250,65 @@ func resourceEnvironment() *schema.Resource {
 			},
 			"hosts": {
 				Type:     schema.TypeList,
-				Computed: true,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"hostname": {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"ssh_port": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Computed: true, // because this gets returned in the read even if not set on the config
+						},
+						"toolkit_path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"oracle_tde_keystores_root_path": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"java_home": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"nfs_addresses": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Computed: true, // because this gets returned in the read even if not set on the config
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
 						"os_name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"os_version": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"memory_size": {
 							Type:     schema.TypeInt,
-							Required: true,
+							Computed: true,
+						},
+						"id": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"processor_type": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"timezone": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"available": {
+							Type:     schema.TypeBool,
+							Computed: true,
 						},
 					},
 				},
@@ -232,27 +320,46 @@ func resourceEnvironment() *schema.Resource {
 					Schema: map[string]*schema.Schema{
 						"id": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"name": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
 						},
 						"database_type": {
 							Type:     schema.TypeString,
-							Required: true,
+							Computed: true,
+						},
+						"version": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"oracle_base": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+						"bits": {
+							Type:     schema.TypeInt,
+							Computed: true,
 						},
 						"allow_provisioning": {
 							Type:     schema.TypeBool,
-							Required: true,
+							Computed: true,
 						},
 						"is_staging": {
 							Type:     schema.TypeBool,
-							Required: true,
+							Computed: true,
 						},
 					},
 				},
 			},
+			"user_ref": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+		},
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
 		},
 	}
 }
@@ -263,10 +370,30 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
+	var hostname, toolkit_path, java_home string
+	var ssh_port int
+	var nfs_addresses interface{}
+	// process hosts
+	if v, has_v := d.GetOk("hosts"); has_v {
+		hosts := v.([]interface{})
+		if len(hosts) > 0 {
+			host := hosts[0].(map[string]interface{}) // Cast host to a map
+			// os_type = host["os_type"].(string)
+			// oracle_tde_keystores_root_path = host["oracle_tde_keystores_root_path"].(string)
+			hostname = host["hostname"].(string)
+			toolkit_path = host["toolkit_path"].(string)
+			if val, ok := host["ssh_port"]; ok {
+				ssh_port = val.(int)
+			}
+			java_home = host["java_home"].(string)
+			nfs_addresses = host["nfs_addresses"]
+		}
+	}
+
 	createEnvParams := dctapi.NewEnvironmentCreateParameters(
 		d.Get("engine_id").(string),
-		d.Get("os_name").(string),
-		d.Get("hostname").(string),
+		d.Get("os_type").(string),
+		hostname,
 	)
 
 	//General
@@ -279,11 +406,14 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("name"); has_v {
 		createEnvParams.SetName(v.(string))
 	}
-	if v, has_v := d.GetOk("toolkit_path"); has_v {
-		createEnvParams.SetToolkitPath(v.(string))
+	if toolkit_path != "" {
+		createEnvParams.SetToolkitPath(toolkit_path)
 	}
-	if v, has_v := d.GetOk("ssh_port"); has_v {
-		createEnvParams.SetSshPort(int64(v.(int)))
+	if ssh_port != 0 {
+		createEnvParams.SetSshPort(int64(ssh_port))
+	}
+	if java_home != "" {
+		createEnvParams.SetJavaHome(java_home)
 	}
 	if v, has_v := d.GetOk("ase_db_username"); has_v {
 		createEnvParams.SetAseDbUsername(v.(string))
@@ -291,9 +421,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("ase_db_password"); has_v {
 		createEnvParams.SetAseDbPassword(v.(string))
 	}
-	if v, has_v := d.GetOk("java_home"); has_v {
-		createEnvParams.SetJavaHome(v.(string))
-	}
+
 	if v, has_v := d.GetOk("dsp_keystore_path"); has_v {
 		createEnvParams.SetDspKeystorePath(v.(string))
 	}
@@ -359,10 +487,9 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	// Clusters
-	os_name := d.Get("os_name").(string)
 	if v := d.Get("is_cluster"); v.(bool) {
 		createEnvParams.SetIsCluster(v.(bool))
-		if os_name == "WINDOWS" {
+		if d.Get("os_type").(string) == "WINDOWS" {
 			createEnvParams.SetIsTarget(d.Get("is_target").(bool))
 		}
 	}
@@ -378,8 +505,8 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	if v, has_v := d.GetOk("staging_environment"); has_v {
 		createEnvParams.SetStagingEnvironment(v.(string))
 	}
-	if v, has_v := d.GetOk("nfs_addresses"); has_v {
-		createEnvParams.SetNfsAddresses(toStringArray(v))
+	if nfs_addresses != nil {
+		createEnvParams.SetNfsAddresses(toStringArray(nfs_addresses))
 	}
 	if v, has_v := d.GetOk("tags"); has_v {
 		createEnvParams.SetTags(toTagArray(v))
@@ -393,7 +520,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	d.SetId(apiRes.GetEnvironmentId())
-	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env creation. Error: "+job_err)
@@ -401,7 +528,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 
 	if isJobTerminalFailure(job_status) {
 		d.SetId("")
-		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, apiRes.Job.GetId(), job_err)
 	}
 	// Get environment info and store state.
 	readDiags := resourceEnvironmentRead(ctx, d, meta)
@@ -414,7 +541,6 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 	envId := d.Id()
-
 	apiRes, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
 	})
@@ -431,18 +557,485 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		}
 		return nil
 	}
+	_, os_type_exists := d.GetOk("os_type")
+	if !os_type_exists {
+		// its an import or upgrade, set to default value
+		d.Set("os_type", "UNIX")
+	}
 
 	envRes, _ := apiRes.(*dctapi.Environment)
+	//d.SetId(envRes.GetId())
+	d.Set("name", envRes.GetName())
+	d.Set("id", envRes.GetId())
 	d.Set("namespace", envRes.GetNamespace())
+	d.Set("namespace_name", envRes.GetNamespaceName())
+	d.Set("namespace_id", envRes.GetNamespaceId())
+	d.Set("is_replica", envRes.GetIsReplica())
+	d.Set("engine_id", envRes.GetEngineId())
+	d.Set("is_cluster", envRes.GetIsCluster())
 	d.Set("enabled", envRes.GetEnabled())
+	d.Set("is_windows_target", envRes.GetIsWindowsTarget())
+	d.Set("staging_environment", envRes.GetStagingEnvironment())
+	d.Set("cluster_home", envRes.GetClusterHome())
 	d.Set("hosts", flattenHosts(envRes.GetHosts()))
 	d.Set("repositories", flattenHostRepositories(envRes.GetRepositories()))
+
+	if user_ref, has_user_ref := d.GetOk("user_ref"); has_user_ref {
+		// this is set from update
+		tflog.Info(ctx, "Setting username in state(read)")
+		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, envId).Execute()
+		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
+			tflog.Error(ctx, DLPX+ERROR+"Failed to fetch user list for environment: "+envId+". Error: "+diags[0].Summary)
+			// return diag.Errorf("unable to retrieve user list")
+		} else {
+			for _, users := range resUserList.GetUsers() {
+				if strings.EqualFold(users.GetUserRef(), user_ref.(string)) {
+					d.Set("username", users.GetUsername())
+				}
+			}
+		}
+	}
+
+	// get the tags and set it
+	resTagsEnv, httpRes, err := client.EnvironmentsAPI.GetTagsEnvironment(ctx, envId).Execute()
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". Error: "+err.Error())
+	} else if httpRes != nil && httpRes.StatusCode >= 400 {
+		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". HTTP Status: "+httpRes.Status)
+	} else {
+		// check if tags are returned and set them to the state
+		HandleRawConfigReadContext(ctx, d, resTagsEnv)
+	}
+
 	return diags
 }
 
 func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	tflog.Info(ctx, DLPX+INFO+"Not Implemented: resourceEnvironmentUpdate")
 	var diags diag.Diagnostics
+
+	// get the changed keys
+	changedKeys := make([]string, 0, len(d.State().Attributes))
+	var modifiedChangedKeys []string
+	for k := range d.State().Attributes {
+		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.key
+			k = "tags"
+		}
+		if d.HasChange(k) {
+			changedKeys = append(changedKeys, k)
+		}
+	}
+	for _, ck := range changedKeys {
+		// for hosts it will be in the form hosts.0.nfs_addresses.#
+		if strings.Contains(ck, "hosts.0.hostname") ||
+			strings.Contains(ck, "hosts.0.ssh_port") ||
+			strings.Contains(ck, "hosts.0.toolkit_path") ||
+			strings.Contains(ck, "hosts.0.java_home") ||
+			strings.Contains(ck, "hosts.0.nfs_addresses") {
+			ck = "hosts"
+		}
+		modifiedChangedKeys = append(modifiedChangedKeys, ck)
+	}
+
+	client := meta.(*apiClient).client
+	environmentId := d.Get("id").(string)
+	var updateFailure, destructiveUpdate bool = false, false
+	var nonUpdatableField []string
+	var dsourceItems []dctapi.DSource
+	var vdbs []dctapi.VDB
+	var vdbDiags, dsourceDiags diag.Diagnostics
+	var disableDsourceFailure bool = false
+	// if changedKeys contains non updatable field set a flag
+	for _, key := range modifiedChangedKeys {
+		if !updatableEnvKeys[key] {
+			// we stop the update process here if non supported attribute is detected here
+			updateFailure = true
+			nonUpdatableField = append(nonUpdatableField, key)
+		}
+	}
+
+	if updateFailure {
+		revertChanges(d, changedKeys)
+		return diag.Errorf("cannot update options %v. Please refer to provider documentation for updatable params.", nonUpdatableField)
+	}
+	// find if destructive update
+	for _, key := range changedKeys {
+		if isDestructiveEnvUpdate[key] {
+			tflog.Info(ctx, "isDestructiveUpdate: "+key)
+			destructiveUpdate = true
+		}
+	}
+
+	if destructiveUpdate {
+		// get dsources and vdbs
+		vdbs, vdbDiags = filterVDBs(ctx, client, environmentId)
+		if vdbDiags.HasError() {
+			revertChanges(d, changedKeys)
+			return vdbDiags
+		}
+
+		// get sources to get dsources
+		sources, sourceDiag := filterSources(ctx, client, environmentId)
+		if sourceDiag.HasError() {
+			revertChanges(d, changedKeys)
+			return sourceDiag
+		}
+		var sourceIds []string
+		for _, item := range sources {
+			sourceIds = append(sourceIds, item.GetId())
+		}
+
+		// retrieve dsources from source list
+
+		if len(sourceIds) > 0 {
+			dsourceItems, dsourceDiags = filterdSources(ctx, client, sourceIds)
+			if dsourceDiags != nil {
+				revertChanges(d, changedKeys)
+				return dsourceDiags
+			}
+		}
+
+		// disable vdb
+		for _, item := range vdbs {
+			if diags := disableVDB(ctx, client, item.GetId()); diags != nil {
+				tflog.Error(ctx, "failure in disabling vdbs")
+				//disableVdbFailure = true
+				revertChanges(d, changedKeys)
+				return diags
+			}
+		}
+
+		// disable dsources
+		for _, item := range dsourceItems {
+			if diags := disabledSource(ctx, client, item.GetId()); diags != nil {
+				tflog.Error(ctx, "failure in disabling Dsources")
+				disableDsourceFailure = true
+			}
+		}
+		if disableDsourceFailure {
+			//enable back vdbs and return
+			for _, item := range vdbs {
+				if diags := enableVDB(ctx, client, item.GetId()); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+	var failureEvents []string
+	// if no disable failures, proceed to update
+	if d.HasChanges(
+		"name",
+		"cluster_home",
+		"description",
+	) {
+		// env update
+		tflog.Info(ctx, "Proceeding to update environment")
+		envUpdateParam := dctapi.NewEnvironmentUpdateParameters()
+		if d.HasChange("name") {
+			if v, has_v := d.GetOk("name"); has_v {
+				envUpdateParam.SetName(v.(string))
+			}
+		}
+		if d.HasChange("cluster_home") {
+			if v, has_v := d.GetOk("cluster_home"); has_v {
+				envUpdateParam.SetClusterHome(v.(string))
+			}
+		}
+		if d.HasChange("description") {
+			if v, has_v := d.GetOk("description"); has_v {
+				envUpdateParam.SetDescription(v.(string))
+			}
+		}
+		if !isStructEmpty(envUpdateParam) {
+			res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(ctx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
+			if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				if len(diags) > 0 {
+					failureEvents = append(failureEvents, diags[0].Summary)
+				} else {
+					tflog.Warn(ctx, "UpdateEnvironment Diagnostics is empty or nil; skipping appending to failureEvents")
+				}
+			}
+
+			// if the above api call fails, no point in polling as res will be nil
+			if res != nil {
+				job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+				if job_err != "" {
+					tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+				}
+				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+res.Job.GetId()+"!")
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					failureEvents = append(failureEvents, job_err)
+					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *res.Job.Id, job_res, job_err)
+				}
+			}
+		}
+	}
+	if d.HasChanges(
+		"username",
+		"password",
+	) {
+		tflog.Info(ctx, "Proceeding to update environment user")
+		// envUser Update
+		envUserUpdateParam := dctapi.NewEnvironmentUserParams()
+		if d.HasChange("username") || d.HasChange("password") {
+			if v, has_v := d.GetOk("username"); has_v {
+				envUserUpdateParam.SetUsername(v.(string))
+			}
+			if v, has_v := d.GetOk("password"); has_v {
+				envUserUpdateParam.SetPassword(v.(string))
+			}
+		}
+		// get the user ref
+		tflog.Info(ctx, "Getting the userlist")
+		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, environmentId).Execute()
+		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
+			revertChanges(d, changedKeys)
+			return diags
+		}
+
+		var user_ref string
+
+		username, old_username := d.GetChange("username")
+		for _, users := range resUserList.GetUsers() {
+			tflog.Info(ctx, "Getting the users: "+users.GetUsername())
+			if strings.EqualFold(users.GetUsername(), username.(string)) {
+				user_ref = users.GetUserRef()
+				break
+			} else {
+				if strings.EqualFold(users.GetUsername(), old_username.(string)) {
+					tflog.Info(ctx, "Setting the old user-ref: "+users.GetUserRef())
+					user_ref = users.GetUserRef()
+					break
+				}
+			}
+		}
+
+		// this is to propagate the value to read call which is defined at the end.
+		// we will use the user_ref to filter from the list of users in the env
+		tflog.Info(ctx, "Setting the user_ref: "+user_ref)
+		d.Set("user_ref", user_ref)
+
+		if !isStructEmpty(envUserUpdateParam) {
+			tflog.Info(ctx, "Updating the user: "+user_ref)
+			resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
+			if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
+				revertChanges(d, changedKeys)
+				updateFailure = true
+				if len(diags) > 0 {
+					failureEvents = append(failureEvents, diags[0].Summary)
+				} else {
+					tflog.Warn(ctx, "UpdateEnvironmentUser Diagnostics is empty or nil; skipping appending to failureEvents")
+				}
+			}
+
+			if resEnvUser != nil {
+				job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
+				if job_err != "" {
+					tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
+				}
+				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+				if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+					tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+resEnvUser.Job.GetId()+"!")
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					failureEvents = append(failureEvents, job_err)
+					// return diag.Errorf("[NOT OK] Job %s %s with error %s", *resEnvUser.Job.Id, job_res, job_err)
+				}
+			}
+
+		}
+
+	}
+	if d.HasChanges(
+		"hosts",
+		"connector_port",
+	) {
+		tflog.Info(ctx, "Proceeding to update environment hosts")
+		// host update
+		var hostId string
+
+		// get changes
+		oldHosts, newHosts := d.GetChange("hosts")
+
+		// signifies the hostname that will be updated
+		oldHost := oldHosts.([]interface{})
+		oldHostName := oldHost[0].(map[string]interface{})["hostname"].(string)
+
+		// retrieving new params for the update
+		newHost := newHosts.([]interface{})
+		newHostName := newHost[0].(map[string]interface{})["hostname"].(string)
+		newSshPort := int64(newHost[0].(map[string]interface{})["ssh_port"].(int))
+		newToolkitPath := newHost[0].(map[string]interface{})["toolkit_path"].(string)
+		newJavaHome := newHost[0].(map[string]interface{})["java_home"].(string)
+		newNfsAddress := newHost[0].(map[string]interface{})["nfs_addresses"]
+
+		// get the hosts list
+		hostsList := d.Get("hosts").([]interface{})
+
+		// retrieve the hostId corresponding to the old host name (that will be updated)
+		for _, host := range hostsList {
+			if oldHostName == host.(map[string]interface{})["hostname"].(string) {
+				hostId = host.(map[string]interface{})["id"].(string)
+				tflog.Info(ctx, "hostsId: "+hostId)
+				break
+			} else {
+				// if not found, proceed with enable and finally display the failure events
+				updateFailure = true
+				failureEvents = append(failureEvents, "No hostname %s found to update", oldHostName)
+			}
+		}
+
+		if !updateFailure {
+			tflog.Info(ctx, DLPX+INFO+" hostID "+hostId)
+			tflog.Info(ctx, DLPX+INFO+" environmentId "+environmentId)
+
+			hostUpdateParam := dctapi.NewHostUpdateParameters()
+			if d.HasChange("connector_port") {
+				if v, has_v := d.GetOk("connector_port"); has_v {
+					hostUpdateParam.SetConnectorPort(v.(int32))
+				}
+			}
+			if newJavaHome != "" {
+				hostUpdateParam.SetJavaHome(newJavaHome)
+			}
+			if newHostName != "" {
+				hostUpdateParam.SetHostname(newHostName)
+			}
+			if newSshPort != 0 {
+				hostUpdateParam.SetSshPort(newSshPort)
+			}
+			if newToolkitPath != "" {
+				hostUpdateParam.SetToolkitPath(newToolkitPath)
+			}
+			if newNfsAddress != nil {
+				hostUpdateParam.SetNfsAddresses(toStringArray(newNfsAddress))
+			}
+			// if d.HasChange("oracle_tde_keystores_root_path") {
+			// 	if v, has_v := d.GetOk("oracle_tde_keystores_root_path"); has_v {
+			// 		hostUpdateParam.SetOracleTdeKeystoresRootPath(v.(string))
+			// 	}
+			// }
+
+			if !isStructEmpty(hostUpdateParam) {
+				hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
+				if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					if len(diags) > 0 {
+						failureEvents = append(failureEvents, diags[0].Summary)
+					} else {
+						tflog.Warn(ctx, "UpdateHost Diagnostics is empty or nil; skipping appending to failureEvents")
+					}
+				}
+
+				if hostUpdateRes != nil {
+					job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
+					if job_err != "" {
+						tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
+					}
+					tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+					if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+						tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+hostUpdateRes.Job.GetId()+"!")
+						revertChanges(d, changedKeys)
+						updateFailure = true
+						failureEvents = append(failureEvents, job_err)
+						// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
+					}
+				}
+			}
+		}
+	}
+
+	// update tags
+	if !d.Get("ignore_tag_changes").(bool) {
+		apiRes, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, environmentId).Execute()
+		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+			d.SetId("")
+			return diags
+		}
+		tags := flattenTags(apiRes.GetTags())
+		tflog.Debug(ctx, "Existing tags", map[string]interface{}{
+			"tags": tags,
+		})
+		newRaw := d.GetRawConfig()
+		if newRaw.IsKnown() || !newRaw.IsNull() {
+			attr := newRaw.GetAttr("tags")
+			tflog.Debug(ctx, "New tags raw config value", map[string]interface{}{
+				"tags": newRaw,
+			})
+			d.Set("tags", flattenTags(apiRes.GetTags()))
+			if attr.IsNull() || !attr.IsKnown() || attr.LengthInt() == 0 {
+				// This now correctly gives [] if the user set tags = []
+				if len(tags) != 0 {
+					tflog.Info(ctx, DLPX+INFO+"Tags field is not set, deleting all existing tags")
+					httpRes, err := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).Execute()
+					if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
+						return diags
+					}
+				}
+				return resourceEnvironmentRead(ctx, d, meta)
+			}
+		}
+		oldTags, newTags := d.GetChange("tags")
+		if !reflect.DeepEqual(oldTags, newTags) {
+			tflog.Debug(ctx, "updating tags")
+			// delete old tag
+			tflog.Debug(ctx, "deleting old tags")
+			if len(toTagArray(oldTags)) != 0 {
+				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
+				deleteTag := *dctapi.NewDeleteTag()
+				tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
+					revertChanges(d, changedKeys)
+					updateFailure = true
+					if len(diags) > 0 {
+						failureEvents = append(failureEvents, diags[0].Summary)
+					} else {
+						tflog.Warn(ctx, "DeleteEnvironmentTags Diagnostics is empty or nil; skipping appending to failureEvents")
+					}
+				}
+			}
+			// create tag
+			if len(toTagArray(newTags)) != 0 {
+				tflog.Info(ctx, "creating new tags")
+				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
+					revertChanges(d, changedKeys)
+					return diags
+				}
+			}
+		}
+	}
+
+	if destructiveUpdate {
+		// enable Dsources back
+		for _, item := range dsourceItems {
+			if diags := enableDsource(ctx, client, item.GetId()); diags != nil {
+				return diags
+			}
+		}
+		// enable VDB back
+		for _, item := range vdbs {
+			if diags := enableVDB(ctx, client, item.GetId()); diags != nil {
+				return diags
+			}
+		}
+	}
+
+	// return the error back
+	if updateFailure {
+		return diag.Errorf("[NOT OK] Update failed with error %s", failureEvents)
+	}
+
+	readDiags := resourceEnvironmentRead(ctx, d, meta)
+	if readDiags.HasError() {
+		return readDiags
+	}
 	return diags
 }
 
@@ -457,12 +1050,12 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env deletion. Error: "+job_err)
 	}
 	if isJobTerminalFailure(job_status) {
-		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
+		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, apiRes.Job.GetId(), job_err)
 	}
 	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
 		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()

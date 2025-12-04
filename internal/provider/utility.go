@@ -2,10 +2,13 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"math"
 	"net/http"
+	"reflect"
 	"strconv"
+	"strings"
 	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go/v25"
@@ -20,6 +23,8 @@ var SLEEP_TIME = 10
 // Input is job status, context and the client
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
+	const maxRetries = 180 // 30 minutes with 10 second sleep
+	const sleepTime = 10   // seconds
 
 	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
@@ -32,9 +37,12 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		return "", resBody
 	}
 
-	var i = 0
-	for res.GetStatus() == Pending || res.GetStatus() == Started {
-		time.Sleep(time.Duration(JOB_STATUS_SLEEP_TIME) * time.Second)
+	for i := 0; i < maxRetries; i++ {
+		if res.GetStatus() != Pending && res.GetStatus() != Started {
+			return res.GetStatus(), res.GetErrorDetails()
+		}
+
+		time.Sleep(time.Duration(sleepTime) * time.Second)
 		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
@@ -48,11 +56,10 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 			tflog.Error(ctx, DLPX+ERROR+err.Error())
 			return "", resBody
 		}
-		i++
 		tflog.Info(ctx, DLPX+INFO+"DCT-JobId:"+job_id+" has Status:"+res.GetStatus())
 	}
 
-	return res.GetStatus(), res.GetErrorDetails()
+	return "", "Job polling timed out after " + strconv.Itoa(maxRetries*sleepTime) + " seconds"
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -85,9 +92,13 @@ func PollForStatusCode(ctx context.Context, apiCall func() (interface{}, *http.R
 	var httpRes *http.Response
 	var err error
 	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
-		if res, httpRes, err = apiCall(); httpRes.StatusCode == statusCode {
+		res, httpRes, err = apiCall()
+		if httpRes.StatusCode == statusCode {
 			tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
 			return res, nil
+		} else if httpRes.StatusCode == http.StatusNotFound {
+			tflog.Info(ctx, DLPX+INFO+"[404 Not found] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
+			break
 		}
 		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
 	}
@@ -109,10 +120,20 @@ func flattenHosts(hosts []dctapi.Host) []interface{} {
 		returnedHosts := make([]interface{}, len(hosts))
 		for i, host := range hosts {
 			returnedHost := make(map[string]interface{})
+			returnedHost["id"] = host.GetId()
 			returnedHost["hostname"] = host.GetHostname()
 			returnedHost["os_name"] = host.GetOsName()
 			returnedHost["os_version"] = host.GetOsVersion()
 			returnedHost["memory_size"] = host.GetMemorySize()
+			returnedHost["ssh_port"] = host.GetSshPort()
+			returnedHost["toolkit_path"] = host.GetToolkitPath()
+			returnedHost["processor_type"] = host.GetProcessorType()
+			returnedHost["timezone"] = host.GetTimezone()
+			returnedHost["available"] = host.GetAvailable()
+			returnedHost["nfs_addresses"] = host.GetNfsAddresses()
+			returnedHost["java_home"] = host.GetJavaHome()
+			returnedHost["oracle_tde_keystores_root_path"] = host.GetOracleTdeKeystoresRootPath()
+
 			returnedHosts[i] = returnedHost
 		}
 		return returnedHosts
@@ -130,6 +151,8 @@ func flattenHostRepositories(repos []dctapi.Repository) []interface{} {
 			returnedRepo["database_type"] = host.GetDatabaseType()
 			returnedRepo["allow_provisioning"] = host.GetAllowProvisioning()
 			returnedRepo["is_staging"] = host.GetIsStaging()
+			returnedRepo["oracle_base"] = host.GetOracleBase()
+			returnedRepo["bits"] = host.GetBits()
 			returnedRepos[i] = returnedRepo
 		}
 		return returnedRepos
@@ -152,6 +175,73 @@ func flattenAdditionalMountPoints(additional_mount_points []dctapi.AdditionalMou
 	return make([]interface{}, 0)
 }
 
+func flattenVDbHooks(hooks []dctapi.Hook) []interface{} {
+	if hooks != nil {
+		returnedHooks := make([]interface{}, len(hooks))
+		for i, hook := range hooks {
+			returnedHook := make(map[string]interface{})
+			returnedHook["name"] = hook.GetName()
+			returnedHook["command"] = hook.GetCommand()
+			returnedHook["shell"] = hook.GetShell()
+			returnedHook["element_id"] = hook.GetElementId()
+			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			returnedHooks[i] = returnedHook
+		}
+		return returnedHooks
+	}
+	return make([]interface{}, 0)
+}
+
+func flattenDSourceHooks(hooks []dctapi.Hook, oldList []dctapi.SourceOperation) []interface{} {
+	if hooks != nil {
+		returnedHooks := make([]interface{}, len(hooks))
+		for i, hook := range hooks {
+			returnedHook := make(map[string]interface{})
+			returnedHook["name"] = hook.GetName()
+			returnedHook["command"] = hook.GetCommand()
+			returnedHook["shell"] = hook.GetShell()
+			returnedHook["element_id"] = hook.GetElementId()
+			returnedHook["has_credentials"] = hook.GetHasCredentials()
+			credsEnvVars := []map[string]interface{}{}
+			if len(oldList) != 0 {
+				for _, cred := range oldList[i].GetCredentialsEnvVars() {
+					credsEnvVars = append(credsEnvVars, map[string]interface{}{
+						"base_var_name":                cred.BaseVarName,
+						"password":                     cred.Password,
+						"vault":                        cred.Vault,
+						"azure_vault_name":             cred.AzureVaultName,
+						"azure_vault_secret_key":       cred.AzureVaultSecretKey,
+						"azure_vault_username_key":     cred.AzureVaultUsernameKey,
+						"cyberark_vault_query_string":  cred.CyberarkVaultQueryString,
+						"hashicorp_vault_engine":       cred.HashicorpVaultEngine,
+						"hashicorp_vault_secret_key":   cred.HashicorpVaultSecretKey,
+						"hashicorp_vault_secret_path":  cred.HashicorpVaultSecretPath,
+						"hashicorp_vault_username_key": cred.HashicorpVaultUsernameKey,
+					})
+				}
+			}
+			returnedHook["credentials_env_vars"] = credsEnvVars
+			returnedHooks[i] = returnedHook
+		}
+		return returnedHooks
+	}
+	return make([]interface{}, 0)
+}
+
+func flattenTags(tags []dctapi.Tag) []interface{} {
+	if tags != nil {
+		returnedTags := make([]interface{}, len(tags))
+		for i, tag := range tags {
+			returnedTag := make(map[string]interface{})
+			returnedTag["key"] = tag.GetKey()
+			returnedTag["value"] = tag.GetValue()
+			returnedTags[i] = returnedTag
+		}
+		return returnedTags
+	}
+	return make([]interface{}, 0)
+}
+
 func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.Response, err error) diag.Diagnostics {
 	// Helper function to return Diagnostics object if there is
 	// a failure during API call.
@@ -162,6 +252,7 @@ func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.
 			tflog.Error(ctx, DLPX+ERROR+"An error occurred: "+nerr.Error())
 			diags = diag.FromErr(nerr)
 		} else {
+			tflog.Info(ctx, DLPX+INFO+"Error: "+resBody)
 			diags = diag.Errorf(resBody)
 		}
 		return diags
@@ -206,4 +297,332 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 			tflog.Info(ctx, DLPX+INFO+"Maximum attempts reached. Snapshots are not available.")
 		}
 	}
+}
+
+func disableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Disable VDB "+vdbId)
+	disableVDBParam := dctapi.NewDisableVDBParameters()
+	apiRes, httpRes, err := client.VDBsAPI.DisableVdb(ctx, vdbId).DisableVDBParameters(*disableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB disable Job Polling failed. Error: "+job_err)
+		//return here
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+	}
+	return nil
+}
+
+func enableVDB(ctx context.Context, client *dctapi.APIClient, vdbId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Enable VDB "+vdbId)
+	enableVDBParam := dctapi.NewEnableVDBParameters()
+	apiRes, httpRes, err := client.VDBsAPI.EnableVdb(ctx, vdbId).EnableVDBParameters(*enableVDBParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"VDB enable Job Polling failed. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+	}
+	return nil
+}
+
+func revertChanges(d *schema.ResourceData, changedKeys []string) {
+	for _, key := range changedKeys {
+		old, _ := d.GetChange(key)
+		if !isEmpty(old) { // so that a previously optional param is not set to blank erroraneously
+			d.Set(key, old)
+		}
+	}
+}
+
+func isEmpty(value interface{}) bool {
+	v := reflect.ValueOf(value)
+
+	switch v.Kind() {
+	case reflect.Bool:
+		return false
+	case reflect.String, reflect.Array, reflect.Slice, reflect.Map, reflect.Chan:
+		return v.Len() == 0
+	case reflect.Ptr, reflect.Interface:
+		return v.IsNil()
+	default:
+		return v.IsZero()
+	}
+}
+
+func toTagArray(array interface{}) []dctapi.Tag {
+	items := []dctapi.Tag{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		tag_item := dctapi.NewTag(item_map["key"].(string), item_map["value"].(string))
+
+		items = append(items, *tag_item)
+	}
+	return items
+}
+
+func toIntArray(array interface{}) []int32 {
+	items := []int32{}
+	for _, item := range array.([]interface{}) {
+		items = append(items, int32(item.(int)))
+	}
+	return items
+}
+
+func isSnapSyncFailure(job_id string, ctx context.Context, client *dctapi.APIClient) bool {
+	res, httpRes, _ := client.JobsAPI.GetJobById(ctx, job_id).Execute()
+	if httpRes.StatusCode == 200 && len(res.GetTasks()) != 0 {
+		tflog.Info(ctx, "Status of task 1 is "+res.GetTasks()[0].GetStatus())
+		if res.GetTasks()[0].GetStatus() == "COMPLETED" {
+			tflog.Info(ctx, "rolling back Dsource")
+			return true
+		}
+	}
+	return false
+}
+
+func filterVDBs(ctx context.Context, client *dctapi.APIClient, envId string) ([]dctapi.VDB, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter VBDs by envId "+envId)
+	vdbSearchExpr := dctapi.NewSearchBody()
+	vdbSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
+
+	apiReq := client.VDBsAPI.SearchVdbs(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*vdbSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func filterSources(ctx context.Context, client *dctapi.APIClient, envId string) ([]dctapi.Source, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter Sources by envId "+envId)
+	sourceSearchExpr := dctapi.NewSearchBody()
+	sourceSearchExpr.SetFilterExpression(fmt.Sprintf("environment_id eq '%s'", envId))
+	apiReq := client.SourcesAPI.SearchSources(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*sourceSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func filterdSources(ctx context.Context, client *dctapi.APIClient, sourceIds []string) ([]dctapi.DSource, diag.Diagnostics) {
+	tflog.Info(ctx, DLPX+INFO+"Filter dSources by SourceIds "+strings.Join(sourceIds, ", "))
+	dsourceSearchExpr := dctapi.NewSearchBody()
+	dsourceSearchExpr.SetFilterExpression(fmt.Sprintf("source_id in ['%s']", strings.Join(sourceIds, "', '")))
+	tflog.Info(ctx, DLPX+INFO+"Filter dSources by SourceIds "+dsourceSearchExpr.GetFilterExpression())
+	apiReq := client.DSourcesAPI.SearchDsources(ctx)
+	apiRes, httpRes, err := apiReq.SearchBody(*dsourceSearchExpr).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return nil, diags
+	}
+	return apiRes.Items, nil
+}
+
+func disabledSource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Disable dSource "+dsourceId)
+	disableDsourceParam := dctapi.NewDisableDsourceParameters()
+	apiRes, httpRes, err := client.DSourcesAPI.DisableDsource(ctx, dsourceId).DisableDsourceParameters(*disableDsourceParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"dSource disable Job Polling failed. Error: "+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit
+
+func enableDsource(ctx context.Context, client *dctapi.APIClient, dsourceId string) diag.Diagnostics {
+	tflog.Info(ctx, DLPX+INFO+"Enable dSource "+dsourceId)
+	enableDsourceParam := dctapi.NewEnableDsourceParameters()
+	apiRes, httpRes, err := client.DSourcesAPI.EnableDsource(ctx, dsourceId).EnableDsourceParameters(*enableDsourceParam).Execute()
+	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
+		return diags
+	}
+	job_res, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
+	if job_err != "" {
+		tflog.Warn(ctx, DLPX+WARN+"dSource enable Job Polling failed. Error: "+job_res)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+*apiRes.Job.Id+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", *apiRes.Job.Id, job_res, job_err)
+	}
+	return nil
+} //decide if continue or exit
+
+func toSourceOperationArray(array interface{}) []dctapi.SourceOperation {
+	items := []dctapi.SourceOperation{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+		sourceOperation := dctapi.NewSourceOperation(item_map["name"].(string), item_map["command"].(string))
+		if item_map["shell"].(string) != "" {
+			sourceOperation.SetShell(item_map["shell"].(string))
+		}
+		sourceOperation.SetCredentialsEnvVars(toCredentialsEnvVariableArray(item_map["credentials_env_vars"]))
+		items = append(items, *sourceOperation)
+	}
+	return items
+}
+
+func toCredentialsEnvVariableArray(array interface{}) []dctapi.CredentialsEnvVariable {
+	items := []dctapi.CredentialsEnvVariable{}
+	for _, item := range array.([]interface{}) {
+		item_map := item.(map[string]interface{})
+
+		credentialsEnvVariable_item := dctapi.NewCredentialsEnvVariable(item_map["base_var_name"].(string))
+		if item_map["password"].(string) != "" {
+			credentialsEnvVariable_item.SetPassword(item_map["password"].(string))
+		}
+		if item_map["vault"].(string) != "" {
+			credentialsEnvVariable_item.SetVault(item_map["vault"].(string))
+		}
+		if item_map["hashicorp_vault_engine"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultEngine(item_map["hashicorp_vault_engine"].(string))
+		}
+		if item_map["hashicorp_vault_secret_path"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretPath(item_map["hashicorp_vault_secret_path"].(string))
+		}
+		if item_map["hashicorp_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultUsernameKey(item_map["hashicorp_vault_username_key"].(string))
+		}
+		if item_map["hashicorp_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetHashicorpVaultSecretKey(item_map["hashicorp_vault_secret_key"].(string))
+		}
+		if item_map["azure_vault_name"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultName(item_map["azure_vault_name"].(string))
+		}
+		if item_map["azure_vault_username_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultUsernameKey(item_map["azure_vault_username_key"].(string))
+		}
+		if item_map["azure_vault_secret_key"].(string) != "" {
+			credentialsEnvVariable_item.SetAzureVaultSecretKey(item_map["azure_vault_secret_key"].(string))
+		}
+		if item_map["cyberark_vault_query_string"].(string) != "" {
+			credentialsEnvVariable_item.SetCyberarkVaultQueryString(item_map["cyberark_vault_query_string"].(string))
+		}
+		items = append(items, *credentialsEnvVariable_item)
+	}
+	return items
+}
+
+// isStructEmpty checks if all fields in a struct are at their zero values
+func isStructEmpty(v interface{}) bool {
+	val := reflect.ValueOf(v).Elem() // Get the underlying value of the pointer
+	for i := 0; i < val.NumField(); i++ {
+		if !val.Field(i).IsZero() {
+			return false // If any field is not zero, the struct is not empty
+		}
+	}
+	return true
+}
+
+// This is CustomizeDiff function that is used to specifically for tags where we want to delete all the tags and due to
+// Computed true, the value is computed on its own and all the tags cannot be deleted. To handle that we need to get user config
+// ie. Raw Config and override the computed value.
+func CustomizeDiffTags(ctx context.Context, d *schema.ResourceDiff, meta interface{}) error {
+	tflog.Debug(ctx, "CustomizeDiffTags: Start")
+	config := d.GetRawConfig()
+
+	if !config.IsKnown() || config.IsNull() {
+		return nil // Config is missing or unknown
+	}
+	ignore_tag_changes := config.GetAttr("ignore_tag_changes")
+	if (!ignore_tag_changes.IsKnown() && ignore_tag_changes.IsNull()) || ignore_tag_changes.True() {
+		return nil
+	}
+	attr := config.GetAttr("tags")
+	tflog.Debug(ctx, "CustomizeDiffTags: tags raw config value", map[string]interface{}{
+		"tags": attr.GoString(),
+	})
+	if !attr.IsKnown() || attr.IsNull() {
+		// Field is omitted in config
+		tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Tags field is not set, ignoring from attr block")
+		return nil
+	}
+
+	if attr.LengthInt() == 0 {
+		tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Tags field is empty, ignoring changes from length block")
+		// You can now trigger a diff or set a flag
+		err := d.SetNew("tags", []interface{}{})
+		if err != nil {
+			tflog.Info(ctx, "CustomizeDiffTags: CUSTOM Error setting new tags value", map[string]interface{}{
+				"error": err,
+			})
+			return err
+		}
+	}
+
+	return nil
+}
+
+func HandleRawConfigReadContext(ctx context.Context, d *schema.ResourceData, apiRes interface{}) error {
+	tflog.Debug(ctx, "HandleRawConfigReadContext:Handling Raw Config Read Context")
+	config := d.GetRawConfig()
+	tflog.Debug(ctx, "HandleRawConfigReadContext:GOT Raw config")
+	if !config.IsKnown() || config.IsNull() {
+		tflog.Debug(ctx, "HandleRawConfigReadContext:Config is missing or unknown")
+		switch v := apiRes.(type) {
+		case *dctapi.VDBGroup:
+			d.Set("tags", flattenTags(v.GetTags()))
+		case *dctapi.VDB:
+			d.Set("tags", flattenTags(v.GetTags()))
+		case *dctapi.TagsResponse:
+			d.Set("tags", flattenTags(v.GetTags()))
+		default:
+			fmt.Println("Unknown type")
+		}
+
+	} else {
+		tflog.Debug(ctx, "Config is known and not null")
+		attr := config.GetAttr("tags")
+		var check bool = false
+		if !attr.IsKnown() || attr.IsNull() {
+			// Field is omitted in config
+			check = true
+			tflog.Info(ctx, "READ:Tags field is not set, ignoring from attr block")
+			//d.Set("tags", []interface{}{})
+			return nil
+		}
+
+		if attr.LengthInt() == 0 && !d.Get("ignore_tag_changes").(bool) {
+			tflog.Info(ctx, "READ:Tags field is empty, ignoring changes from length block")
+			check = true
+			// You can now trigger a diff or set a flag
+			d.Set("tags", []interface{}{})
+		}
+
+		if !check {
+			switch v := apiRes.(type) {
+			case *dctapi.VDBGroup:
+				d.Set("tags", flattenTags(v.GetTags()))
+			case *dctapi.VDB:
+				d.Set("tags", flattenTags(v.GetTags()))
+			case *dctapi.TagsResponse:
+				d.Set("tags", flattenTags(v.GetTags()))
+			default:
+				fmt.Println("Unknown type")
+			}
+		}
+	}
+
+	return nil
 }
