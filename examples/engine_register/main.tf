@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     delphix = {
-      version = "3.3.0-beta"
+      version = "4.2.0"
       source  = "delphix.com/dct/delphix"
     }
   }
@@ -9,14 +9,28 @@ terraform {
 
 provider "delphix" {
   tls_insecure_skip = true
-  key               = "1.jTElhpXIao7pTNzVCYdkj1HpGXriTBlYbPha1Di8HjvMF6nESA1crkGlljowDs7y"
-  host              = "ubuntu-2-uv49-qar-125346-27a4593a.dlpxdc.co"
+  key               = "1.XXXX"
+  host              = "HOSTNAME"
 }
 
-resource "delphix_engine_registration" "register" {
+/* Data/Virtualization Engine Registeration with DCT */
+resource "delphix_engine_dct_registration" "register" {
   hostname     = "eg21.dlpxdc.co"
   name         = "test_tf"
   username     = "xxx"
   password     = "xxx"
   insecure_ssl = true
+  engine_type = "CD"
+}
+
+/*Compliance Engine Registeration with DCT*/
+resource "delphix_engine_dct_registration" "register" {
+  hostname     = "eg22.dlpxdc.co"
+  name         = "test_tf"
+  username     = "xxx"
+  password     = "xxx"
+  insecure_ssl = true
+  engine_type = "CC"
+  compliance_user = "admin"
+  compliance_password = "xxx"
 }
