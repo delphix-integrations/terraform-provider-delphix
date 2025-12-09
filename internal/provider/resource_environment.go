@@ -56,6 +56,15 @@ func resourceEnvironment() *schema.Resource {
 			"toolkit_path": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff when transitioning from any value to empty/null
+					// This allows silent migration from top-level toolkit_path to hosts.toolkit_path
+					if new == "" || new == "null" {
+						return true
+					}
+					// Suppress diff if both old and new are empty/null
+					return (old == "" || old == "null") && (new == "" || new == "null")
+				},
 			},
 			"username": {
 				Type:     schema.TypeString,
@@ -204,6 +213,17 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Don't suppress if user explicitly changed the value in their config
+					rawConfig := d.GetRawConfig()
+					if rawConfig.IsKnown() && !rawConfig.IsNull() {
+						ignoreTagChangesAttr := rawConfig.GetAttr("ignore_tag_changes")
+						if (ignoreTagChangesAttr.IsNull() || !ignoreTagChangesAttr.IsKnown()) && new == "true" && (old == "" || old == "null" || old == "<null>") {
+							return true
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -561,6 +581,18 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	if !os_type_exists {
 		// its an import or upgrade, set to default value
 		d.Set("os_type", "UNIX")
+	}
+	
+	// This handles import scenario where parameter is not in config
+	rawConfig := d.GetRawConfig()
+	if rawConfig.IsKnown() && !rawConfig.IsNull() {
+		ignoreTagChangesAttr := rawConfig.GetAttr("ignore_tag_changes")
+		if ignoreTagChangesAttr.IsNull() || !ignoreTagChangesAttr.IsKnown() {
+			// Parameter not in config (import scenario) - set default
+			d.Set("ignore_tag_changes", true)
+		}
+	} else {
+		d.Set("ignore_tag_changes", true)
 	}
 
 	envRes, _ := apiRes.(*dctapi.Environment)
