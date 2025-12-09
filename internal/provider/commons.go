@@ -124,6 +124,7 @@ var updatableEnvKeys = map[string]bool{
 	"description":        true,
 	"tags":               true,
 	"hosts":              true,
+	"toolkit_path":       true,
 	"ignore_tag_changes": true,
 }
 
@@ -136,6 +137,7 @@ var isDestructiveEnvUpdate = map[string]bool{
 	"description":        false,
 	"tags":               false,
 	"hosts":              true,
+	"toolkit_path":       false,
 	"ignore_tag_changes": false,
 }
 

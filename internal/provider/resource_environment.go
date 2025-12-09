@@ -56,6 +56,15 @@ func resourceEnvironment() *schema.Resource {
 			"toolkit_path": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff when transitioning from any value to empty/null
+					// This allows silent migration from top-level toolkit_path to hosts.toolkit_path
+					if new == "" || new == "null" {
+						return true
+					}
+					// Suppress diff if both old and new are empty/null
+					return (old == "" || old == "null") && (new == "" || new == "null")
+				},
 			},
 			"username": {
 				Type:     schema.TypeString,
@@ -204,6 +213,14 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff when setting to default value of true
+					// This handles cases where the attribute wasn't in config but has default
+					if new == "true" && (old == "" || old == "false") {
+						return true
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
