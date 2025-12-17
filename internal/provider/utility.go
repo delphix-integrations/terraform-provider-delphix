@@ -23,11 +23,15 @@ var SLEEP_TIME = 10
 // Input is job status, context and the client
 // Returns the status of the given JOB-ID and Error body as a string
 func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient) (string, string) {
-	const maxRetries = 180 // 30 minutes with 10 second sleep
-	const sleepTime = 10   // seconds
+	const sleepTime = 10 // seconds
 
 	res, httpRes, err := client.JobsAPI.GetJobById(ctx, job_id).Execute()
 	if err != nil {
+		// handle possible nil httpRes
+		if httpRes == nil {
+			tflog.Error(ctx, DLPX+ERROR+err.Error())
+			return "", err.Error()
+		}
 		resBody, resBodyErr := ResponseBodyToString(ctx, httpRes.Body)
 		if resBodyErr != nil {
 			tflog.Error(ctx, DLPX+ERROR+resBodyErr.Error())
@@ -37,12 +41,22 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		return "", resBody
 	}
 
-	for i := 0; i < maxRetries; i++ {
+	for {
+		// if job reached a terminal state return
 		if res.GetStatus() != Pending && res.GetStatus() != Started {
 			return res.GetStatus(), res.GetErrorDetails()
 		}
 
+		// check if context is done (timeout or cancelled)
+		select {
+		case <-ctx.Done():
+			return "", "Job polling cancelled or timed out"
+		default:
+			// continue
+		}
+
 		time.Sleep(time.Duration(sleepTime) * time.Second)
+
 		res, httpRes, err = client.JobsAPI.GetJobById(ctx, job_id).Execute()
 		if err != nil {
 			if httpRes == nil {
@@ -58,8 +72,6 @@ func PollJobStatus(job_id string, ctx context.Context, client *dctapi.APIClient)
 		}
 		tflog.Info(ctx, DLPX+INFO+"DCT-JobId:"+job_id+" has Status:"+res.GetStatus())
 	}
-
-	return "", "Job polling timed out after " + strconv.Itoa(maxRetries*sleepTime) + " seconds"
 }
 
 // ResponseBodyToString parses the response body from io.readCloser() to string for
@@ -91,16 +103,36 @@ func PollForStatusCode(ctx context.Context, apiCall func() (interface{}, *http.R
 	var res interface{}
 	var httpRes *http.Response
 	var err error
-	for i := 0; maxRetry == 0 || i < maxRetry; i++ {
-		res, httpRes, err = apiCall()
-		if httpRes.StatusCode == statusCode {
-			tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
-			return res, nil
-		} else if httpRes.StatusCode == http.StatusNotFound {
-			tflog.Info(ctx, DLPX+INFO+"[404 Not found] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
-			break
+	attempt := 0
+	for maxRetry == 0 || attempt < maxRetry {
+		// return early if context cancelled
+		select {
+		case <-ctx.Done():
+			return nil, diag.Errorf("polling cancelled or timed out: %v", ctx.Err())
+		default:
 		}
-		time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
+
+		res, httpRes, err = apiCall()
+		if httpRes != nil {
+			if httpRes.StatusCode == statusCode {
+				tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
+				return res, nil
+			} else if httpRes.StatusCode == http.StatusNotFound {
+				tflog.Info(ctx, DLPX+INFO+"[404 Not found] Breaking poll - Status "+strconv.Itoa(statusCode)+" reached.")
+				break
+			}
+		}
+
+		attempt++
+
+		// sleep but wake early on context done
+		sleep := time.NewTimer(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
+		select {
+		case <-ctx.Done():
+			sleep.Stop()
+			return nil, diag.Errorf("polling cancelled or timed out: %v", ctx.Err())
+		case <-sleep.C:
+		}
 	}
 	diags = apiErrorResponseHelper(ctx, res, httpRes, err)
 	tflog.Info(ctx, DLPX+INFO+"[OK] Breaking poll - Retry exhausted for status "+strconv.Itoa(statusCode))
@@ -247,6 +279,10 @@ func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.
 	// a failure during API call.
 	var diags diag.Diagnostics
 	if err != nil {
+		if httpRes == nil || httpRes.Body == nil {
+			tflog.Error(ctx, DLPX+ERROR+"An error occurred: "+err.Error())
+			return diag.FromErr(err)
+		}
 		resBody, nerr := ResponseBodyToString(ctx, httpRes.Body)
 		if nerr != nil {
 			tflog.Error(ctx, DLPX+ERROR+"An error occurred: "+nerr.Error())
@@ -273,27 +309,42 @@ func PollSnapshotStatus(d *schema.ResourceData, ctx context.Context, client *dct
 		var snapshotRes *dctapi.ListSnapshotsResponse
 		var api_err error
 		maxAttempts := int(math.Round(float64(wait_time.(int)*60) / float64(STATUS_POLL_SLEEP_TIME)))
-		for attempt := 1; attempt <= maxAttempts; attempt++ {
+		attempt := 0
+		for maxAttempts == 0 || attempt < maxAttempts {
+			select {
+			case <-ctx.Done():
+				tflog.Info(ctx, DLPX+INFO+"PollSnapshotStatus cancelled or timed out")
+				return
+			default:
+			}
+
 			snapshotRes, _, api_err = client.DSourcesAPI.GetDsourceSnapshots(ctx, d.Id()).Execute()
 			if api_err != nil {
 				tflog.Error(ctx, DLPX+ERROR+"Error fetching dSource snapshots: "+api_err.Error())
 				break // Exit the loop on error to avoid unnecessary retries
 			}
-			if len(snapshotRes.GetItems()) > 0 {
+			if snapshotRes != nil && len(snapshotRes.GetItems()) > 0 {
 				tflog.Info(ctx, DLPX+INFO+"Snapshots are now available.")
 				break // Snapshots found, exit the loop
 			}
-			tflog.Info(ctx, DLPX+INFO+"Attempt "+strconv.Itoa(attempt)+": Waiting for snapshots to become available...")
+			tflog.Info(ctx, DLPX+INFO+"Attempt "+strconv.Itoa(attempt+1)+": Waiting for snapshots to become available...")
 
-			if attempt < maxAttempts {
-				time.Sleep(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second) // Wait before retrying
+			attempt++
+
+			sleep := time.NewTimer(time.Duration(STATUS_POLL_SLEEP_TIME) * time.Second)
+			select {
+			case <-ctx.Done():
+				sleep.Stop()
+				tflog.Info(ctx, DLPX+INFO+"PollSnapshotStatus cancelled or timed out during sleep")
+				return
+			case <-sleep.C:
 			}
 		}
 
 		// After the loop, check for errors or absence of snapshots
 		if api_err != nil {
 			tflog.Error(ctx, DLPX+ERROR+"Failed to fetch dSource snapshots due to an error.")
-		} else if len(snapshotRes.GetItems()) == 0 {
+		} else if snapshotRes == nil || len(snapshotRes.GetItems()) == 0 {
 			tflog.Info(ctx, DLPX+INFO+"Maximum attempts reached. Snapshots are not available.")
 		}
 	}

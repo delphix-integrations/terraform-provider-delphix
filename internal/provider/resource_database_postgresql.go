@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strings"
+	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -20,6 +21,12 @@ func resourceSource() *schema.Resource {
 		ReadContext:   resourceDatabasePostgressqlRead,
 		UpdateContext: resourceDatabasePostgressqlUpdate,
 		DeleteContext: resourceDatabasePostgressqlDelete,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -151,7 +158,11 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 		sourceCreateParameters.SetEngineId(v.(string))
 	}
 
-	req := client.SourcesAPI.CreatePostgresSource(ctx)
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
+	req := client.SourcesAPI.CreatePostgresSource(createCtx)
 
 	apiRes, httpRes, err := req.PostgresSourceCreateParameters(*sourceCreateParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -160,7 +171,7 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 
 	d.SetId(apiRes.GetSourceId())
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with Source creation. Error: "+job_err)
 	}
@@ -173,7 +184,7 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
-	readDiags := resourceDatabasePostgressqlRead(ctx, d, meta)
+	readDiags := resourceDatabasePostgressqlRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -187,8 +198,12 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 
 	source_id := d.Id()
 
-	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
+	// use read timeout for polling during reads
+	readCtx, readCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutRead))
+	defer readCancel()
+
+	res, diags := PollForObjectExistence(readCtx, func() (interface{}, *http.Response, error) {
+		return client.SourcesAPI.GetSourceById(readCtx, source_id).Execute()
 	})
 
 	if res == nil {
@@ -198,8 +213,8 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 	}
 
 	if diags != nil {
-		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
+		_, diags := PollForObjectDeletion(readCtx, func() (interface{}, *http.Response, error) {
+			return client.SourcesAPI.GetSourceById(readCtx, source_id).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -290,7 +305,11 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		updateSourceParam.SetName(d.Get("name").(string))
 	}
 
-	res, httpRes, err := client.SourcesAPI.UpdatePostgresSourceById(ctx, d.Get("id").(string)).PostgresSourceUpdateParameters(*updateSourceParam).Execute()
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
+
+	res, httpRes, err := client.SourcesAPI.UpdatePostgresSourceById(updateCtx, d.Get("id").(string)).PostgresSourceUpdateParameters(*updateSourceParam).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		// revert and set the old value to the changed keys
@@ -301,7 +320,7 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Source Update Job Polling failed but continuing with update. Error :"+job_err)
 	}
@@ -318,13 +337,17 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 
 	source_id := d.Id()
 
-	res, httpRes, err := client.SourcesAPI.DeleteSource(ctx, source_id).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	res, httpRes, err := client.SourcesAPI.DeleteSource(deleteCtx, source_id).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
@@ -333,8 +356,8 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 		return diag.Errorf("[NOT OK] Source-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.SourcesAPI.GetSourceById(ctx, source_id).Execute()
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.SourcesAPI.GetSourceById(deleteCtx, source_id).Execute()
 	})
 
 	return diags

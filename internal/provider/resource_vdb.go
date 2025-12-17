@@ -26,6 +26,12 @@ func resourceVdb() *schema.Resource {
 		DeleteContext: resourceVdbDelete,
 		CustomizeDiff: CustomizeDiffTags,
 
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
+
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
 				Type:     schema.TypeString,
@@ -789,6 +795,10 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
 	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
@@ -1003,7 +1013,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbBySnapshot(ctx)
+	req := client.VDBsAPI.ProvisionVdbBySnapshot(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1013,17 +1023,44 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	d.SetId(apiRes.GetVdbId())
 
 	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 		if job_err != "" {
 			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 		}
+		
+		// Check if context was cancelled due to timeout
+		if createCtx.Err() != nil {
+			// Don't clear the ID - let it persist so the resource can be managed/imported
+			if createCtx.Err() == context.DeadlineExceeded {
+				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
+					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
+					"1. Check the job status in the Delphix DCT UI or via API\n"+
+					"2. Run 'terraform refresh' to update the state once the job completes\n"+
+					"3. If the job failed, run 'terraform destroy' to clean up\n"+
+					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
+					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			}
+			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		}
+		
 		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
 			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 		}
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
+				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+	}
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1035,6 +1072,10 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
+
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
 
 	provisionVDBByTimestampParameters := dctapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
 
@@ -1252,7 +1293,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbByTimestamp(ctx)
+	req := client.VDBsAPI.ProvisionVdbByTimestamp(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1262,17 +1303,44 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	d.SetId(apiRes.GetVdbId())
 
 	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 		if job_err != "" {
 			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 		}
+		
+		// Check if context was cancelled due to timeout
+		if createCtx.Err() != nil {
+			// Don't clear the ID - let it persist so the resource can be managed/imported
+			if createCtx.Err() == context.DeadlineExceeded {
+				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
+					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
+					"1. Check the job status in the Delphix DCT UI or via API\n"+
+					"2. Run 'terraform refresh' to update the state once the job completes\n"+
+					"3. If the job failed, run 'terraform destroy' to clean up\n"+
+					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
+					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			}
+			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		}
+		
 		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 		if job_res == "FAILED" {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
 			return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
 		}
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
+				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+	}
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1284,6 +1352,10 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
+
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
 
 	provisionVDBFromBookmarkParameters := dctapi.NewProvisionVDBFromBookmarkParameters(d.Get("bookmark_id").(string))
 
@@ -1486,7 +1558,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbFromBookmark(ctx)
+	req := client.VDBsAPI.ProvisionVdbFromBookmark(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
@@ -1496,17 +1568,44 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	d.SetId(apiRes.GetVdbId())
 
 	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 		if job_err != "" {
 			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
 		}
+		
+		// Check if context was cancelled due to timeout
+		if createCtx.Err() != nil {
+			// Don't clear the ID - let it persist so the resource can be managed/imported
+			if createCtx.Err() == context.DeadlineExceeded {
+				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
+					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
+					"1. Check the job status in the Delphix DCT UI or via API\n"+
+					"2. Run 'terraform refresh' to update the state once the job completes\n"+
+					"3. If the job failed, run 'terraform destroy' to clean up\n"+
+					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
+					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			}
+			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		}
+		
 		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
 		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
 			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 		}
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
+				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+	}
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1644,6 +1743,9 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
 	vdbId := d.Get("id").(string)
@@ -1916,7 +2018,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 	if !isStructEmpty(updateVDBParam) {
-		res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+		res, httpRes, err := client.VDBsAPI.UpdateVdbById(updateCtx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 			// revert and set the old value to the changed keys
@@ -1925,7 +2027,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 
 		if res != nil {
-			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+				job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 			if job_err != "" {
 				tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
 			}
@@ -1938,7 +2040,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
-		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(updateCtx, vdbId).Execute()
 		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 			d.SetId("")
 			return diags
@@ -1974,7 +2076,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			if len(toTagArray(oldTags)) != 0 {
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
-				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
+					tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(updateCtx, vdbId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -1983,7 +2085,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			// create tag
 			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(updateCtx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1993,12 +2095,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if destructiveUpdate {
-		if diags := enableVDB(ctx, client, vdbId); diags != nil {
+		if diags := enableVDB(updateCtx, client, vdbId); diags != nil {
 			return diags //if failure should we enable
 		}
 	}
 
-	return resourceVdbRead(ctx, d, meta)
+	return resourceVdbRead(updateCtx, d, meta)
 }
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
@@ -2008,13 +2110,17 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsAPI.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	res, httpRes, err := client.VDBsAPI.DeleteVdb(deleteCtx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+	job_status, job_err := PollJobStatus(res.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error : "+job_err)
 	}
@@ -2023,8 +2129,8 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.VDBsAPI.GetVdbById(deleteCtx, vdbId).Execute()
 	})
 
 	return diags
