@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -20,6 +21,15 @@ func resourceEngineRegistration() *schema.Resource {
 		ReadContext:   resourceEngineRegistrationRead,
 		UpdateContext: resourceEngineRegistrationUpdate,
 		DeleteContext: resourceEngineRegistrationDelete,
+		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+			engine_type := rd.Get("engine_type").(string)
+			if engine_type == CONTINUOUS_COMPLIANCE {
+				if rd.Get("compliance_user") == "" || rd.Get("compliance_password") == "" {
+					return errors.New("compliance_user and compliance_password are required for engine_type " + CONTINUOUS_COMPLIANCE + ")")
+				}
+			}
+			return nil
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -35,16 +45,18 @@ func resourceEngineRegistration() *schema.Resource {
 				Required: true,
 			},
 			"password": {
-				Type:     schema.TypeString,
-				Required: true,
+				Type:      schema.TypeString,
+				Required:  true,
+				Sensitive: true,
 			},
-			"masking_username": {
+			"compliance_user": {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			"masking_password": {
-				Type:     schema.TypeString,
-				Optional: true,
+			"compliance_password": {
+				Type:      schema.TypeString,
+				Optional:  true,
+				Sensitive: true,
 			},
 			"hashicorp_vault_username_command_args": {
 				Type:     schema.TypeList,
@@ -167,6 +179,10 @@ func resourceEngineRegistration() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"engine_type": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
 		},
 	}
 }
@@ -185,10 +201,10 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 	if v, has_v := d.GetOk("password"); has_v {
 		registerEngine.SetPassword(v.(string))
 	}
-	if v, has_v := d.GetOk("masking_username"); has_v {
+	if v, has_v := d.GetOk("compliance_user"); has_v {
 		registerEngine.SetMaskingUsername(v.(string))
 	}
-	if v, has_v := d.GetOk("masking_password"); has_v {
+	if v, has_v := d.GetOk("compliance_password"); has_v {
 		registerEngine.SetMaskingPassword(v.(string))
 	}
 	if v, has_v := d.GetOk("hashicorp_vault_username_command_args"); has_v {
@@ -296,17 +312,6 @@ func resourceEngineRegistrationDelete(ctx context.Context, d *schema.ResourceDat
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
-
-	// job_status, job_err := PollJobStatus(*apiRes.Job.Id, ctx, client)
-	// if job_err != "" {
-	// 	tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with engine removal. Error: "+job_err)
-	// }
-	// if isJobTerminalFailure(job_status) {
-	// 	return diag.Errorf("[NOT OK] Engine-Delete %s. JobId: %s / Error: %s", job_status, *apiRes.Job.Id, job_err)
-	// }
-	// _, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-	// 	return client.ManagementApi.GetRegisteredEngine(ctx, engineID).Execute()
-	// })
 
 	_, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
 		return client.ManagementAPI.GetRegisteredEngine(ctx, engineID).Execute()
