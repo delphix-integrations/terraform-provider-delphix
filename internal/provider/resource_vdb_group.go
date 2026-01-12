@@ -92,6 +92,13 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	apiRes, httpRes, err := client.VDBGroupsAPI.CreateVdbGroup(ctx).CreateVDBGroupRequest(vdbGroupCreateReq).Execute()
 
+	// Check if the API call itself timed out
+	if err != nil && ctx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB Group creation API call timed out. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if the VDB Group was created. "+
+			"If created, import it using terraform import.")
+	}
+
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -323,7 +330,21 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	httpRes, err := client.VDBGroupsAPI.DeleteVdbGroup(ctx, vdbGroupId).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	httpRes, err := client.VDBGroupsAPI.DeleteVdbGroup(deleteCtx, vdbGroupId).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB Group deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if the deletion completed (VDB Group ID: %s). "+
+			"If deleted, run 'terraform refresh' to verify the resource was removed. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), vdbGroupId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		return diags

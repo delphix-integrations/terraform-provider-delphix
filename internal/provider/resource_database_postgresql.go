@@ -165,6 +165,16 @@ func resourceDatabasePostgressqlCreate(ctx context.Context, d *schema.ResourceDa
 	req := client.SourcesAPI.CreatePostgresSource(createCtx)
 
 	apiRes, httpRes, err := req.PostgresSourceCreateParameters(*sourceCreateParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("PostgreSQL source creation API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a creation job was created. "+
+			"If a job exists, wait for it to complete, then import the source. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -320,8 +330,29 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
+	// Check if context timed out before polling
+	if updateCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("PostgreSQL source update timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+			"3. If needed, revert changes manually or reapply the configuration\n"+
+			"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+			d.Timeout(schema.TimeoutUpdate), res.Job.GetId())
+	}
+
 	job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 	if job_err != "" {
+		// Check if the error is due to timeout
+		if updateCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("PostgreSQL source update timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+				"3. If needed, revert changes manually or reapply the configuration\n"+
+				"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+				d.Timeout(schema.TimeoutUpdate), res.Job.GetId())
+		}
 		tflog.Warn(ctx, DLPX+WARN+"Source Update Job Polling failed but continuing with update. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
@@ -347,8 +378,29 @@ func resourceDatabasePostgressqlDelete(ctx context.Context, d *schema.ResourceDa
 		return diags
 	}
 
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("PostgreSQL source deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+	}
+
 	job_status, job_err := PollJobStatus(res.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("PostgreSQL source deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+		}
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+" Job result is "+job_status)

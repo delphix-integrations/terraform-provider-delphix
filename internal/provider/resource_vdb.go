@@ -1016,49 +1016,68 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	req := client.VDBsAPI.ProvisionVdbBySnapshot(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a provisioning job was created. "+
+			"If a job exists, wait for it to complete, then import the VDB into state. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
+	}
 
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s. The operation may still be running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify if the job completed\n"+
+				"2. If the VDB was created successfully, import it.\n"+
+				"3. If the job failed, clean up manually or retry\n"+
+				"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		
-		// Check if context was cancelled due to timeout
-		if createCtx.Err() != nil {
-			// Don't clear the ID - let it persist so the resource can be managed/imported
-			if createCtx.Err() == context.DeadlineExceeded {
-				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
-					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
-					"1. Check the job status in the Delphix DCT UI or via API\n"+
-					"2. Run 'terraform refresh' to update the state once the job completes\n"+
-					"3. If the job failed, run 'terraform destroy' to clean up\n"+
-					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
-					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
-			}
-			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
-		}
-		
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 	
 	// Check context before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
-				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
 	
 	readDiags := resourceVdbRead(createCtx, d, meta)
 
@@ -1296,49 +1315,68 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	req := client.VDBsAPI.ProvisionVdbByTimestamp(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a provisioning job was created. "+
+			"If a job exists, wait for it to complete, then import it. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
+	}
 
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s. The operation may still be running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify if the job completed\n"+
+				"2. If the VDB was created successfully, import it.\n"+
+				"3. If the job failed, clean up manually or retry\n"+
+				"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		
-		// Check if context was cancelled due to timeout
-		if createCtx.Err() != nil {
-			// Don't clear the ID - let it persist so the resource can be managed/imported
-			if createCtx.Err() == context.DeadlineExceeded {
-				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
-					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
-					"1. Check the job status in the Delphix DCT UI or via API\n"+
-					"2. Run 'terraform refresh' to update the state once the job completes\n"+
-					"3. If the job failed, run 'terraform destroy' to clean up\n"+
-					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
-					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
-			}
-			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
-		}
-		
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == "FAILED" {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
-			return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
-		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == "FAILED" {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
 	}
 	
 	// Check context before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
-				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
 	
 	readDiags := resourceVdbRead(createCtx, d, meta)
 
@@ -1561,49 +1599,68 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	req := client.VDBsAPI.ProvisionVdbFromBookmark(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a provisioning job was created. "+
+			"If a job exists, wait for it to complete, then import it. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
+	}
 
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s. The operation may still be running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify if the job completed\n"+
+				"2. If the VDB was created successfully, import it.\n"+
+				"3. If the job failed, clean up manually or retry\n"+
+				"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		
-		// Check if context was cancelled due to timeout
-		if createCtx.Err() != nil {
-			// Don't clear the ID - let it persist so the resource can be managed/imported
-			if createCtx.Err() == context.DeadlineExceeded {
-				return diag.Errorf("VDB provisioning timed out after %s. The operation is still running on the DCT (Job ID: %s, VDB ID: %s). "+
-					"The resource has been recorded in Terraform state. To resolve this issue:\n"+
-					"1. Check the job status in the Delphix DCT UI or via API\n"+
-					"2. Run 'terraform refresh' to update the state once the job completes\n"+
-					"3. If the job failed, run 'terraform destroy' to clean up\n"+
-					"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
-					d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
-			}
-			return diag.Errorf("VDB provisioning was cancelled (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
-		}
-		
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 	
 	// Check context before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s, VDB ID: %s). "+
-				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s, VDB ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
 	
 	readDiags := resourceVdbRead(createCtx, d, meta)
 
@@ -2116,12 +2173,48 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	res, httpRes, err := client.VDBsAPI.DeleteVdb(deleteCtx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
 
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (VDB ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), vdbId)
+	}
+
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
+	// Check for nil res or Job to prevent crashes
+	if res == nil || res.Job == nil {
+		return diag.Errorf("VDB deletion failed: received nil response or job from API")
+	}
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+	}
+
 	job_status, job_err := PollJobStatus(res.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+		}
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error : "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)

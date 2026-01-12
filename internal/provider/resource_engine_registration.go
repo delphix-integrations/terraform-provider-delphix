@@ -232,6 +232,15 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 	apiReq := client.ManagementAPI.RegisterEngine(createCtx)
 	apiRes, httpRes, err := apiReq.EngineRegistrationParameter(*registerEngine).Execute()
 
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Engine registration API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if the engine was registered. "+
+			"If registered, import it using terraform import. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}

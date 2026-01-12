@@ -510,11 +510,27 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	req := client.DSourcesAPI.LinkAppdataDatabase(createCtx)
 
 	apiRes, httpRes, err := req.AppDataDSourceLinkSourceParameters(*appDataDSourceLinkSourceParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("dSource creation API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a dSource creation job was created. "+
+			"If a job exists, wait for it to complete, then import it. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetDsourceId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("dSource creation failed: received nil response or job from API")
+	}
+
+	// Store dSource ID temporarily - don't set in state until job completes
+	dsourceId := apiRes.GetDsourceId()
 
 	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
@@ -523,17 +539,17 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 
 	// Check if context was cancelled due to timeout
 	if createCtx.Err() != nil {
-		// Don't clear the ID - let it persist so the resource can be managed/imported
+		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("dSource creation timed out after %s. The operation is still running on the DCT (Job ID: %s, dSource ID: %s). "+
-				"The resource has been recorded in Terraform state. To resolve this issue:\n"+
-				"1. Check the job status in the Delphix DCT UI or via API\n"+
-				"2. Run 'terraform refresh' to update the state once the job completes\n"+
-				"3. If the job failed, run 'terraform destroy' to clean up\n"+
-				"4. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("dSource creation timed out after %s. The operation may still be running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify if the job completed\n"+
+				"2. If the dSource was created successfully, import it.\n"+
+				"3. If the job failed, clean up manually or retry\n"+
+				"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("dSource creation was cancelled (Job ID: %s, dSource ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("dSource creation was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -566,14 +582,13 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	// Check context again before proceeding to snapshot polling
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("dSource creation timed out after %s. The job completed but snapshot polling could not finish (Job ID: %s, dSource ID: %s). "+
-				"The resource has been recorded in Terraform state. To resolve this issue:\n"+
-				"1. Run 'terraform refresh' to update the state\n"+
-				"2. If needed, run 'terraform destroy' to clean up\n"+
-				"3. Increase the timeout in your configuration: timeouts { create = \"60m\" }",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("dSource creation timed out after %s during snapshot polling (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("dSource creation was cancelled after job completion (Job ID: %s, dSource ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("dSource creation was cancelled after job completion (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 
 	PollSnapshotStatus(d, createCtx, client)
@@ -581,12 +596,17 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	// Check context one more time before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s, dSource ID: %s). "+
-				"The resource has been recorded in Terraform state. Run 'terraform refresh' to update the state.",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), d.Id())
+			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
 		}
-		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s, dSource ID: %s): %v", apiRes.Job.GetId(), d.Id(), createCtx.Err())
+		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(dsourceId)
 
 	readDiags := resourceDsourceRead(createCtx, d, meta)
 
@@ -862,19 +882,53 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 
 	res, httpRes, err := client.DSourcesAPI.DeleteDsource(deleteCtx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
 
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("AppData dSource deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (dSource ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), dsourceId)
+	}
+
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	if res != nil {
-		job_status, job_err := PollJobStatus(res.GetId(), deleteCtx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	// Check for nil res or Job to prevent crashes
+	if res == nil || res.Job == nil {
+		return diag.Errorf("dSource deletion failed: received nil response or job from API")
+	}
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("AppData dSource deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.GetId())
+	}
+
+	job_status, job_err := PollJobStatus(res.GetId(), deleteCtx, client)
+	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("AppData dSource deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.GetId())
 		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-		if isJobTerminalFailure(job_status) {
-			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-		}
+		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
 	}
 	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
 		return client.DSourcesAPI.GetDsourceById(deleteCtx, dsourceId).Execute()
