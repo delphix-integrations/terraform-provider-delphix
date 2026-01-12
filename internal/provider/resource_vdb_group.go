@@ -327,7 +327,7 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return diag.Errorf(resBody)
+		return diag.Errorf("VDB Group deletion failed: %s", resBody)
 	}
 
 	return diags

@@ -9,7 +9,6 @@ import (
 	"net/http/cookiejar"
 	"os"
 	"regexp"
-	"sync"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -41,6 +40,44 @@ func resourceEngineConfiguration() *schema.Resource {
 					}
 					block := item.(map[string]interface{})
 
+					//Cloud Provider specific validations
+					cloud_provider := block["cloud_provider"].(string)
+					if cloud_provider == AWS {
+						if _, ok := block["endpoint"]; !ok {
+							return errors.New("endpoint must be provided in object_storage_params for AWS cloud_provider")
+						}
+
+						if _, ok := block["region"]; !ok {
+							return errors.New("region must be provided in object_storage_params for AWS cloud_provider")
+						}
+
+						if _, ok := block["bucket"]; !ok {
+							return errors.New("bucket must be provided in object_storage_params for AWS cloud_provider")
+						}
+
+						if authType, ok := block["auth_type"]; ok {
+							authTypeStr := authType.(string)
+							if authTypeStr != ROLE && authTypeStr != ACCESS_KEY {
+								return errors.New("auth_type for AWS cloud_provider must be either ROLE or ACCESS_KEY")
+							}
+						}
+
+					} else if cloud_provider == AZURE {
+						if _, ok := block["azure_container"]; !ok {
+							return errors.New("azure_container must be provided in object_storage_params for AZURE cloud_provider")
+						}
+
+						if _, ok := block["azure_account"]; !ok {
+							return errors.New("azure_account must be provided in object_storage_params for AZURE cloud_provider")
+						}
+
+						if authType, ok := block["auth_type"]; ok {
+							authTypeStr := authType.(string)
+							if authTypeStr != MANAGED_IDENTITIES && authTypeStr != ACCESS_KEY {
+								return errors.New("auth_type for AZURE cloud_provider must be either MANAGED_IDENTITIES or ACCESS_KEY")
+							}
+						}
+					}
 					authType := block["auth_type"].(string)
 					if authType == ACCESS_KEY && (block["access_id"] == "" || block["access_key"] == "") {
 						return errors.New("access_id and access_key must be provided when auth_type is ACCESS_KEY")
@@ -88,10 +125,6 @@ func resourceEngineConfiguration() *schema.Resource {
 
 		Schema: map[string]*schema.Schema{
 			"engine_host": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"api_version": {
 				Type:     schema.TypeString,
 				Required: true,
 			},
@@ -212,10 +245,6 @@ func resourceEngineConfiguration() *schema.Resource {
 					Type: schema.TypeString,
 				},
 			},
-			// "apiVersion": {
-			// 	Type:     schema.TypeString,
-			// 	Computed: true,
-			// },
 			"banner": {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -242,17 +271,22 @@ func resourceEngineConfiguration() *schema.Resource {
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
+						"cloud_provider": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice([]string{AWS, AZURE}, false),
+						},
 						"region": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"bucket": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"endpoint": {
 							Type:     schema.TypeString,
-							Required: true,
+							Optional: true,
 						},
 						"size": {
 							Type:         schema.TypeString,
@@ -263,12 +297,17 @@ func resourceEngineConfiguration() *schema.Resource {
 							Type:         schema.TypeString,
 							Optional:     true,
 							Default:      ROLE,
-							ValidateFunc: validation.StringInSlice([]string{ROLE, ACCESS_KEY}, false),
+							ValidateFunc: validation.StringInSlice([]string{ROLE, ACCESS_KEY, MANAGED_IDENTITIES}, false),
 						},
 						"s3_instance_profile": {
 							Type:     schema.TypeString,
 							Optional: true,
 							Default:  "S3ObjectStoreAccessInstanceProfile",
+						},
+						"azure_managed_identities": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "BlobObjectStoreAccessManagedIdentities",
 						},
 						"access_id": {
 							Type:     schema.TypeString,
@@ -278,6 +317,14 @@ func resourceEngineConfiguration() *schema.Resource {
 							Type:      schema.TypeString,
 							Optional:  true,
 							Sensitive: true,
+						},
+						"azure_container": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"azure_account": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
@@ -431,14 +478,16 @@ func resourceEngineConfiguration() *schema.Resource {
 
 func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
-	var wg sync.WaitGroup
 	// Create a cookie jar to store session cookies
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar}
 
 	var compl_email, compl_user, compl_password, compl_new_password, default_email string
 	engine_host, _ := d.Get("engine_host").(string)
-	version, _ := d.Get("api_version").(string)
+
+	//hardcoded for backward compatibility
+	version := ENGINE_API_VERSION
+
 	sys_user, _ := d.Get("sys_user").(string)
 	sys_curr_pass, _ := d.Get("sys_password").(string)
 	sys_new_pass, _ := d.Get("sys_new_password").(string)
@@ -511,18 +560,33 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 	if device_type == OBJECT {
 		object_storage_params := d.Get("object_storage_params").([]interface{})
+		params.CloudProvider = object_storage_params[0].(map[string]interface{})["cloud_provider"].(string)
 		params.Size = object_storage_params[0].(map[string]interface{})["size"].(string)
-		params.Endpoint = object_storage_params[0].(map[string]interface{})["endpoint"].(string)
-		params.Region = object_storage_params[0].(map[string]interface{})["region"].(string)
-		params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
 		params.AuthType = object_storage_params[0].(map[string]interface{})["auth_type"].(string)
 
-		if params.AuthType == ACCESS_KEY {
-			params.ACCESS_ID = object_storage_params[0].(map[string]interface{})["access_id"].(string)
-			params.ACCESS_KEY = object_storage_params[0].(map[string]interface{})["access_key"].(string)
-		} else {
-			params.S3_INSTANCE_PROFILE = object_storage_params[0].(map[string]interface{})["s3_instance_profile"].(string)
+		if params.CloudProvider == AWS {
+			params.Endpoint = object_storage_params[0].(map[string]interface{})["endpoint"].(string)
+			params.Region = object_storage_params[0].(map[string]interface{})["region"].(string)
+			params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
+
+			if params.AuthType == ACCESS_KEY {
+				params.ACCESS_ID = object_storage_params[0].(map[string]interface{})["access_id"].(string)
+				params.ACCESS_KEY = object_storage_params[0].(map[string]interface{})["access_key"].(string)
+			} else {
+				params.S3_INSTANCE_PROFILE = object_storage_params[0].(map[string]interface{})["s3_instance_profile"].(string)
+			}
+		} else if params.CloudProvider == AZURE {
+			params.Container = object_storage_params[0].(map[string]interface{})["azure_container"].(string)
+			params.AzureAccount = object_storage_params[0].(map[string]interface{})["azure_account"].(string)
+
+			if params.AuthType == ACCESS_KEY {
+				params.ACCESS_ID = object_storage_params[0].(map[string]interface{})["access_id"].(string)
+				params.ACCESS_KEY = object_storage_params[0].(map[string]interface{})["access_key"].(string)
+			} else {
+				params.AzureManagedIdentities = object_storage_params[0].(map[string]interface{})["azure_managed_identities"].(string)
+			}
 		}
+
 	}
 
 	configTasks := []ConfigTask{
@@ -574,61 +638,45 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 				return err
 			},
 		},
+		{
+			Name:      "NTP Servers",
+			Condition: len(ntp_servers) > 0,
+			Task: func() error {
+				tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Configuring NTP servers")
+				_, err := setNtpServers(ctx, client, engine_host, ntp_servers, ntp_timezone)
+				return err
+			},
+		},
 	}
 
-	// Execute all configurations in parallel
-	var errChan = make(chan diag.Diagnostics, len(configTasks))
 	for _, config := range configTasks {
 		if config.Condition {
-			wg.Add(1)
-			go func(name string, task func() error) {
-				defer wg.Done()
-				if err := task(); err != nil {
-					errChan <- diag.Errorf("["+engine_host+"] Error configuring %s: %s", name, err)
-				} else {
-					errChan <- nil
-					tflog.Info(ctx, DLPX+INFO+name+" ["+engine_host+"] configuration completed successfully")
-				}
-			}(config.Name, config.Task)
+			tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Starting "+config.Name+" configuration")
+			if err := config.Task(); err != nil {
+				return diag.Errorf("["+engine_host+"] Error configuring %s: %s", config.Name, err)
+			}
+			tflog.Info(ctx, DLPX+INFO+config.Name+" ["+engine_host+"] configuration completed successfully")
 		}
 	}
 
-	// Wait for all goroutines to complete
-	go func() {
-		wg.Wait()
-		close(errChan)
-	}()
-
-	// Collect all errors from goroutines
-	for d := range errChan {
-		if d != nil && d.HasError() {
-			diags = append(diags, d...)
-		}
-	}
-
-	// Keeping NTP configuration not in parallel because engine restarts after NTP configuration
-	// and that affects other parallel tasks
-	if len(ntp_servers) > 0 {
-		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Configuring NTP servers")
-		_, err := setNtpServers(ctx, client, engine_host, ntp_servers, ntp_timezone)
-		if err != nil {
-			return diag.Errorf("["+engine_host+"] Error configuring NTP: %s", err)
-		}
-	}
+	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Sleeping for 10 seconds before initialization for management services to restart properly")
+	time.Sleep(time.Duration(10) * time.Second)
 
 	// Initialize Engine
 	result, readDiags := initializeSystemAndDevices(ctx, client, engine_host, params)
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Initialization action result: "+fmt.Sprintf("%+v", readDiags))
 
 	if readDiags.HasError() {
-		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] Engine initialization failed, Rolling back compliance user password change!!")
-		token, err := loginComplianceUser(ctx, client, engine_host, compl_user, compl_new_password)
-		if err != nil {
-			return diag.Errorf("["+engine_host+"]Error logging in as compliance user: %s", err)
-		}
-		readDiags := updateComplianceUserDetails(ctx, client, engine_host, compl_new_password, compl_password, compl_email, compl_user, token)
-		if readDiags.HasError() {
-			return readDiags
+		if engine_type == CONTINUOUS_COMPLIANCE {
+			tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] Engine initialization failed, Rolling back compliance user password change!!")
+			token, err := loginComplianceUser(ctx, client, engine_host, compl_user, compl_new_password)
+			if err != nil {
+				return diag.Errorf("["+engine_host+"]Error logging in as compliance user: %s", err)
+			}
+			readDiags := updateComplianceUserDetails(ctx, client, engine_host, compl_new_password, compl_password, compl_email, compl_user, token)
+			if readDiags.HasError() {
+				return readDiags
+			}
 		}
 		return readDiags
 	}
@@ -718,7 +766,7 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	var diags diag.Diagnostics
 	tflog.Info(ctx, DLPX+INFO+"Reading engine configuration")
 	engineId := d.Id()
-	version, _ := d.Get("api_version").(string)
+	version := ENGINE_API_VERSION
 
 	// Create a cookie jar to store session cookies
 	jar, _ := cookiejar.New(nil)

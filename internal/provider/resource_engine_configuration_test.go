@@ -27,7 +27,6 @@ func TestAccEngineConfiguration_blockDevice(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckEngineConfigurationExists(resourceName),
 					resource.TestCheckResourceAttr(resourceName, "engine_host", engineHost),
-					resource.TestCheckResourceAttr(resourceName, "api_version", "1.11.46"),
 					resource.TestCheckResourceAttr(resourceName, "sys_user", "sysadmin"),
 					resource.TestCheckResourceAttr(resourceName, "user", "admin"),
 					resource.TestCheckResourceAttr(resourceName, "engine_type", "CD"),
@@ -216,7 +215,6 @@ func testAccEngineConfigurationComprehensive(engineHost, bucketName string) stri
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host               = "%s"
-  api_version               = "1.11.46"
   sys_user                  = "sysadmin"
   sys_password              = "sysadmin"
   sys_new_password          = "delphix"
@@ -228,6 +226,7 @@ resource "delphix_engine_configuration" "test" {
   
   # Object Storage Configuration
   object_storage_params {
+    cloud_provider = "AWS"
     region    = "us-west-2"
     bucket    = "%s"
     endpoint  = "s3.us-west-2.amazonaws.com"
@@ -295,7 +294,6 @@ func testAccEngineConfigurationBlockDevice(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -311,7 +309,6 @@ func testAccEngineConfigurationObjectStorageRole(engineHost, bucketName string) 
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -324,6 +321,7 @@ resource "delphix_engine_configuration" "test" {
   ntp_timezone = "America/New_York"
   
   object_storage_params {
+	cloud_provider = "AWS"
     region    = "us-west-2"
     bucket    = "%s"
     endpoint  = "s3.us-west-2.amazonaws.com"
@@ -338,7 +336,6 @@ func testAccEngineConfigurationObjectStorageAccessKey(engineHost, bucketName, ac
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -351,6 +348,7 @@ resource "delphix_engine_configuration" "test" {
   ntp_timezone = "UTC"
   
   object_storage_params {
+	cloud_provider = "AWS"
     region     = "us-west-2"
     bucket     = "%s"
     endpoint   = "s3.us-west-2.amazonaws.com"
@@ -367,7 +365,6 @@ func testAccEngineConfigurationObjectStorageMissingParams(engineHost string) str
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -384,7 +381,6 @@ func testAccEngineConfigurationObjectStorageMissingAccessKey(engineHost string) 
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -397,6 +393,7 @@ resource "delphix_engine_configuration" "test" {
   ntp_timezone = "UTC"
   
   object_storage_params {
+	cloud_provider = "AWS"
     region     = "us-west-2"
     bucket     = "test-bucket"
     endpoint   = "s3.us-west-2.amazonaws.com"
@@ -412,7 +409,6 @@ func testAccEngineConfigurationObjectStorageMissingNTP(engineHost string) string
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -424,6 +420,7 @@ resource "delphix_engine_configuration" "test" {
   # Missing ntp_servers and ntp_timezone
   
   object_storage_params {
+	cloud_provider = "AWS"
     region    = "us-west-2"
     bucket    = "test-bucket"
     endpoint  = "s3.us-west-2.amazonaws.com"
@@ -438,7 +435,6 @@ func testAccEngineConfigurationInvalidStorageSize(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
   engine_host  = "%s"
-  api_version  = "1.11.46"
   sys_user     = "sysadmin"
   sys_password = "sysadmin"
   user         = "admin"
@@ -451,6 +447,7 @@ resource "delphix_engine_configuration" "test" {
   ntp_timezone = "UTC"
   
   object_storage_params {
+	cloud_provider = "AWS"
     region    = "us-west-2"
     bucket    = "test-bucket"
     endpoint  = "s3.us-west-2.amazonaws.com"
