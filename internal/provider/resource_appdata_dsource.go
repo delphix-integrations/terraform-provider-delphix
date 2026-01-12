@@ -513,10 +513,14 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		return diag.Errorf("dSource creation API call timed out after %s. The request may still be processing on the DCT server. "+
-			"Check the Delphix DCT UI or API to verify if a dSource creation job was created. "+
-			"If a job exists, wait for it to complete, then import it. "+
-			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+		resourceName := d.Get("name").(string)
+		if resourceName == "" {
+			resourceName = "appdata_dsource"
+		}
+		// Generate template import block (ID needs to be filled in manually)
+		_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, "<REPLACE_WITH_DSOURCE_ID>")
+		return diag.Errorf("dSource creation API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the dSource ID and update terraform_import_blocks.tf, then import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -541,13 +545,15 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			return diag.Errorf("dSource creation timed out after %s. The operation may still be running on the DCT (Job ID: %s). "+
-				"To resolve:\n"+
-				"1. Check the Delphix DCT UI or API to verify if the job completed\n"+
-				"2. If the dSource was created successfully, import it.\n"+
-				"3. If the job failed, clean up manually or retry\n"+
-				"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }",
-				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+			resourceName := d.Get("name").(string)
+			if resourceName == "" {
+				resourceName = "appdata_dsource"
+			}
+			_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, dsourceId)
+			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
+				"Import block saved to terraform_import_blocks.tf. "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
 		}
 		return diag.Errorf("dSource creation was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
