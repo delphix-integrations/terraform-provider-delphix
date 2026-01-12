@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -625,6 +626,123 @@ func CustomizeDiffTags(ctx context.Context, d *schema.ResourceDiff, meta interfa
 	return nil
 }
 
+// searchVDBByName attempts to find a VDB by name and return its ID
+// Retries for up to 5 minutes if the resource is not found (may still be creating)
+// Creates fresh contexts for each attempt to avoid using expired contexts
+func searchVDBByName(ctx context.Context, client *dctapi.APIClient, name string) (string, error) {
+	const maxWaitTime = 5 * 60 // 5 minutes in seconds
+	const retryInterval = 10   // 10 seconds between retries
+	const searchTimeout = 60   // 60 seconds timeout per search attempt
+	maxAttempts := maxWaitTime / retryInterval
+	
+	searchBody := dctapi.NewSearchBody()
+	searchBody.SetFilterExpression(fmt.Sprintf("name eq '%s'", name))
+	
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// Create a fresh context with timeout for each search attempt
+		searchCtx, cancel := context.WithTimeout(context.Background(), time.Duration(searchTimeout)*time.Second)
+		apiRes, _, err := client.VDBsAPI.SearchVdbs(searchCtx).SearchBody(*searchBody).Execute()
+		cancel() // Always cancel to release resources
+		
+		if err != nil {
+			tflog.Warn(ctx, fmt.Sprintf("Error searching for VDB '%s': %v", name, err))
+		} else if len(apiRes.Items) > 0 {
+			tflog.Info(ctx, fmt.Sprintf("Found VDB '%s' after %d attempts", name, attempt+1))
+			return apiRes.Items[0].GetId(), nil
+		}
+		
+		if attempt < maxAttempts-1 {
+			tflog.Info(ctx, fmt.Sprintf("VDB '%s' not found, waiting %d seconds before retry (attempt %d/%d)", name, retryInterval, attempt+1, maxAttempts))
+			time.Sleep(time.Duration(retryInterval) * time.Second)
+		}
+	}
+	
+	return "", fmt.Errorf("VDB with name '%s' not found after %d minutes", name, maxWaitTime/60)
+}
+
+// searchDSourceByName attempts to find a dSource by name and return its ID
+// Retries for up to 5 minutes if the resource is not found (may still be creating)
+// Creates fresh contexts for each attempt to avoid using expired contexts
+func searchDSourceByName(ctx context.Context, client *dctapi.APIClient, name string) (string, error) {
+	const maxWaitTime = 5 * 60 // 5 minutes in seconds
+	const retryInterval = 10   // 10 seconds between retries
+	const searchTimeout = 60   // 60 seconds timeout per search attempt
+	maxAttempts := maxWaitTime / retryInterval
+	
+	searchBody := dctapi.NewSearchBody()
+	searchBody.SetFilterExpression(fmt.Sprintf("name eq '%s'", name))
+	
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// Create a fresh context with timeout for each search attempt
+		searchCtx, cancel := context.WithTimeout(context.Background(), time.Duration(searchTimeout)*time.Second)
+		apiRes, _, err := client.DSourcesAPI.SearchDsources(searchCtx).SearchBody(*searchBody).Execute()
+		cancel() // Always cancel to release resources
+		
+		if err != nil {
+			tflog.Warn(ctx, fmt.Sprintf("Error searching for dSource '%s': %v", name, err))
+		} else if len(apiRes.Items) > 0 {
+			tflog.Info(ctx, fmt.Sprintf("Found dSource '%s' after %d attempts", name, attempt+1))
+			return apiRes.Items[0].GetId(), nil
+		}
+		
+		if attempt < maxAttempts-1 {
+			tflog.Info(ctx, fmt.Sprintf("dSource '%s' not found, waiting %d seconds before retry (attempt %d/%d)", name, retryInterval, attempt+1, maxAttempts))
+			time.Sleep(time.Duration(retryInterval) * time.Second)
+		}
+	}
+	
+	return "", fmt.Errorf("dSource with name '%s' not found after %d minutes", name, maxWaitTime/60)
+}
+
+// GenerateImportBlock generates a Terraform import block for a resource
+// and appends it to a session-specific file for easy recovery from timeouts.
+// All timeouts in the same terraform apply session write to the same file.
+// If resourceID is a placeholder, attempts to search for the actual ID by name.
+func GenerateImportBlock(ctx context.Context, client *dctapi.APIClient, resourceType string, resourceName string, resourceID string) string {
+	finalID := resourceID
+	
+	// If we have a placeholder ID, try to find the actual ID by searching
+	if strings.HasPrefix(resourceID, "<REPLACE_WITH_") {
+		tflog.Info(ctx, fmt.Sprintf("Attempting to find actual ID for %s '%s'", resourceType, resourceName))
+		
+		var foundID string
+		var err error
+		
+		if resourceType == "delphix_vdb" {
+			foundID, err = searchVDBByName(ctx, client, resourceName)
+		} else if resourceType == "delphix_appdata_dsource" || resourceType == "delphix_oracle_dsource" {
+			foundID, err = searchDSourceByName(ctx, client, resourceName)
+		}
+		
+		if err == nil && foundID != "" {
+			tflog.Info(ctx, fmt.Sprintf("Found %s with ID: %s", resourceType, foundID))
+			finalID = foundID
+		} else {
+			tflog.Warn(ctx, fmt.Sprintf("Could not find %s '%s': %v - using placeholder", resourceType, resourceName, err))
+		}
+	}
+	
+	importBlock := fmt.Sprintf("import {\n  to = %s.%s\n  id = \"%s\"\n}\n", resourceType, resourceName, finalID)
+	
+	// Use process ID to group all timeouts from the same terraform apply session
+	// Format: terraform_import_blocks_pid12345.txt
+	pid := os.Getpid()
+	filename := fmt.Sprintf("terraform_import_blocks_pid%d.txt", pid)
+	
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		tflog.Warn(ctx, fmt.Sprintf("Failed to write import block to %s: %v", filename, err))
+	} else {
+		defer file.Close()
+		if _, err := file.WriteString(importBlock); err != nil {
+			tflog.Warn(ctx, fmt.Sprintf("Failed to write import block to %s: %v", filename, err))
+		} else {
+			tflog.Info(ctx, fmt.Sprintf("Import block written to %s for %s.%s (ID: %s)", filename, resourceType, resourceName, finalID))
+		}
+	}
+	
+	return importBlock
+}
 func HandleRawConfigReadContext(ctx context.Context, d *schema.ResourceData, apiRes interface{}) error {
 	tflog.Debug(ctx, "HandleRawConfigReadContext:Handling Raw Config Read Context")
 	config := d.GetRawConfig()
