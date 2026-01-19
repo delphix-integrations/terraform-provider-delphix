@@ -221,12 +221,15 @@ func resourceEnvironment() *schema.Resource {
 				Default:  true,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// Don't suppress if user explicitly changed the value in their config
-					rawConfig := d.GetRawConfig()
-					if rawConfig.IsKnown() && !rawConfig.IsNull() {
-						ignoreTagChangesAttr := rawConfig.GetAttr("ignore_tag_changes")
-						if (ignoreTagChangesAttr.IsNull() || !ignoreTagChangesAttr.IsKnown()) && new == "true" && (old == "" || old == "null" || old == "<null>") {
-							return true
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "null" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
 						}
 					}
 					return false
@@ -655,6 +658,11 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 				}
 			}
 		}
+	}
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
 	}
 
 	// get the tags and set it

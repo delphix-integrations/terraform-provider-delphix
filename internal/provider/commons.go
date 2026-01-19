@@ -53,6 +53,7 @@ var updatableVdbKeys = map[string]bool{
 	"tags":                          true,
 	"database_name":                 true,
 	"ignore_tag_changes":            true,
+	"make_current_account_owner":    true,
 }
 
 var isDestructiveVdbUpdate = map[string]bool{
@@ -91,6 +92,7 @@ var isDestructiveVdbUpdate = map[string]bool{
 	"mount_point":                   true,
 	"tags":                          false,
 	"ignore_tag_changes":            false,
+	"make_current_account_owner":    false,
 }
 
 var updatableOracleDsourceKeys = map[string]bool{
@@ -113,6 +115,30 @@ var updatableOracleDsourceKeys = map[string]bool{
 	"ops_post_sync":              true,
 	"ignore_tag_changes":         true,
 	"rollback_on_failure":        true,
+	"make_current_account_owner": true,
+}
+
+var isDestructiveOracleDsourceUpdate = map[string]bool{
+	"name":                       false,
+	"environment_user_id":        false,
+	"backup_level_enabled":       false,
+	"rman_channels":              false,
+	"files_per_set":              false,
+	"check_logical":              false,
+	"encrypted_linking_enabled":  false,
+	"compressed_linking_enabled": false,
+	"bandwidth_limit":            false,
+	"number_of_connections":      false,
+	"pre_provisioning_enabled":   false,
+	"diagnose_no_logging_faults": false,
+	"external_file_path":         false,
+	"tags":                       false,
+	"ops_pre_sync":               false,
+	"ops_pre_log_sync":           false,
+	"ops_post_sync":              false,
+	"ignore_tag_changes":         false,
+	"make_current_account_owner": false,
+	"rollback_on_failure":        false,
 }
 
 var updatableEnvKeys = map[string]bool{
@@ -126,6 +152,7 @@ var updatableEnvKeys = map[string]bool{
 	"hosts":              true,
 	"toolkit_path":       true,
 	"ignore_tag_changes": true,
+	"make_current_account_owner":    true,
 }
 
 var isDestructiveEnvUpdate = map[string]bool{
@@ -139,20 +166,39 @@ var isDestructiveEnvUpdate = map[string]bool{
 	"hosts":              true,
 	"toolkit_path":       false,
 	"ignore_tag_changes": false,
+	"make_current_account_owner":    false,
 }
 
 var updatableAppdataDsourceKeys = map[string]bool{
-	"name":                     true,
-	"description":              true,
-	"staging_environment":      true,
-	"staging_environment_user": true,
-	"environment_user":         true,
-	"parameters":               true,
-	"sync_policy_id":           true,
-	"retention_policy_id":      true,
-	"ops_pre_sync":             true,
-	"ops_post_sync":            true,
-	"tags":                     true,
-	"ignore_tag_changes":       true,
-	"rollback_on_failure":      true,
+	"name":                       true,
+	"description":                true,
+	"staging_environment":        true,
+	"staging_environment_user":   true,
+	"environment_user":           true,
+	"parameters":                 true,
+	"sync_policy_id":             true,
+	"retention_policy_id":        true,
+	"ops_pre_sync":               true,
+	"ops_post_sync":              true,
+	"tags":                       true,
+	"ignore_tag_changes":         true,
+	"rollback_on_failure":        true,
+	"make_current_account_owner": true,
+}
+
+var isDestructiveAppdataDsourceUpdate = map[string]bool{
+	"name":                       false,
+	"description":                false,
+	"staging_environment":        false,
+	"staging_environment_user":   false,
+	"environment_user":           false,
+	"parameters":                 false,
+	"sync_policy_id":             false,
+	"retention_policy_id":        false,
+	"ops_pre_sync":               false,
+	"ops_post_sync":              false,
+	"tags":                       false,
+	"ignore_tag_changes":         false,
+	"make_current_account_owner": false,
+	"rollback_on_failure":        false,
 }

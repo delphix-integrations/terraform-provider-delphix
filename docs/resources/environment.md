@@ -129,7 +129,28 @@ resource "delphix_environment" "win_standalone" {
 * `tags` - The tags to be created for this environment. This is a map of two parameters: [Updatable] 
    * `key` - (Required) Key of the tag 
    * `value` - (Required) Value of the tag 
-* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+* `ignore_tag_changes` – This flag enables whether changes in the tags are identified by Terraform. By default, this is set to `true`, meaning changes to the resource's tags are ignored.
+
+## Timeout Configuration
+
+The Environment resource supports customizable timeouts for create, update, and delete operations:
+
+```hcl
+resource "delphix_environment" "example" {
+  # ... other configuration ...
+  
+  timeouts {
+    create = "20m"  # Default: 20 minutes
+    update = "20m"  # Default: 20 minutes
+    delete = "20m"  # Default: 20 minutes
+  }
+}
+```
+
+If an operation exceeds the configured timeout:
+- For CREATE operations: The resource will not be added to Terraform state. Check DCT UI to verify if the environment was created, then import it if necessary.
+- For UPDATE operations: Changes may be partially applied. Verify the environment state in DCT UI.
+- For DELETE operations: The resource may still exist in DCT. Verify and manually delete if necessary.
 
 ## Import
 Use the import block to add Environments created directly in DCT into a Terraform state file.  

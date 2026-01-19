@@ -41,10 +41,24 @@ func resourceVdb() *schema.Resource {
 			"auto_select_repository": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new && d.Id() != "" {
+						tflog.Info(context.Background(), "auto_select_repository is immutable after creation. Plan changes are suppressed")
+						return true
+					}
+					return false
+				},
 			},
 			"source_data_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new && d.Id() != "" {
+						tflog.Info(context.Background(), "source_data_id is immutable after creation. Plan changes are suppressed")
+						return true
+					}
+					return false
+				},
 			},
 			"id": {
 				Type:     schema.TypeString,
@@ -574,6 +588,13 @@ func resourceVdb() *schema.Resource {
 			"snapshot_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					if old != new && d.Id() != "" {
+						tflog.Info(context.Background(), "snapshot_id is immutable after creation. Plan changes are suppressed")
+						return true
+					}
+					return false
+				},
 			},
 			"bookmark_id": {
 				Type:     schema.TypeString,
@@ -591,6 +612,20 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -627,6 +662,21 @@ func resourceVdb() *schema.Resource {
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("make_current_account_owner")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"config_params": {
 				Type:     schema.TypeString,
@@ -802,8 +852,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
 	if v, has_v := d.GetOk("source_data_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSourceDataId(v.(string))
@@ -826,8 +877,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBBySnapshotParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBBySnapshotParameters.SetOsUsername(v.(string))
@@ -844,11 +895,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBBySnapshotParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBBySnapshotParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBBySnapshotParameters.SetTemplateId(v.(string))
@@ -874,8 +925,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBBySnapshotParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBBySnapshotParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSnapshotPolicyId(v.(string))
@@ -892,11 +943,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBBySnapshotParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
@@ -904,13 +955,13 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBBySnapshotParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
-	if v, has_v := d.GetOkExists("listener_ids"); has_v {
+	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
 	}
 	if v, has_v := d.GetOk("snapshot_id"); has_v {
@@ -1019,14 +1070,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "vdb"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, "<REPLACE_WITH_VDB_ID>")
 		return diag.Errorf("VDB provisioning API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the VDB ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -1051,13 +1096,7 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "vdb"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, vdbId)
 			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
 		}
@@ -1124,8 +1163,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBByTimestampParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBByTimestampParameters.SetOsUsername(v.(string))
@@ -1142,11 +1182,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBByTimestampParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBByTimestampParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBByTimestampParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBByTimestampParameters.SetTemplateId(v.(string))
@@ -1172,8 +1212,8 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBByTimestampParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBByTimestampParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBByTimestampParameters.SetSnapshotPolicyId(v.(string))
@@ -1190,11 +1230,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBByTimestampParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBByTimestampParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1202,11 +1242,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBByTimestampParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
@@ -1324,14 +1364,8 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "vdb"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, "<REPLACE_WITH_VDB_ID>")
 		return diag.Errorf("VDB provisioning API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the VDB ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -1356,13 +1390,7 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "vdb"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, vdbId)
 			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
 		}
@@ -1425,8 +1453,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBFromBookmarkParameters.SetOsUsername(v.(string))
@@ -1443,11 +1472,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBFromBookmarkParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetTemplateId(v.(string))
@@ -1473,8 +1502,8 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBFromBookmarkParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBFromBookmarkParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetSnapshotPolicyId(v.(string))
@@ -1491,11 +1520,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1503,11 +1532,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBFromBookmarkParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
@@ -1614,14 +1643,8 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "vdb"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, "<REPLACE_WITH_VDB_ID>")
 		return diag.Errorf("VDB provisioning API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the VDB ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -1646,13 +1669,7 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "vdb"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_vdb", resourceName, vdbId)
 			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
 		}
@@ -1795,6 +1812,16 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	if !is_provision {
 		// its an import, set to default value
 		d.Set("provision_type", "snapshot")
+	}
+
+	// Set make_current_account_owner to default true if not explicitly set
+	if _, has_make_current := d.GetOk("make_current_account_owner"); !has_make_current {
+		d.Set("make_current_account_owner", true)
+	}
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
 	}
 
 	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())

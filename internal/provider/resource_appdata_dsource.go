@@ -82,6 +82,21 @@ func resourceAppdataDsource() *schema.Resource {
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("make_current_account_owner")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"link_type": {
 				Type:     schema.TypeString,
@@ -114,6 +129,20 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -513,14 +542,8 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "appdata_dsource"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, "<REPLACE_WITH_DSOURCE_ID>")
 		return diag.Errorf("dSource creation API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the dSource ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -545,13 +568,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "appdata_dsource"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, dsourceId)
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
 		}
@@ -670,6 +687,16 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	// 	// its an import or upgrade, set to default value
 	// 	d.Set("rollback_on_failure", false)
 	// }
+
+	// Set make_current_account_owner to default true if not explicitly set
+	if _, has_make_current := d.GetOk("make_current_account_owner"); !has_make_current {
+		d.Set("make_current_account_owner", true)
+	}
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
 
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())

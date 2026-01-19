@@ -75,16 +75,43 @@ func resourceOracleDsource() *schema.Resource {
 				Optional: true,
 				Default:  true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
-						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("make_current_account_owner")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
 					}
-					return d.Id() != ""
+					// Suppress updates after creation
+					if old != new && d.Id() != "" {
+						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
+						return true
+					}
+					return false
 				},
 			},
 			"ignore_tag_changes": {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -810,14 +837,8 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "oracle_dsource"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_oracle_dsource", resourceName, "<REPLACE_WITH_DSOURCE_ID>")
 		return diag.Errorf("dSource creation API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the dSource ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -842,13 +863,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "oracle_dsource"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_oracle_dsource", resourceName, dsourceId)
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
 		}
@@ -999,6 +1014,16 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("ops_pre_sync", flattenDSourceHooks(result.GetHooks().OpsPreSync, oldOpsPreSync))
 	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
+
+	// Set make_current_account_owner to default true if not explicitly set
+	if _, has_make_current := d.GetOk("make_current_account_owner"); !has_make_current {
+		d.Set("make_current_account_owner", true)
+	}
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
 
 	// get the tags and set it
 	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(readCtx, dsource_id).Execute()

@@ -223,8 +223,29 @@ This is a map of three parameters:
 This is a map of two required parameters:  
     * `key` - Key of the tag.  
     * `value` - Value of the tag.  
-* `make_current_account_owner` - Default True. Boolean to determine if the account provisioning this VDB will be the "Owner" of the VDB.  
-* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+* `make_current_account_owner` - Boolean to determine if the account provisioning this VDB will be the "Owner" of the VDB. Default: `true`. [Updatable]  
+* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to `true`, meaning changes to the resource's tags are ignored.
+
+## Timeout Configuration
+
+The VDB resource supports customizable timeouts for create, update, and delete operations:
+
+```hcl
+resource "delphix_vdb" "example" {
+  # ... other configuration ...
+  
+  timeouts {
+    create = "20m"  # Default: 20 minutes
+    update = "20m"  # Default: 20 minutes
+    delete = "20m"  # Default: 20 minutes
+  }
+}
+```
+
+If an operation exceeds the configured timeout:
+- For CREATE operations: The resource will not be added to Terraform state. Check DCT UI to verify if the VDB was created, then import it if necessary.
+- For UPDATE operations: Changes may be partially applied. Verify the VDB state in DCT UI.
+- For DELETE operations: The resource may still exist in DCT. Verify and manually delete if necessary.
 
 ## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add VDBs created directly in DCT into a Terraform state file.  
