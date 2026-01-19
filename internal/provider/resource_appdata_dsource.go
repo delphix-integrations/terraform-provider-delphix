@@ -80,8 +80,10 @@ func resourceAppdataDsource() *schema.Resource {
 				Optional: true,
 			},
 			"make_current_account_owner": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to make the current account owner of the dSource. Defaults to true.",
 			},
 			"link_type": {
 				Type:     schema.TypeString,
@@ -111,9 +113,10 @@ func resourceAppdataDsource() *schema.Resource {
 				Optional: true,
 			},
 			"ignore_tag_changes": {
-				Type:     schema.TypeBool,
-				Default:  true,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to ignore tag changes. Defaults to true.",
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -513,14 +516,8 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "appdata_dsource"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, "<REPLACE_WITH_DSOURCE_ID>")
 		return diag.Errorf("dSource creation API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the dSource ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -545,13 +542,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "appdata_dsource"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_appdata_dsource", resourceName, dsourceId)
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
 		}
@@ -670,6 +661,9 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	// 	// its an import or upgrade, set to default value
 	// 	d.Set("rollback_on_failure", false)
 	// }
+
+	// make_current_account_owner and ignore_tag_changes are controlled by schema defaults
+	// Don't set them in read function as they're not returned by API
 
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())

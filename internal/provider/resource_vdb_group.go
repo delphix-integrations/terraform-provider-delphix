@@ -50,6 +50,20 @@ func resourceVdbGroup() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -129,6 +143,12 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Set("name", apiRes.GetName())
 	d.Set("vdb_ids", apiRes.GetVdbIds())
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
+
 	tflog.Debug(ctx, "Getting Raw Config")
 	errors := HandleRawConfigReadContext(ctx, d, apiRes)
 	if errors != nil {

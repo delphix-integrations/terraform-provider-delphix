@@ -221,12 +221,15 @@ func resourceEnvironment() *schema.Resource {
 				Default:  true,
 				Optional: true,
 				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					// Don't suppress if user explicitly changed the value in their config
-					rawConfig := d.GetRawConfig()
-					if rawConfig.IsKnown() && !rawConfig.IsNull() {
-						ignoreTagChangesAttr := rawConfig.GetAttr("ignore_tag_changes")
-						if (ignoreTagChangesAttr.IsNull() || !ignoreTagChangesAttr.IsKnown()) && new == "true" && (old == "" || old == "null" || old == "<null>") {
-							return true
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "null" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
 						}
 					}
 					return false
@@ -657,6 +660,11 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
+
 	// get the tags and set it
 	resTagsEnv, httpRes, err := client.EnvironmentsAPI.GetTagsEnvironment(readCtx, envId).Execute()
 	if err != nil {
@@ -681,6 +689,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.key
 			k = "tags"
 		}
+		// Skip timeouts - it's a Terraform meta-argument that shouldn't trigger resource updates
+		if strings.Contains(k, "timeouts") {
+			continue
+		}
 		if d.HasChange(k) {
 			changedKeys = append(changedKeys, k)
 		}
@@ -695,6 +707,12 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			ck = "hosts"
 		}
 		modifiedChangedKeys = append(modifiedChangedKeys, ck)
+	}
+
+	// If no actual changes, skip update and just read
+	if len(modifiedChangedKeys) == 0 {
+		tflog.Debug(ctx, "No updatable fields changed, skipping update operation")
+		return resourceEnvironmentRead(ctx, d, meta)
 	}
 
 	client := meta.(*apiClient).client

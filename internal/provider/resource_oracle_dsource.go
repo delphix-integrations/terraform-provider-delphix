@@ -71,20 +71,16 @@ func resourceOracleDsource() *schema.Resource {
 				Computed: true,
 			},
 			"make_current_account_owner": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
-						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
-					}
-					return d.Id() != ""
-				},
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to make the current account owner of the dSource. Defaults to true.",
 			},
 			"ignore_tag_changes": {
-				Type:     schema.TypeBool,
-				Default:  true,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to ignore tag changes. Defaults to true.",
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -810,14 +806,8 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	
 	// Check if the API call itself timed out
 	if err != nil && createCtx.Err() == context.DeadlineExceeded {
-		resourceName := d.Get("name").(string)
-		if resourceName == "" {
-			resourceName = "oracle_dsource"
-		}
-		// Generate template import block (ID needs to be filled in manually)
-		_ = GenerateImportBlock(ctx, client, "delphix_oracle_dsource", resourceName, "<REPLACE_WITH_DSOURCE_ID>")
 		return diag.Errorf("dSource creation API call timed out after %s. "+
-			"Check DCT UI for job status. If created, find the dSource ID and update terraform_import_blocks.tf, then import it.",
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
 			d.Timeout(schema.TimeoutCreate))
 	}
 	
@@ -842,13 +832,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
-			resourceName := d.Get("name").(string)
-			if resourceName == "" {
-				resourceName = "oracle_dsource"
-			}
-			_ = GenerateImportBlock(ctx, client, "delphix_oracle_dsource", resourceName, dsourceId)
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
-				"Import block saved to terraform_import_blocks.tf. "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
 		}
@@ -1000,6 +984,9 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
 
+	// make_current_account_owner and ignore_tag_changes are controlled by schema defaults
+	// Don't set them in read function as they're not returned by API
+
 	// get the tags and set it
 	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(readCtx, dsource_id).Execute()
 	if err != nil {
@@ -1038,10 +1025,20 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		if strings.Contains(k, "ops_post_sync") {
 			k = "ops_post_sync"
 		}
+		// Skip timeouts - it's a Terraform meta-argument that shouldn't trigger resource updates
+		if strings.Contains(k, "timeouts") {
+			continue
+		}
 		if d.HasChange(k) {
 			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
+	}
+
+	// If no actual changes, skip update and just read
+	if len(changedKeys) == 0 {
+		tflog.Debug(ctx, "No updatable fields changed, skipping update operation")
+		return resourceOracleDsourceRead(ctx, d, meta)
 	}
 
 	var updateFailure bool = false
