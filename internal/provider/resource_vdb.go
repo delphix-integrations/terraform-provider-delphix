@@ -722,8 +722,10 @@ func toHookArray(array interface{}) []dctapi.Hook {
 	items := []dctapi.Hook{}
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
-		hook_item := dctapi.NewHook(item_map["command"].(string))
-
+		hook_item := dctapi.NewHook()
+		if item_map["command"].(string) != "" {
+			hook_item.SetCommand(item_map["command"].(string))
+		}
 		name := item_map["name"].(string)
 		if name != "" {
 			hook_item.SetName(item_map["name"].(string))

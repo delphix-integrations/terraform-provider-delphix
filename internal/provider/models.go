@@ -102,25 +102,30 @@ type SystemInfo struct {
 }
 
 type InitializationParameters struct {
-	User                string
-	Email               string
-	Password            string
-	DeviceType          string
-	Endpoint            string `json:"endpoint,omitempty"`
-	Region              string `json:"region,omitempty"`
-	Bucket              string `json:"bucket,omitempty"`
-	Size                string `json:"size,omitempty"`
-	AuthType            string `json:"auth_type,omitempty"`
-	ACCESS_ID           string `json:"access_id,omitempty"`
-	ACCESS_KEY          string `json:"access_key,omitempty"`
-	S3_INSTANCE_PROFILE string `json:"s3_instance_profile,omitempty"`
+	User                   string
+	Email                  string
+	Password               string
+	DeviceType             string
+	Endpoint               string `json:"endpoint,omitempty"`
+	Region                 string `json:"region,omitempty"`
+	Bucket                 string `json:"bucket,omitempty"`
+	Size                   string `json:"size,omitempty"`
+	AuthType               string `json:"auth_type,omitempty"`
+	ACCESS_ID              string `json:"access_id,omitempty"`
+	ACCESS_KEY             string `json:"access_key,omitempty"`
+	S3_INSTANCE_PROFILE    string `json:"s3_instance_profile,omitempty"`
+	AzureManagedIdentities string `json:"azure_managed_identities,omitempty"`
+	CloudProvider          string `json:"cloud_provider,omitempty"`
+	Container              string `json:"container,omitempty"`
+	AzureAccount           string `json:"azureAccount,omitempty"`
 }
 
 type TestConnection struct {
-	Endpoint          string                       `json:"endpoint"`
-	Region            string                       `json:"region"`
-	Bucket            string                       `json:"bucket"`
+	Endpoint          string                       `json:"endpoint,omitempty"`
+	Region            string                       `json:"region,omitempty"`
+	Bucket            string                       `json:"bucket,omitempty"`
 	Type              string                       `json:"type"`
+	Container         string                       `json:"container,omitempty"`
 	AccessCredentials ObjectStoreAccessCredentials `json:"accessCredentials"`
 }
 
@@ -133,18 +138,20 @@ type TestConnectionResult struct {
 }
 
 type ObjectStoreAccessCredentials struct {
-	Type       string `json:"type"`
-	ACCESS_ID  string `json:"accessId,omitempty"`
-	ACCESS_KEY string `json:"accessKey,omitempty"`
+	Type         string `json:"type"`
+	ACCESS_ID    string `json:"accessId,omitempty"`
+	ACCESS_KEY   string `json:"accessKey,omitempty"`
+	Azureaccount string `json:"azureAccount,omitempty"`
 }
 
 type ObjectStore struct {
 	Type              string                        `json:"type"`
 	Size              int                           `json:"size"`
 	CacheDevices      []string                      `json:"cacheDevices"`
-	Endpoint          string                        `json:"endpoint"`
-	Region            string                        `json:"region"`
-	Bucket            string                        `json:"bucket"`
+	Endpoint          string                        `json:"endpoint,omitempty"`
+	Region            string                        `json:"region,omitempty"`
+	Bucket            string                        `json:"bucket,omitempty"`
+	Container         string                        `json:"container,omitempty"`
 	AccessCredentials *ObjectStoreAccessCredentials `json:"accessCredentials"`
 }
 
@@ -264,12 +271,16 @@ const (
 	OBJECT                   = "OBJECT"
 	ROLE                     = "ROLE"
 	ACCESS_KEY               = "ACCESS_KEY"
+	MANAGED_IDENTITIES       = "MANAGED_IDENTITIES"
 	DEFAULT_SSO_SKEW_TIME    = 120
 	DEFAULT_SSO_MAX_AUTH_AGE = 86400
 	DEFAULT_SEND_TIMEOUT     = 60
 	CONTINUOUS_COMPLIANCE    = "CC"
 	CONTINUOUS_DATA          = "CD"
 	SYSTEM                   = "SYSTEM"
+	AZURE                    = "AZURE"
+	AWS                      = "AWS"
+	ENGINE_API_VERSION       = "1.11.47"
 )
 
 type ConfigTask struct {

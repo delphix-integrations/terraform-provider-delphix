@@ -176,13 +176,23 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 			return nil, err
 		}
 
-		objectStorage = &ObjectStore{
-			Type:         "S3ObjectStore",
-			Size:         sizeInBytes,
-			CacheDevices: deviceRefs,
-			Endpoint:     params.Endpoint,
-			Region:       params.Region,
-			Bucket:       params.Bucket,
+		switch params.CloudProvider {
+		case AWS:
+			objectStorage = &ObjectStore{
+				Type:         "S3ObjectStore",
+				Size:         sizeInBytes,
+				CacheDevices: deviceRefs,
+				Endpoint:     params.Endpoint,
+				Region:       params.Region,
+				Bucket:       params.Bucket,
+			}
+		case AZURE:
+			objectStorage = &ObjectStore{
+				Type:         "BlobObjectStore",
+				Size:         sizeInBytes,
+				CacheDevices: deviceRefs,
+				Container:    params.Container,
+			}
 		}
 
 		switch params.AuthType {
@@ -196,7 +206,13 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 				ACCESS_ID:  params.ACCESS_ID,
 				ACCESS_KEY: params.ACCESS_KEY,
 			}
+		case MANAGED_IDENTITIES:
+			objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
+				Type:         params.AzureManagedIdentities,
+				Azureaccount: params.AzureAccount,
+			}
 		}
+
 		initializationParams = SystemInitializationObjectStore{
 			Type:            "SystemInitializationParameters",
 			DefaultUser:     params.User,
@@ -385,7 +401,7 @@ func setEngineType(ctx context.Context, client *http.Client, engine_host string,
 
 	resp, err := client.Do(req)
 	if err != nil {
-		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error authenticating: "+err.Error())
+		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error setting engine type: "+err.Error())
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -401,29 +417,47 @@ func setEngineType(ctx context.Context, client *http.Client, engine_host string,
 func testConnectionForObjectStore(ctx context.Context, client *http.Client, engine_host string, params InitializationParameters) ([]byte, error) {
 	testConnectionURL := engine_host + ENGINE_APIS["OBJECT_STORE_TEST_CONNECTION"]
 	var payload TestConnection
-	if params.AuthType == ACCESS_KEY {
-		payload = TestConnection{
-			Type:     "S3ObjectStoreTest",
-			Endpoint: params.Endpoint,
-			Region:   params.Region,
-			Bucket:   params.Bucket,
-			AccessCredentials: ObjectStoreAccessCredentials{
-				Type:       "S3ObjectStoreAccessKey",
-				ACCESS_ID:  params.ACCESS_ID,
-				ACCESS_KEY: params.ACCESS_KEY,
-			},
+
+	if params.CloudProvider == AWS {
+		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for AWS S3 object store")
+		if params.AuthType == ACCESS_KEY {
+			payload = TestConnection{
+				Type:     "S3ObjectStoreTest",
+				Endpoint: params.Endpoint,
+				Region:   params.Region,
+				Bucket:   params.Bucket,
+				AccessCredentials: ObjectStoreAccessCredentials{
+					Type:       "S3ObjectStoreAccessKey",
+					ACCESS_ID:  params.ACCESS_ID,
+					ACCESS_KEY: params.ACCESS_KEY,
+				},
+			}
+		} else {
+			tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Using instance profile for S3")
+			payload = TestConnection{
+				Type:     "S3ObjectStoreTest",
+				Endpoint: params.Endpoint,
+				Region:   params.Region,
+				Bucket:   params.Bucket,
+				AccessCredentials: ObjectStoreAccessCredentials{
+					Type: params.S3_INSTANCE_PROFILE,
+				},
+			}
 		}
-	} else {
-		payload = TestConnection{
-			Type:     "S3ObjectStoreTest",
-			Endpoint: params.Endpoint,
-			Region:   params.Region,
-			Bucket:   params.Bucket,
-			AccessCredentials: ObjectStoreAccessCredentials{
-				Type: params.S3_INSTANCE_PROFILE,
-			},
+	} else if params.CloudProvider == AZURE {
+		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for AZURE Blob object store")
+		if params.AuthType == MANAGED_IDENTITIES {
+			payload = TestConnection{
+				Type:      "BlobObjectStoreTest",
+				Container: params.Container,
+				AccessCredentials: ObjectStoreAccessCredentials{
+					Type:         params.AzureManagedIdentities,
+					Azureaccount: params.AzureAccount,
+				},
+			}
 		}
 	}
+
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error marshalling test connection data: "+err.Error())
@@ -628,7 +662,7 @@ func getEntityIDForSSO(ctx context.Context, client *http.Client, engine_host str
 			return entityId, nil
 		}
 	}
-	return "", fmt.Errorf("[" + engine_host + "] failed to retrieve EntityID for sso")
+	return "", fmt.Errorf("[%s] failed to retrieve EntityID for sso", engine_host)
 }
 
 func getComplianceUserID(ctx context.Context, client *http.Client, engine_host string, comp_user string, authToken string) (string, error) {
@@ -657,7 +691,7 @@ func getComplianceUserID(ctx context.Context, client *http.Client, engine_host s
 	bodyStr := string(body)
 	if strings.Contains(bodyStr, `"status":"ERROR"`) {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] API returned error response: "+bodyStr)
-		return "", fmt.Errorf("["+engine_host+"] Failed to get compliance user ID: %s", bodyStr)
+		return "", fmt.Errorf("[%s] Failed to get compliance user ID: %s", engine_host, bodyStr)
 	}
 
 	var response map[string]interface{}
@@ -669,7 +703,7 @@ func getComplianceUserID(ctx context.Context, client *http.Client, engine_host s
 	responseList, ok := response["responseList"].([]interface{})
 	if !ok {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] responseList field not found or not an array in response")
-		return "", fmt.Errorf("[" + engine_host + "] invalid response format: responseList field not found or not an array")
+		return "", fmt.Errorf("[%s] invalid response format: responseList field not found or not an array", engine_host)
 	}
 	for _, item := range responseList {
 		if user, ok := item.(map[string]interface{}); ok {
@@ -680,13 +714,13 @@ func getComplianceUserID(ctx context.Context, client *http.Client, engine_host s
 					return userIDStr, nil
 				} else {
 					tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] userId field not found or not a number for user: "+comp_user)
-					return "", fmt.Errorf("["+engine_host+"] userId field not found or not a number for user: %s", comp_user)
+					return "", fmt.Errorf("[%s] userId field not found or not a number for user: %s", engine_host, comp_user)
 				}
 			}
 		}
 	}
 	tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] compliance user "+comp_user+" not found")
-	return "", fmt.Errorf("[" + engine_host + "] compliance user " + comp_user + " not found")
+	return "", fmt.Errorf("[%s] compliance user %s not found", engine_host, comp_user)
 }
 
 func updateComplianceUser(ctx context.Context, client *http.Client, engine_host string, user_id string, comp_new_pass string, email string, comp_user string, authToken string) ([]byte, error) {
@@ -785,7 +819,7 @@ func loginComplianceUser(ctx context.Context, client *http.Client, engine_host s
 		return auth, nil
 	}
 
-	return "", fmt.Errorf("[" + engine_host + "] authorization token not found in compliance user login response")
+	return "", fmt.Errorf("[%s] authorization token not found in compliance user login response", engine_host)
 }
 
 func startMasking(ctx context.Context, client *http.Client, engine_host string) diag.Diagnostics {
@@ -794,7 +828,7 @@ func startMasking(ctx context.Context, client *http.Client, engine_host string) 
 	req, err := http.NewRequest(http.MethodPost, startMaskingURL, nil)
 	if err != nil {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error creating start masking request: "+err.Error())
-		return diag.Errorf("["+engine_host+"] error creating start masking request: %s", err)
+		return diag.Errorf("[%s] error creating start masking request: %s", engine_host, err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Sending start masking request to "+startMaskingURL)

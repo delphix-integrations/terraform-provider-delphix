@@ -231,12 +231,6 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 	if v, has_v := d.GetOk("unsafe_ssl_hostname_check"); has_v {
 		registerEngine.SetUnsafeSslHostnameCheck(v.(bool))
 	}
-	if v, has_v := d.GetOk("truststore_filename"); has_v {
-		registerEngine.SetTruststoreFilename(v.(string))
-	}
-	if v, has_v := d.GetOk("truststore_password"); has_v {
-		registerEngine.SetTruststorePassword(v.(string))
-	}
 	if v, has_v := d.GetOk("tags"); has_v {
 		registerEngine.SetTags(toTagArray(v))
 	}

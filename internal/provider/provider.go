@@ -67,6 +67,7 @@ func Provider(version string) func() *schema.Provider {
 				"delphix_database_postgresql":     resourceSource(),
 				"delphix_engine_configuration":    resourceEngineConfiguration(),
 				"delphix_engine_dct_registration": resourceEngineRegistration(),
+				"delphix_database_plugin":         resourceDatabasePlugin(),
 			},
 		}
 

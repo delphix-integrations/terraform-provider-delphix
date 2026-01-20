@@ -33,7 +33,6 @@ resource "delphix_engine_configuration" "config" {
 /* BLOCK STORAGE With NTP configuration */
 resource "delphix_engine_configuration" "config" {
   engine_host  = "http://eg22.dlpxdc.co"
-  api_version  = "1.11.31"
   sys_user     = "XXXX"
   sys_password = "XXXX"
   user         = "XXXX"
@@ -45,10 +44,9 @@ resource "delphix_engine_configuration" "config" {
   ntp_servers = ["Europe.pool.ntp.org"]
 }
 
-/* OBJECT STORAGE with ROLE based configurations*/
+/* OBJECT STORAGE with ROLE based configurations (AWS)*/
 resource "delphix_engine_configuration" "config2" {
   engine_host  = "http://object.dlpxdc.co"
-  api_version  = "1.11.46"
   sys_user     = "XXXX"
   sys_password = "XXXX"
   user         = "XXXX"
@@ -57,6 +55,7 @@ resource "delphix_engine_configuration" "config2" {
   engine_type  = "CD"
   device_type = "OBJECT"
   object_storage_params {
+    cloud_provider = "AWS"
     auth_type = "ROLE"
     region = "us-west-2"
     bucket = "dcoa-prod-object"
@@ -67,10 +66,9 @@ resource "delphix_engine_configuration" "config2" {
   ntp_servers = ["Europe.pool.ntp.org"]
 }
 
-/* OBJECT STORAGE with ACCESS_KEY based configuration*/
+/* OBJECT STORAGE with ACCESS_KEY based configuration (AWS)*/
 resource "delphix_engine_configuration" "config2" {
   engine_host  = "http://object.dlpxdc.co"
-  api_version  = "1.11.46"
   sys_user     = "XXXX"
   sys_password = "XXXX"
   user         = "XXXX"
@@ -79,6 +77,7 @@ resource "delphix_engine_configuration" "config2" {
   engine_type  = "CD"
   device_type = "OBJECT"
   object_storage_params {
+    cloud_provider = "<AWS> OR <AZURE>"
     auth_type = "ACCESS_KEY"
     region = "us-west-2"
     bucket = "dcoa-prod-object"
@@ -91,10 +90,30 @@ resource "delphix_engine_configuration" "config2" {
   ntp_servers = ["Europe.pool.ntp.org"]
 }
 
+/* OBJECT STORAGE with MANAGED_IDENTITIED based configuration (AZURE)*/
+resource "delphix_engine_configuration" "config2" {
+  engine_host  = "http://object.dlpxdc.co"
+  sys_user     = "XXXX"
+  sys_password = "XXXX"
+  user         = "XXXX"
+  password     = "XXXX"
+  email        = "no-reply@delphix.com"
+  engine_type  = "CD"
+  device_type = "OBJECT"
+  object_storage_params {
+    cloud_provider = "AZURE"
+    auth_type = "MANAGED_IDENTITIES"
+    azure_container = "XXXX"
+    azure_account = "XXXX"
+    size = "30GB"
+  }
+  ntp_timezone = "Africa/Asmera"
+  ntp_servers = ["Europe.pool.ntp.org"]
+}
+
 /*SMTP, NTP, DNS, WEB PROXY, USER ANALYTICS, PHONEHOME CONFIGS*/
 resource "delphix_engine_configuration" "config2" {
   engine_host  = "http://object.dlpxdc.co"
-  api_version  = "1.11.46"
   sys_user     = "XXXX"
   sys_password = "XXXX"
   user         = "XXXX"
@@ -134,7 +153,6 @@ resource "delphix_engine_configuration" "config2" {
 /* SSO Config */
 resource "delphix_engine_configuration" "config2" {
   engine_host  = "http://object.dlpxdc.co"
-  api_version  = "1.11.46"
   sys_user     = "XXXX"
   sys_password = "XXXX"
   user         = "XXXX"
