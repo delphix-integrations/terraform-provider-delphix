@@ -2,57 +2,59 @@
 This resource helps to configure Delphix Engine.
 This resource allow you to configure Delphix Engine with several parameters like DNS, SMTP, NTP, etc .
 Engine can be either of type Virtualization or Compliance.
+## Requirements
+For Engine configuration the Delphix Engine must be on version >= 2026.1.0
 ## Example Usage
 
-Configure an Engine.
+### Configure an Engine with Object store.
 ```hcl
 resource "delphix_engine_configuration" "config" {
-  engine_host  = "http://mabl.dlpxdc.co"
+  engine_host  = "<full-url-of-engine-host>"
   sys_user     = "sysadmin"
   sys_password = "xxxx"
   sys_new_password = "xxxx"
   compliance_user = "admin"
-  compliance_password = "Admin-12"
-  compliance_email = "test@gmail.com"
-  compliance_new_password = "Compliance@1"
+  compliance_password = "<compliance-current-password>"
+  compliance_email = "<email>"
+  compliance_new_password = "<compliance-new-password>"
   user         = "admin"
-  password     = "test"
-  email        = "engine-user@delphix.com"
-  engine_type  = "CC"
+  password     = "<admin-password>"
+  email        = "<admin-email>"
+  engine_type  = "<CC or CD>"
 
   device_type = "OBJECT"
   object_storage_params {
     cloud_provider = "AWS"
     auth_type = "ROLE"
-    region = "us-west-2"
-    bucket = "example-prod-s3"
-    endpoint = "s3.us-west-2.amazonaws.com"
-    size = "30GB"
+    region = "<aws-region>"
+    bucket = "<aws-bucket-name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
   }
 
   smtp_config {
-    server = "delphix.com"
-    port = 25
-    from_email_address = "noreply@perforce.com"
+    server = "<smtp-server>"
+    port = <smtp-port>
+    from_email_address = "<email>"
     send_timeout = 80
     tls_authentication = true
     smtp_authentication {
-        user = "test-user"
+        user = "<user>"
         password = "xxxx"
     }
   }
 
   dns_config {
-    domains = ["perforce.com"]
-    servers = ["172.16.105.23"]
+    domains = ["<domain1>", "<domain2>"]
+    servers = ["<server1>", "<sever2>"]
   }
 
   phone_home_enabled = true
 
   web_proxy_config {
-    host = "host"
+    host = "<host>"
     port = 8081
-    username = "test-web-proxy-user"
+    username = "<web-proxy-user>"
     password = "xxxx"
   }
 
@@ -66,9 +68,48 @@ resource "delphix_engine_configuration" "config" {
    }
 }
 ```
+
+### Configure an Engine with Block store.
+```hcl
+resource "delphix_engine_configuration" "config" {
+  engine_host  = "<full-url-of-engine-host>"
+  sys_user     = "sysadmin"
+  sys_password = "xxxx"
+  sys_new_password = "xxxx"
+  user         = "admin"
+  password     = "<admin-password>"
+  email        = "<admin-email>"
+  engine_type  = "<CC or CD>"
+  device_type = "BLOCK"
+}
+```
+
+### Object storage params for AZURE based storage.
+```hcl
+object_storage_params {
+    cloud_provider = "AZURE"
+    azure_account = "<azure-account>"
+    auth_type = "MANAGED_IDENTITIES"
+    size = "<size>"
+    azure_container = "<azure-container>"
+  }
+```
+
+### Object storage params for AWS based storage.
+```hcl
+object_storage_params {
+    cloud_provider = "AWS"
+    auth_type = "ROLE"
+    region = "<aws-region>"
+    bucket = "<aws-bucket-name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
+  }
+```
+
 ## Argument Reference
 The following arguments apply to all configurations.
-* `engine_host` - (Required) Full URL of Engine to configure. example - https://example-engine.dlpxdc.co
+* `engine_host` - (Required) Full URL of Engine to configure. example - `https://example-engine.dlpxdc.co`.
 * `engine_type ` - (Required) Type of Engine to configure.This can be either `CD` (for Virtualisation Engine ) or `CC` (for Masking Engine).
 * `sys_user` - (Required) Name of system administrator user.
 * `sys_password ` - (Required) Current password of system administrator.
@@ -86,15 +127,16 @@ The following arguments apply to all configurations.
 * `device_type ` - This is to configure storage. This can be either `BLOCK`(for Block Storage) or `OBJECT`(AWS S3 Object store).
 * `object_storage_params ` - Configuration parameters for `OBJECT` storage.
      * `cloud_provider ` - Cloud provider for Object Store. This can be either `AWS` or `AZURE`
-     * `auth_type ` - Authentication type for Object Store. This can be either `ROLE` or `ACCESS` if `cloud_provider` is `AWS` and `MANAGED_IDENTITIES` if `cloud_provider` is `AZURE`.
+     * `auth_type ` - Authentication type for Object Store. This can be either `ROLE` or `ACCESS_KEY` if `cloud_provider` is `AWS` and `MANAGED_IDENTITIES` and `ACCESS_KEY` if `cloud_provider` is `AZURE`.
      * `region` - (Required for `AWS `) Region of the bucket for Object store.
      * `bucket` - (Required for `AWS `) Name of the bucket for Object store.
      * `endpoint ` - (Required for `AWS `) Endpoint for Object store.
      * `size ` - Size of the Object store to configure.
-     * `access_id ` - access id if using `auth_type ` as `ACCESS`.
-     * `access_key ` - access key if using `auth_type ` as `ACCESS`.
+     * `access_id ` - (Required for `AWS `) access id if using `auth_type ` as `ACCESS_KEY`.
+     * `access_key ` - (Required for `AWS `) access key if using `auth_type ` as `ACCESS_KEY`.
      * `azure_container ` - (Required for `AZURE `) container name in case of Azure based Object storage.
      * `azure_account ` - (Required for `AZURE `) Azure account in case of Azure based Object storage.
+     * `azure_key` - (Required for `AZURE `) access key for Azure if `auth_type` is `ACCESS_KEY`.
    
 * `smtp_config ` - Configuration parameters for SMTP. Configure the Delphix Engine's SMTP sending service to enable email notifications. Your sysadmin email will be used for receiving system reports, events, and fault notifications.
        * `server ` - (Required) SMTP server

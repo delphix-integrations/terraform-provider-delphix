@@ -31,6 +31,10 @@ func pollActionStatus(ctx context.Context, client *http.Client, engine_host stri
 			tflog.Error(ctx, DLPX+ERROR+" ["+engine_host+"] Error unmarshalling "+err.Error())
 			return diag.Errorf("["+engine_host+"] Error unmarshalling action result: %s", err)
 		}
+		// Check for nil actionResult to prevent crashes
+		if actionResult.Result.State == "" {
+			return diag.Errorf("[" + engine_host + "] Action result state is empty or nil")
+		}
 		tflog.Info(ctx, DLPX+INFO+" ["+engine_host+"] action state "+actionResult.Result.State)
 		if actionResult.Result.State == "COMPLETED" {
 			tflog.Info(ctx, DLPX+INFO+" ["+engine_host+"] Action completed!")
@@ -68,6 +72,11 @@ func UpdateUserPassword(ctx context.Context, client *http.Client, engine_host st
 	err = json.Unmarshal(userData, &result)
 	if err != nil {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] Unmarshal Error "+err.Error())
+		return diag.Errorf("["+engine_host+"] Error unmarshalling user data: %s", err)
+	}
+	// Check for nil result or empty reference to prevent crashes
+	if result.Result.Reference == "" {
+		return diag.Errorf("[" + engine_host + "] User reference is empty or nil")
 	}
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Current User Reference "+result.Result.Reference)
 
@@ -95,6 +104,10 @@ func initializeSystemAndDevices(ctx context.Context, client *http.Client, engine
 	err = json.Unmarshal(deviceData, &resultList)
 	if err != nil {
 		return APIResponse{}, diag.Errorf("["+engine_host+"] Error parsing device information: %s", err)
+	}
+	// Check for nil resultList to prevent crashes
+	if resultList.Result == nil {
+		return APIResponse{}, diag.Errorf("[" + engine_host + "] Device list result is nil")
 	}
 
 	// Initialize System
@@ -144,8 +157,10 @@ func configureSMTP(ctx context.Context, client *http.Client, engine_host string,
 	var config SMTPConfig
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Configuring SMTP Settings")
 	var isSMTPAuthentication bool
-	if len(smtp_config["smtp_authentication"].([]interface{})) > 0 {
-		isSMTPAuthentication = true
+	if smtpAuth, exists := smtp_config["smtp_authentication"]; exists && smtpAuth != nil {
+		if len(smtp_config["smtp_authentication"].([]interface{})) > 0 {
+			isSMTPAuthentication = true
+		}
 	}
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] SMTP Config Map: "+fmt.Sprintf("%+v", smtp_config))
 	config = SMTPConfig{
@@ -327,6 +342,14 @@ func processRequestAndResponse(ctx context.Context, client *http.Client, payload
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error reading "+config_name+" response: "+err.Error())
+		return APIResponse{}, err
+	}
+	// Check for nil body to prevent crashes
+	if body == nil {
+		return APIResponse{}, fmt.Errorf("["+engine_host+"] %s response body is nil", config_name)
+	}
 	bodyStr := string(body)
 	if strings.Contains(bodyStr, `"status":"ERROR"`) {
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] API returned error response: "+bodyStr)
@@ -334,10 +357,6 @@ func processRequestAndResponse(ctx context.Context, client *http.Client, payload
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] "+config_name+" Configuration Response Body: "+string(body))
-	if err != nil {
-		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error reading "+config_name+" response: "+err.Error())
-		return APIResponse{}, err
-	}
 	var res APIResponse
 	err = json.Unmarshal(body, &res)
 	if err != nil {

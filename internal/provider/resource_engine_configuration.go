@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,6 +61,10 @@ func resourceEngineConfiguration() *schema.Resource {
 							if authTypeStr != ROLE && authTypeStr != ACCESS_KEY {
 								return errors.New("auth_type for AWS cloud_provider must be either ROLE or ACCESS_KEY")
 							}
+
+							if authType == ACCESS_KEY && (block["access_id"] == "" || block["access_key"] == "") {
+								return errors.New("access_id and access_key must be provided when auth_type is ACCESS_KEY")
+							}
 						}
 
 					} else if cloud_provider == AZURE {
@@ -76,13 +81,11 @@ func resourceEngineConfiguration() *schema.Resource {
 							if authTypeStr != MANAGED_IDENTITIES && authTypeStr != ACCESS_KEY {
 								return errors.New("auth_type for AZURE cloud_provider must be either MANAGED_IDENTITIES or ACCESS_KEY")
 							}
+							if authTypeStr == ACCESS_KEY && block["azure_key"] == "" {
+								return errors.New("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider")
+							}
 						}
 					}
-					authType := block["auth_type"].(string)
-					if authType == ACCESS_KEY && (block["access_id"] == "" || block["access_key"] == "") {
-						return errors.New("access_id and access_key must be provided when auth_type is ACCESS_KEY")
-					}
-
 				}
 				ntp_servers := rd.Get("ntp_servers").([]interface{})
 				ntp_timezone := rd.Get("ntp_timezone").(string)
@@ -266,6 +269,12 @@ func resourceEngineConfiguration() *schema.Resource {
 				Required:     true,
 				ValidateFunc: validation.StringInSlice([]string{BLOCK, OBJECT}, false),
 			},
+			"insecure_ssl": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				Description: "Skip SSL certificate verification when connecting to the engine",
+			},
 			"object_storage_params": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -323,6 +332,10 @@ func resourceEngineConfiguration() *schema.Resource {
 							Optional: true,
 						},
 						"azure_account": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"azure_key": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -479,8 +492,14 @@ func resourceEngineConfiguration() *schema.Resource {
 func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	// Create a cookie jar to store session cookies
+	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: jar, Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: insecureSSL,
+		},
+	},
+	}
 
 	var compl_email, compl_user, compl_password, compl_new_password, default_email string
 	engine_host, _ := d.Get("engine_host").(string)
@@ -577,11 +596,10 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 			}
 		} else if params.CloudProvider == AZURE {
 			params.Container = object_storage_params[0].(map[string]interface{})["azure_container"].(string)
-			params.AzureAccount = object_storage_params[0].(map[string]interface{})["azure_account"].(string)
+			params.AZURE_ACCOUNT = object_storage_params[0].(map[string]interface{})["azure_account"].(string)
 
 			if params.AuthType == ACCESS_KEY {
-				params.ACCESS_ID = object_storage_params[0].(map[string]interface{})["access_id"].(string)
-				params.ACCESS_KEY = object_storage_params[0].(map[string]interface{})["access_key"].(string)
+				params.AZURE_KEY = object_storage_params[0].(map[string]interface{})["azure_key"].(string)
 			} else {
 				params.AzureManagedIdentities = object_storage_params[0].(map[string]interface{})["azure_managed_identities"].(string)
 			}
@@ -769,8 +787,14 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	version := ENGINE_API_VERSION
 
 	// Create a cookie jar to store session cookies
+	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)
-	client := &http.Client{Jar: jar}
+	client := &http.Client{Jar: jar, Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: insecureSSL,
+		},
+	},
+	}
 
 	// Start a session
 	err := startSession(ctx, client, engineId, version)

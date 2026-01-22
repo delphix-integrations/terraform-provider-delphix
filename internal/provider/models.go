@@ -113,11 +113,12 @@ type InitializationParameters struct {
 	AuthType               string `json:"auth_type,omitempty"`
 	ACCESS_ID              string `json:"access_id,omitempty"`
 	ACCESS_KEY             string `json:"access_key,omitempty"`
+	AZURE_ACCOUNT          string `json:"azureAccount,omitempty"`
+	AZURE_KEY              string `json:"azureKey,omitempty"`
 	S3_INSTANCE_PROFILE    string `json:"s3_instance_profile,omitempty"`
 	AzureManagedIdentities string `json:"azure_managed_identities,omitempty"`
 	CloudProvider          string `json:"cloud_provider,omitempty"`
 	Container              string `json:"container,omitempty"`
-	AzureAccount           string `json:"azureAccount,omitempty"`
 }
 
 type TestConnection struct {
@@ -138,10 +139,11 @@ type TestConnectionResult struct {
 }
 
 type ObjectStoreAccessCredentials struct {
-	Type         string `json:"type"`
-	ACCESS_ID    string `json:"accessId,omitempty"`
-	ACCESS_KEY   string `json:"accessKey,omitempty"`
-	Azureaccount string `json:"azureAccount,omitempty"`
+	Type          string `json:"type"`
+	ACCESS_ID     string `json:"accessId,omitempty"`
+	ACCESS_KEY    string `json:"accessKey,omitempty"`
+	AZURE_ACCOUNT string `json:"azureAccount,omitempty"`
+	AZURE_KEY     string `json:"azureKey,omitempty"`
 }
 
 type ObjectStore struct {

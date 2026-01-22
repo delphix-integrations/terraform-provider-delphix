@@ -195,21 +195,32 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 			}
 		}
 
-		switch params.AuthType {
-		case ROLE:
-			objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-				Type: params.S3_INSTANCE_PROFILE,
+		if params.CloudProvider == AWS {
+			switch params.AuthType {
+			case ROLE:
+				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
+					Type: params.S3_INSTANCE_PROFILE,
+				}
+			case ACCESS_KEY:
+				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
+					Type:       "S3ObjectStoreAccessKey",
+					ACCESS_ID:  params.ACCESS_ID,
+					ACCESS_KEY: params.ACCESS_KEY,
+				}
 			}
-		case ACCESS_KEY:
-			objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-				Type:       "S3ObjectStoreAccessKey",
-				ACCESS_ID:  params.ACCESS_ID,
-				ACCESS_KEY: params.ACCESS_KEY,
-			}
-		case MANAGED_IDENTITIES:
-			objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-				Type:         params.AzureManagedIdentities,
-				Azureaccount: params.AzureAccount,
+		} else if params.CloudProvider == AZURE {
+			switch params.AuthType {
+			case ACCESS_KEY:
+				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
+					Type:          "BlobObjectStoreAccessKey",
+					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
+					AZURE_KEY:     params.AZURE_KEY,
+				}
+			case MANAGED_IDENTITIES:
+				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
+					Type:          params.AzureManagedIdentities,
+					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
+				}
 			}
 		}
 
@@ -451,8 +462,18 @@ func testConnectionForObjectStore(ctx context.Context, client *http.Client, engi
 				Type:      "BlobObjectStoreTest",
 				Container: params.Container,
 				AccessCredentials: ObjectStoreAccessCredentials{
-					Type:         params.AzureManagedIdentities,
-					Azureaccount: params.AzureAccount,
+					Type:          params.AzureManagedIdentities,
+					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
+				},
+			}
+		} else if params.AuthType == ACCESS_KEY {
+			payload = TestConnection{
+				Type:      "BlobObjectStoreTest",
+				Container: params.Container,
+				AccessCredentials: ObjectStoreAccessCredentials{
+					Type:          "BlobObjectStoreAccessKey",
+					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
+					AZURE_KEY:     params.AZURE_KEY,
 				},
 			}
 		}
