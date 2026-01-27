@@ -83,4 +83,4 @@ Consult the Resources section for details on individual resources, such as VDB, 
 | delphix_appdata_dsource update<br>delphix_appdata_dsource import | v 4.0.0   | v 2025.2.0    |
 | delphix_environment update<br>delphix_environment import | v 4.0.0   | v 2025.2.0    |
 | delphix_vdb_group tag management<br>delphix_vdb_group import | v 4.1.0   | v 2025.3.0    |
-| delphix_engine_configuration<br> delphix_engine_dct_registration | v 4.2.0   | v 2025.6.0    |
+| delphix_engine_configuration<br>delphix_engine_dct_registration<br>delphix_database_plugin | v 4.2.0   | v 2025.6.0    |

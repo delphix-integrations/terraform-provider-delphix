@@ -289,9 +289,11 @@ func databasePluginDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	tflog.Info(ctx, DLPX+INFO+"Deleting toolkit with ID: "+d.Get("id").(string))
 	delReq := client.ToolkitsAPI.DeleteToolkitById(ctx, d.Get("id").(string))
-	_, _, err := delReq.Execute()
+	apiRes, httpRes, err := delReq.Execute()
+	tflog.Info(ctx, DLPX+INFO+"Delete response Body: "+fmt.Sprintf("%v", httpRes.Body))
+	tflog.Info(ctx, DLPX+INFO+"Delete API response: "+fmt.Sprintf("%v", apiRes))
 	if err != nil {
-		return diag.Errorf("Error in deleting the toolkit %v", err)
+		return diag.Errorf("Error in deleting the toolkit %v, %v", err, httpRes.Body)
 	}
 
 	return diags
