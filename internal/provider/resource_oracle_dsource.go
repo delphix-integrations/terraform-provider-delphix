@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -23,6 +24,12 @@ func resourceOracleDsource() *schema.Resource {
 		UpdateContext: resourceOracleDsourceUpdate,
 		DeleteContext: resourceOracleDsourceDelete,
 		CustomizeDiff: CustomizeDiffTags,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -64,20 +71,16 @@ func resourceOracleDsource() *schema.Resource {
 				Computed: true,
 			},
 			"make_current_account_owner": {
-				Type:     schema.TypeBool,
-				Optional: true,
-				Default:  true,
-				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-					if old != new {
-						tflog.Info(context.Background(), "updating make_current_account_owner is not allowed. plan changes are suppressed")
-					}
-					return d.Id() != ""
-				},
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to make the current account owner of the dSource. Defaults to true.",
 			},
 			"ignore_tag_changes": {
-				Type:     schema.TypeBool,
-				Default:  true,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to ignore tag changes. Defaults to true.",
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -793,18 +796,47 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if v, has_v := d.GetOk("ops_pre_log_sync"); has_v {
 		oracleDSourceLinkSourceParameters.SetOpsPreLogSync(toSourceOperationArray(v))
 	}
-	req := client.DSourcesAPI.LinkOracleDatabase(ctx)
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
+	req := client.DSourcesAPI.LinkOracleDatabase(createCtx)
 
 	apiRes, httpRes, err := req.OracleDSourceLinkSourceParameters(*oracleDSourceLinkSourceParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("dSource creation API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetDsourceId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("dSource creation failed: received nil response or job from API")
+	}
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	// Store dSource ID temporarily - don't set in state until job completes
+	dsourceId := apiRes.GetDsourceId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
+	}
+
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
+		}
+		return diag.Errorf("dSource creation was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -834,9 +866,36 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
-	PollSnapshotStatus(d, ctx, client)
+	// Check context again before proceeding to snapshot polling
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s during snapshot polling (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("dSource creation was cancelled after job completion (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
 
-	readDiags := resourceOracleDsourceRead(ctx, d, meta)
+	PollSnapshotStatus(d, createCtx, client)
+
+	// Check context one more time before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(dsourceId)
+
+	readDiags := resourceOracleDsourceRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -850,8 +909,12 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*apiClient).client
 	dsource_id := d.Id()
 
-	res, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+	// respect resource read timeout
+	readCtx, readCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutRead))
+	defer readCancel()
+
+	res, diags := PollForObjectExistence(readCtx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(readCtx, dsource_id).Execute()
 	})
 
 	if res == nil {
@@ -861,8 +924,8 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	if diags != nil {
-		_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-			return client.DSourcesAPI.GetDsourceById(ctx, dsource_id).Execute()
+		_, diags := PollForObjectDeletion(readCtx, func() (interface{}, *http.Response, error) {
+			return client.DSourcesAPI.GetDsourceById(readCtx, dsource_id).Execute()
 		})
 		// This would imply error in poll for deletion so we just log and exit.
 		if diags != nil {
@@ -921,8 +984,11 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 	d.Set("ops_post_sync", flattenDSourceHooks(result.GetHooks().OpsPostSync, oldOpsPostSync))
 	d.Set("ops_pre_log_sync", flattenDSourceHooks(result.GetHooks().OpsPreLogSync, oldOpsPreLogSync))
 
+	// make_current_account_owner and ignore_tag_changes are controlled by schema defaults
+	// Don't set them in read function as they're not returned by API
+
 	// get the tags and set it
-	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(ctx, dsource_id).Execute()
+	resTagsDsrc, httpRes, err := client.DSourcesAPI.GetTagsDsource(readCtx, dsource_id).Execute()
 	if err != nil {
 		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for dSource: "+dsource_id+". Error: "+err.Error())
 	} else if httpRes != nil && httpRes.StatusCode >= 400 {
@@ -937,6 +1003,9 @@ func resourceOracleDsourceRead(ctx context.Context, d *schema.ResourceData, meta
 func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
 	updateOracleDsource := dctapi.NewUpdateOracleDsourceParameters()
 
 	dsourceId := d.Get("id").(string)
@@ -956,10 +1025,20 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		if strings.Contains(k, "ops_post_sync") {
 			k = "ops_post_sync"
 		}
+		// Skip timeouts - it's a Terraform meta-argument that shouldn't trigger resource updates
+		if strings.Contains(k, "timeouts") {
+			continue
+		}
 		if d.HasChange(k) {
 			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
+	}
+
+	// If no actual changes, skip update and just read
+	if len(changedKeys) == 0 {
+		tflog.Debug(ctx, "No updatable fields changed, skipping update operation")
+		return resourceOracleDsourceRead(ctx, d, meta)
 	}
 
 	var updateFailure bool = false
@@ -1053,7 +1132,11 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 	}
 
 	if !isStructEmpty(updateOracleDsource) {
-		res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(ctx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
+		// respect resource update timeout
+		updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+		defer updateCancel()
+
+		res, httpRes, err := client.DSourcesAPI.UpdateOracleDsourceById(updateCtx, dsourceId).UpdateOracleDsourceParameters(*updateOracleDsource).Execute()
 
 		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 			// revert and set the old value to the changed keys
@@ -1062,7 +1145,7 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 		}
 
 		if res != nil {
-			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 			if job_err != "" {
 				tflog.Warn(ctx, DLPX+WARN+"Oracle Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
 			}
@@ -1075,7 +1158,7 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
-		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(updateCtx, dsourceId).Execute()
 		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 			d.SetId("")
 			return diags
@@ -1111,7 +1194,7 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 			if len(toTagArray(oldTags)) != 0 {
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
-				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
+					tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(updateCtx, dsourceId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -1120,7 +1203,7 @@ func resourceOracleDsourceUpdate(ctx context.Context, d *schema.ResourceData, me
 			// create tag
 			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(updateCtx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1140,24 +1223,62 @@ func resourceOracleDsourceDelete(ctx context.Context, d *schema.ResourceData, me
 	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
 	deleteDsourceParams.SetForce(false)
 
-	res, httpRes, err := client.DSourcesAPI.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	res, httpRes, err := client.DSourcesAPI.DeleteDsource(deleteCtx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Oracle dSource deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (dSource ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), dsourceId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	if res != nil {
-		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-		if isJobTerminalFailure(job_status) {
-			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-		}
+	// Check for nil res or Job to prevent crashes
+	if res == nil || res.Job == nil {
+		return diag.Errorf("dSource deletion failed: received nil response or job from API")
 	}
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Oracle dSource deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.GetId())
+	}
+
+	job_status, job_err := PollJobStatus(res.GetId(), deleteCtx, client)
+	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("Oracle dSource deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.GetId())
+		}
+		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+	}
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(deleteCtx, dsourceId).Execute()
 	})
 
 	return diags

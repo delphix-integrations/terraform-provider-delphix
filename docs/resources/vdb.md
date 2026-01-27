@@ -15,6 +15,12 @@ resource "delphix_vdb" "vdb_name_provision_by_snapshot" {
   auto_select_repository = true  
   source_data_id         = "<DATASOURCE_ID_OR_NAME>"  
   snapshot_id            = "<SNAPSHOT_ID>" # Leave empty to select the latest snapshot  
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 }  
 
 ``` 
@@ -25,6 +31,12 @@ resource "delphix_vdb" "vdb_name_provision_by_bookmark_on_target_environment" {
   auto_select_repository = true  
   bookmark_id            = "<BOOKMARK_ID_OR_NAME>"  
   environment_id         = "<ENV_ID>"  
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 }  
 ``` 
 ### Provisioning a VDB using timestamp and configure post refresh hook  
@@ -39,6 +51,12 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
     name            = "Sample Hook"  
     shell           = "SHELL"  
   }  
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 }  
 ``` 
 
@@ -48,11 +66,11 @@ resource "delphix_vdb" "vdb_name_provion_by_timestamp_with_hook" {
 The following arguments apply to all database platform types.  
 
 * `name` - (Required) The unique name of the VDB. If empty, a name is randomly generated. [Updatable]  
-* `source_data_id` - (Required) The ID or name of the source dataset (dSource, VDB, Snapshot, or timestamp point) to provision from.   
+* `source_data_id` - (Required) The ID of the source dataset (dSource, VDB) to provision from.   
     * All other objects referenced by the following parameters must live on the same Continuous Data Engine as the chosen source.  
 * `provision_type` - The type of provisioning to be carried out. Defaults to snapshot.   
     * Valid values are `[snapshot, bookmark, timestamp]`. This value determines which matching `snapshot_id`, `bookmark_id`, and `timestamp` argument is required.  
-* `snapshot_id` - The ID or name of the Snapshot from which to execute the provision operation. If the `snapshot_id` is empty or the parameter is not specified, the latest snapshot is automatically selected.  
+* `snapshot_id` - (Optional) The ID or name of the Snapshot from which to execute the provision operation. If the `snapshot_id` is empty or the parameter is not specified, the latest snapshot is automatically selected. When importing an existing VDB, this is automatically computed from the timeflow API.  
 * `bookmark_id` - The ID or name of the Bookmark from which to execute the provision operation. The Bookmark must contain only one VDB.  
 * `timestamp` or `timestamp_in_database_timezone` - The point in time from which to execute the provision operation.   
     * If the `provision_type` is set to `timestamp`, but a `timestamp` value is not provided, then the latest available point is selected.   
@@ -223,8 +241,31 @@ This is a map of three parameters:
 This is a map of two required parameters:  
     * `key` - Key of the tag.  
     * `value` - Value of the tag.  
-* `make_current_account_owner` - Default True. Boolean to determine if the account provisioning this VDB will be the "Owner" of the VDB.  
-* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+* `make_current_account_owner` - (Optional) Boolean to determine if the account provisioning this VDB will be the "Owner" of the VDB. Default: `true`. [Updatable]  
+* `ignore_tag_changes` – (Optional) This flag enables whether changes in the tags are identified by Terraform. Default: `true`, meaning changes to the resource's tags are ignored.
+
+## Timeout Configuration
+
+**Note:** The `timeouts` block is a Terraform meta-argument that's handled specially by Terraform itself and should not be treated as a regular resource attribute. It's used to configure operation timeouts but doesn't represent actual infrastructure state.
+
+The VDB resource supports customizable timeouts for create, update, and delete operations:
+
+```hcl
+resource "delphix_vdb" "example" {
+  # ... other configuration ...
+  
+  timeouts {
+    create = "20m"  # Default: 20 minutes
+    update = "20m"  # Default: 20 minutes
+    delete = "20m"  # Default: 20 minutes
+  }
+}
+```
+
+If an operation exceeds the configured timeout:
+- For CREATE operations: The resource will not be added to Terraform state. Check DCT UI to verify if the VDB was created, then import it if necessary.
+- For UPDATE operations: Changes may be partially applied. Verify the VDB state in DCT UI.
+- For DELETE operations: The resource may still exist in DCT. Verify and manually delete if necessary.
 
 ## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add VDBs created directly in DCT into a Terraform state file.  

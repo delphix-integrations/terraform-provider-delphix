@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	dctapi "github.com/delphix/dct-sdk-go/v25"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -23,6 +24,12 @@ func resourceAppdataDsource() *schema.Resource {
 		UpdateContext: resourceDsourceUpdate,
 		DeleteContext: resourceDsourceDelete,
 		CustomizeDiff: CustomizeDiffTags,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -73,8 +80,10 @@ func resourceAppdataDsource() *schema.Resource {
 				Optional: true,
 			},
 			"make_current_account_owner": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to make the current account owner of the dSource. Defaults to true.",
 			},
 			"link_type": {
 				Type:     schema.TypeString,
@@ -104,9 +113,10 @@ func resourceAppdataDsource() *schema.Resource {
 				Optional: true,
 			},
 			"ignore_tag_changes": {
-				Type:     schema.TypeBool,
-				Default:  true,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     true,
+				Description: "Whether to ignore tag changes. Defaults to true.",
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -429,6 +439,10 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
 	appDataDSourceLinkSourceParameters := dctapi.NewAppDataDSourceLinkSourceParametersWithDefaults()
 
 	if v, has_v := d.GetOk("name"); has_v {
@@ -496,18 +510,43 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		appDataDSourceLinkSourceParameters.SetSyncParameters(sync_params)
 	}
 
-	req := client.DSourcesAPI.LinkAppdataDatabase(ctx)
+	req := client.DSourcesAPI.LinkAppdataDatabase(createCtx)
 
 	apiRes, httpRes, err := req.AppDataDSourceLinkSourceParameters(*appDataDSourceLinkSourceParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("dSource creation API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the dSource ID and import it.",
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetDsourceId())
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("dSource creation failed: received nil response or job from API")
+	}
 
-	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	// Store dSource ID temporarily - don't set in state until job completes
+	dsourceId := apiRes.GetDsourceId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with dSource creation. Error: "+job_err)
+	}
+
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
+		}
+		return diag.Errorf("dSource creation was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -537,9 +576,36 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
 	}
 
-	PollSnapshotStatus(d, ctx, client)
+	// Check context again before proceeding to snapshot polling
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s during snapshot polling (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("dSource creation was cancelled after job completion (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
 
-	readDiags := resourceDsourceRead(ctx, d, meta)
+	PollSnapshotStatus(d, createCtx, client)
+
+	// Check context one more time before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s). "+
+				"The dSource may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(dsourceId)
+
+	readDiags := resourceDsourceRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -596,6 +662,9 @@ func resourceDsourceRead(ctx context.Context, d *schema.ResourceData, meta inter
 	// 	d.Set("rollback_on_failure", false)
 	// }
 
+	// make_current_account_owner and ignore_tag_changes are controlled by schema defaults
+	// Don't set them in read function as they're not returned by API
+
 	d.Set("id", result.GetId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
@@ -633,6 +702,10 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	var updateFailure bool = false
 	var nonUpdatableField []string
 	client := meta.(*apiClient).client
+
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
 	updateAppdataDsource := dctapi.NewUpdateAppDataDSourceParameters()
 
 	dsourceId := d.Get("id").(string)
@@ -716,7 +789,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 	// check if the updateAppdataDsource is not empty
 	if !isStructEmpty(updateAppdataDsource) {
 		tflog.Debug(ctx, "updating appdata dsource")
-		res, httpRes, err := client.DSourcesAPI.UpdateAppdataDsourceById(ctx, dsourceId).UpdateAppDataDSourceParameters(*updateAppdataDsource).Execute()
+		res, httpRes, err := client.DSourcesAPI.UpdateAppdataDsourceById(updateCtx, dsourceId).UpdateAppDataDSourceParameters(*updateAppdataDsource).Execute()
 
 		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 			// revert and set the old value to the changed keys
@@ -725,7 +798,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 
 		if res != nil {
-			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+			job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 			if job_err != "" {
 				tflog.Warn(ctx, DLPX+WARN+"Appdata Dsource Update Job Polling failed but continuing with update. Error: "+job_err)
 			}
@@ -738,7 +811,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
-		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+		apiRes, httpRes, err := client.DSourcesAPI.GetDsourceById(updateCtx, dsourceId).Execute()
 		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 			d.SetId("")
 			return diags
@@ -774,7 +847,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			if len(toTagArray(oldTags)) != 0 {
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
-				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(ctx, dsourceId).DeleteTag(deleteTag).Execute()
+				tagDelResp, tagDelErr := client.DSourcesAPI.DeleteTagsDsource(updateCtx, dsourceId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -783,7 +856,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 			// create tag
 			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(ctx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				_, httpResp, tagCrtErr := client.DSourcesAPI.CreateTagsDsource(updateCtx, dsourceId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -792,7 +865,7 @@ func resourceDsourceUpdate(ctx context.Context, d *schema.ResourceData, meta int
 		}
 	}
 
-	return resourceOracleDsourceRead(ctx, d, meta)
+	return resourceOracleDsourceRead(updateCtx, d, meta)
 }
 
 func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -803,24 +876,62 @@ func resourceDsourceDelete(ctx context.Context, d *schema.ResourceData, meta int
 	deleteDsourceParams := dctapi.NewDeleteDSourceRequest(dsourceId)
 	deleteDsourceParams.SetForce(false)
 
-	res, httpRes, err := client.DSourcesAPI.DeleteDsource(ctx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	res, httpRes, err := client.DSourcesAPI.DeleteDsource(deleteCtx).DeleteDSourceRequest(*deleteDsourceParams).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("AppData dSource deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (dSource ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), dsourceId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	if res != nil {
-		job_status, job_err := PollJobStatus(res.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
-		if isJobTerminalFailure(job_status) {
-			return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
-		}
+	// Check for nil res or Job to prevent crashes
+	if res == nil || res.Job == nil {
+		return diag.Errorf("dSource deletion failed: received nil response or job from API")
 	}
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.DSourcesAPI.GetDsourceById(ctx, dsourceId).Execute()
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("AppData dSource deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.GetId())
+	}
+
+	job_status, job_err := PollJobStatus(res.GetId(), deleteCtx, client)
+	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("AppData dSource deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.GetId())
+		}
+		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error :"+job_err)
+	}
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
+	if isJobTerminalFailure(job_status) {
+		return diag.Errorf("[NOT OK] dSource-Delete %s. JobId: %s / Error: %s", job_status, res.GetId(), job_err)
+	}
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.DSourcesAPI.GetDsourceById(deleteCtx, dsourceId).Execute()
 	})
 
 	return diags

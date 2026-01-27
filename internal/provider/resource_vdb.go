@@ -26,6 +26,12 @@ func resourceVdb() *schema.Resource {
 		DeleteContext: resourceVdbDelete,
 		CustomizeDiff: CustomizeDiffTags,
 
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
+
 		Schema: map[string]*schema.Schema{
 			"provision_type": {
 				Type:     schema.TypeString,
@@ -33,12 +39,16 @@ func resourceVdb() *schema.Resource {
 				Default:  "snapshot",
 			},
 			"auto_select_repository": {
-				Type:     schema.TypeBool,
-				Optional: true,
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Computed:    true,
+				Description: "Whether to automatically select repository during provisioning. Defaults to false during import.",
 			},
 			"source_data_id": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The ID or name of the source dataset (dSource, VDB, Snapshot, or timestamp point) to provision from. Computed during import as root_parent_id.",
 			},
 			"id": {
 				Type:     schema.TypeString,
@@ -566,8 +576,10 @@ func resourceVdb() *schema.Resource {
 				Optional: true,
 			},
 			"snapshot_id": {
-				Type:     schema.TypeString,
-				Optional: true,
+				Type:        schema.TypeString,
+				Optional:    true,
+				Computed:    true,
+				Description: "The ID or name of the Snapshot from which to execute the provision operation. If empty, uses the latest snapshot. Computed during import and read operations.",
 			},
 			"bookmark_id": {
 				Type:     schema.TypeString,
@@ -585,6 +597,20 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -621,6 +647,21 @@ func resourceVdb() *schema.Resource {
 			"make_current_account_owner": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Default:  true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("make_current_account_owner")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"config_params": {
 				Type:     schema.TypeString,
@@ -791,11 +832,16 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
 	provisionVDBBySnapshotParameters := dctapi.NewProvisionVDBBySnapshotParameters()
 
 	// Setters for provisionVDBBySnapshotParameters
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
 	if v, has_v := d.GetOk("source_data_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSourceDataId(v.(string))
@@ -818,8 +864,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBBySnapshotParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBBySnapshotParameters.SetOsUsername(v.(string))
@@ -836,11 +882,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBBySnapshotParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBBySnapshotParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBBySnapshotParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBBySnapshotParameters.SetTemplateId(v.(string))
@@ -866,8 +912,8 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBBySnapshotParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBBySnapshotParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBBySnapshotParameters.SetSnapshotPolicyId(v.(string))
@@ -884,11 +930,11 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBBySnapshotParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBBySnapshotParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBBySnapshotParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogSize(int32(v.(int)))
@@ -896,13 +942,13 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBBySnapshotParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBBySnapshotParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBBySnapshotParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBBySnapshotParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
-	if v, has_v := d.GetOkExists("listener_ids"); has_v {
+	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBBySnapshotParameters.SetListenerIds(toStringArray(v))
 	}
 	if v, has_v := d.GetOk("snapshot_id"); has_v {
@@ -1005,27 +1051,67 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbBySnapshot(ctx)
+	req := client.VDBsAPI.ProvisionVdbBySnapshot(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBBySnapshotParameters(*provisionVDBBySnapshotParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
-
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-		}
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
+		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+	}
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1037,6 +1123,10 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
+
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
 
 	provisionVDBByTimestampParameters := dctapi.NewProvisionVDBByTimestampParameters(d.Get("source_data_id").(string))
 
@@ -1060,8 +1150,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBByTimestampParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBByTimestampParameters.SetOsUsername(v.(string))
@@ -1078,11 +1169,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBByTimestampParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBByTimestampParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBByTimestampParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBByTimestampParameters.SetTemplateId(v.(string))
@@ -1108,8 +1199,8 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBByTimestampParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBByTimestampParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBByTimestampParameters.SetSnapshotPolicyId(v.(string))
@@ -1126,11 +1217,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBByTimestampParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBByTimestampParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBByTimestampParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1138,11 +1229,11 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBByTimestampParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBByTimestampParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBByTimestampParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBByTimestampParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBByTimestampParameters.SetListenerIds(toStringArray(v))
@@ -1254,27 +1345,67 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbByTimestamp(ctx)
+	req := client.VDBsAPI.ProvisionVdbByTimestamp(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBByTimestampParameters(*provisionVDBByTimestampParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
-
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == "FAILED" {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
-			return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
-		}
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
+		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == "FAILED" {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+apiRes.Job.GetId()+" Failed!")
+		return diag.Errorf("[NOT OK] Job %s Failed with error %s", apiRes.Job.GetId(), job_err)
+	}
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1286,6 +1417,10 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
+
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
 
 	provisionVDBFromBookmarkParameters := dctapi.NewProvisionVDBFromBookmarkParameters(d.Get("bookmark_id").(string))
 
@@ -1305,8 +1440,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("cluster_node_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetClusterNodeIds(toStringArray(v))
 	}
-	if v, has_v := d.GetOkExists("truncate_log_on_checkpoint"); has_v {
-		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(v.(bool))
+	rawConfig := d.GetRawConfig()
+	if attr := rawConfig.GetAttr("truncate_log_on_checkpoint"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetTruncateLogOnCheckpoint(d.Get("truncate_log_on_checkpoint").(bool))
 	}
 	if v, has_v := d.GetOk("os_username"); has_v {
 		provisionVDBFromBookmarkParameters.SetOsUsername(v.(string))
@@ -1323,11 +1459,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("repository_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetRepositoryId(v.(string))
 	}
-	if v, has_v := d.GetOkExists("auto_select_repository"); has_v {
-		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(v.(bool))
+	if attr := rawConfig.GetAttr("auto_select_repository"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetAutoSelectRepository(d.Get("auto_select_repository").(bool))
 	}
-	if v, has_v := d.GetOkExists("vdb_restart"); has_v {
-		provisionVDBFromBookmarkParameters.SetVdbRestart(v.(bool))
+	if attr := rawConfig.GetAttr("vdb_restart"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetVdbRestart(d.Get("vdb_restart").(bool))
 	}
 	if v, has_v := d.GetOk("template_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetTemplateId(v.(string))
@@ -1353,8 +1489,8 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("mount_point"); has_v {
 		provisionVDBFromBookmarkParameters.SetMountPoint(v.(string))
 	}
-	if v, has_v := d.GetOkExists("open_reset_logs"); has_v {
-		provisionVDBFromBookmarkParameters.SetOpenResetLogs(v.(bool))
+	if attr := rawConfig.GetAttr("open_reset_logs"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetOpenResetLogs(d.Get("open_reset_logs").(bool))
 	}
 	if v, has_v := d.GetOk("snapshot_policy_id"); has_v {
 		provisionVDBFromBookmarkParameters.SetSnapshotPolicyId(v.(string))
@@ -1371,11 +1507,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("post_script"); has_v {
 		provisionVDBFromBookmarkParameters.SetPostScript(v.(string))
 	}
-	if v, has_v := d.GetOkExists("cdc_on_provision"); has_v {
-		provisionVDBFromBookmarkParameters.SetCdcOnProvision(v.(bool))
+	if attr := rawConfig.GetAttr("cdc_on_provision"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetCdcOnProvision(d.Get("cdc_on_provision").(bool))
 	}
-	if v, has_v := d.GetOkExists("masked"); has_v {
-		provisionVDBFromBookmarkParameters.SetMasked(v.(bool))
+	if attr := rawConfig.GetAttr("masked"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetMasked(d.Get("masked").(bool))
 	}
 	if v, has_v := d.GetOk("online_log_size"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogSize(int32(v.(int)))
@@ -1383,11 +1519,11 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("online_log_groups"); has_v {
 		provisionVDBFromBookmarkParameters.SetOnlineLogGroups(int32(v.(int)))
 	}
-	if v, has_v := d.GetOkExists("archive_log"); has_v {
-		provisionVDBFromBookmarkParameters.SetArchiveLog(v.(bool))
+	if attr := rawConfig.GetAttr("archive_log"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetArchiveLog(d.Get("archive_log").(bool))
 	}
-	if v, has_v := d.GetOkExists("new_dbid"); has_v {
-		provisionVDBFromBookmarkParameters.SetNewDbid(v.(bool))
+	if attr := rawConfig.GetAttr("new_dbid"); !attr.IsNull() {
+		provisionVDBFromBookmarkParameters.SetNewDbid(d.Get("new_dbid").(bool))
 	}
 	if v, has_v := d.GetOk("listener_ids"); has_v {
 		provisionVDBFromBookmarkParameters.SetListenerIds(toStringArray(v))
@@ -1488,27 +1624,67 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
 
-	req := client.VDBsAPI.ProvisionVdbFromBookmark(ctx)
+	req := client.VDBsAPI.ProvisionVdbFromBookmark(createCtx)
 
 	apiRes, httpRes, err := req.ProvisionVDBFromBookmarkParameters(*provisionVDBFromBookmarkParameters).Execute()
+	
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB provisioning API call timed out after %s. "+
+			"Check DCT UI for job status. If created, find the VDB ID and import it.",
+			d.Timeout(schema.TimeoutCreate))
+	}
+	
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	d.SetId(apiRes.GetVdbId())
-
-	if apiRes != nil {
-		job_res, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
-		if job_err != "" {
-			tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
-		}
-		tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
-		if job_res == Failed || job_res == Canceled || job_res == Abandoned {
-			tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
-			return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
-		}
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("VDB provisioning failed: received nil response or job from API")
 	}
-	readDiags := resourceVdbRead(ctx, d, meta)
+
+	// Store VDB ID temporarily - don't set in state until job completes
+	vdbId := apiRes.GetVdbId()
+
+	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
+	if job_err != "" {
+		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with provisioning. Error: "+job_err)
+	}
+	
+	// Check if context was cancelled due to timeout
+	if createCtx.Err() != nil {
+		// Don't set ID in state - let user verify and import
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s (Job ID: %s, VDB ID: %s). "+
+				"Check DCT UI to verify job completion, then import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), vdbId)
+		}
+		return diag.Errorf("VDB provisioning was cancelled (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
+	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
+		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+apiRes.Job.GetId()+"!")
+		return diag.Errorf("[NOT OK] Job %s %s with error %s", apiRes.Job.GetId(), job_res, job_err)
+	}
+	
+	// Check context before reading state
+	if createCtx.Err() != nil {
+		if createCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB provisioning timed out after %s during final state read (Job ID: %s). "+
+				"The VDB may have been created. To resolve:\n"+
+				"1. Check the Delphix DCT UI or API to verify the VDB exists\n"+
+				"2. If created successfully, import it.",
+				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId())
+		}
+		return diag.Errorf("VDB provisioning was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
+	}
+	
+	// Only set ID in state after successful completion
+	d.SetId(vdbId)
+	
+	readDiags := resourceVdbRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
 		return readDiags
@@ -1548,6 +1724,34 @@ func resourceVdbCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	} else {
 		return diag.Errorf("provision_type must be 'timestamp', 'snapshot' or 'bookmark'")
 	}
+}
+
+// getSnapshotIdFromTimeflow retrieves the parent snapshot ID for a VDB by querying its current timeflow
+func getSnapshotIdFromTimeflow(ctx context.Context, client *dctapi.APIClient, vdbId string) (string, error) {
+	// Step 1: Get the VDB to retrieve its current timeflow ID
+	vdb, _, err := client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+	if err != nil {
+		return "", err
+	}
+	
+	// Step 2: Get the current timeflow ID from the VDB
+	currentTimeflowId, ok := vdb.GetCurrentTimeflowIdOk()
+	if !ok || currentTimeflowId == nil || *currentTimeflowId == "" {
+		return "", nil // No current timeflow ID found
+	}
+	
+	// Step 3: Get the timeflow using the timeflow ID
+	timeflow, _, err := client.TimeflowsAPI.GetTimeflowById(ctx, *currentTimeflowId).Execute()
+	if err != nil {
+		return "", err
+	}
+	
+	// Step 4: Get the parent snapshot ID from the timeflow
+	if parentSnapshotId, ok := timeflow.GetParentSnapshotIdOk(); ok && parentSnapshotId != nil {
+		return *parentSnapshotId, nil
+	}
+	
+	return "", nil // No parent snapshot ID found
 }
 
 func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
@@ -1600,6 +1804,40 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 	d.Set("group_name", result.GetGroupName())
 	d.Set("creation_date", result.GetCreationDate().String())
 	d.Set("instance_name", result.GetInstanceName())
+	
+	// Handle auto_select_repository - preserve from config, leave null during import to avoid diffs
+	if autoSelectRepo, hasAutoSelectRepo := d.GetOk("auto_select_repository"); hasAutoSelectRepo {
+		// If auto_select_repository is in config, keep it in state
+		d.Set("auto_select_repository", autoSelectRepo.(bool))
+	}
+	// If not in config (e.g., during import), don't set it - this avoids plan diffs
+	
+	// Handle source_data_id - preserve from config or set to root_parent_id during import
+	if sourceDataId, hasSourceDataId := d.GetOk("source_data_id"); hasSourceDataId {
+		// If source_data_id is in config, keep it in state
+		d.Set("source_data_id", sourceDataId.(string))
+	} else {
+		// For imports or when source_data_id is not specified, set it to parent_id
+		if ParentId := result.GetParentId(); ParentId != "" {
+			d.Set("source_data_id", ParentId)
+			tflog.Debug(ctx, "Set source_data_id from parent_id: "+ParentId)
+		}
+	}
+	
+	// Handle snapshot_id - preserve from config or fetch from API during import
+	if snapshotId, hasSnapshotId := d.GetOk("snapshot_id"); hasSnapshotId {
+		// If snapshot_id is in config, keep it in state
+		d.Set("snapshot_id", snapshotId.(string))
+	} else {
+		// For imports or when snapshot_id is not specified, try to fetch it from the timeflow
+		if parentSnapshotId, err := getSnapshotIdFromTimeflow(ctx, client, vdbId); err == nil && parentSnapshotId != "" {
+			d.Set("snapshot_id", parentSnapshotId)
+			tflog.Debug(ctx, "Retrieved snapshot_id from timeflow: "+parentSnapshotId)
+		} else if err != nil {
+			tflog.Warn(ctx, DLPX+WARN+"Failed to retrieve snapshot_id from timeflow: "+err.Error())
+		}
+	}
+	
 	d.Set("pre_refresh", flattenVDbHooks(result.GetHooks().PreRefresh))
 	d.Set("post_refresh", flattenVDbHooks(result.GetHooks().PostRefresh))
 	d.Set("configure_clone", flattenVDbHooks(result.GetHooks().ConfigureClone))
@@ -1625,6 +1863,16 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 		d.Set("provision_type", "snapshot")
 	}
 
+	// Set make_current_account_owner to default true if not explicitly set
+	if _, has_make_current := d.GetOk("make_current_account_owner"); !has_make_current {
+		d.Set("make_current_account_owner", true)
+	}
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
+
 	d.Set("jdbc_connection_string", result.GetJdbcConnectionString())
 	d.Set("cdb_id", result.GetCdbId())
 	d.Set("template_id", result.GetTemplateId())
@@ -1646,6 +1894,9 @@ func resourceVdbRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 
 	client := meta.(*apiClient).client
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
 	updateVDBParam := dctapi.NewUpdateVDBParameters()
 
 	vdbId := d.Get("id").(string)
@@ -1695,10 +1946,24 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		if strings.Contains(k, "listener_ids") {
 			k = "listener_ids"
 		}
+		// Skip auto_select_repository - it's a provision-time parameter that shouldn't trigger updates
+		if k == "auto_select_repository" {
+			continue
+		}
+		// Skip timeouts - it's a Terraform meta-argument that shouldn't trigger resource updates
+		if strings.Contains(k, "timeouts") {
+			continue
+		}
 		if d.HasChange(k) {
 			tflog.Debug(ctx, "changed keys"+k)
 			changedKeys = append(changedKeys, k)
 		}
+	}
+
+	// If no actual changes (e.g., only auto_select_repository changed), skip update and just read
+	if len(changedKeys) == 0 {
+		tflog.Debug(ctx, "No updatable fields changed, skipping update operation")
+		return resourceVdbRead(ctx, d, meta)
 	}
 
 	var updateFailure, destructiveUpdate bool = false, false
@@ -1918,7 +2183,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		updateVDBParam.SetConfigParams(config_params)
 	}
 	if !isStructEmpty(updateVDBParam) {
-		res, httpRes, err := client.VDBsAPI.UpdateVdbById(ctx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
+		res, httpRes, err := client.VDBsAPI.UpdateVdbById(updateCtx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
 
 		if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 			// revert and set the old value to the changed keys
@@ -1927,7 +2192,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		}
 
 		if res != nil {
-			job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+				job_status, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 			if job_err != "" {
 				tflog.Warn(ctx, DLPX+WARN+"VDB Update Job Polling failed but continuing with update. Error: "+job_err)
 			}
@@ -1940,7 +2205,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
-		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+		apiRes, httpRes, err := client.VDBsAPI.GetVdbById(updateCtx, vdbId).Execute()
 		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 			d.SetId("")
 			return diags
@@ -1976,7 +2241,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			if len(toTagArray(oldTags)) != 0 {
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
-				tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(ctx, vdbId).DeleteTag(deleteTag).Execute()
+					tagDelResp, tagDelErr := client.VDBsAPI.DeleteVdbTags(updateCtx, vdbId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -1985,7 +2250,7 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 			// create tag
 			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(ctx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				_, httpResp, tagCrtErr := client.VDBsAPI.CreateVdbTags(updateCtx, vdbId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1995,12 +2260,12 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	}
 
 	if destructiveUpdate {
-		if diags := enableVDB(ctx, client, vdbId); diags != nil {
+		if diags := enableVDB(updateCtx, client, vdbId); diags != nil {
 			return diags //if failure should we enable
 		}
 	}
 
-	return resourceVdbRead(ctx, d, meta)
+	return resourceVdbRead(updateCtx, d, meta)
 }
 func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
@@ -2010,14 +2275,54 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	res, httpRes, err := client.VDBsAPI.DeleteVdb(ctx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	res, httpRes, err := client.VDBsAPI.DeleteVdb(deleteCtx, vdbId).DeleteVDBParameters(*deleteVdbParams).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (VDB ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), vdbId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+	// Check for nil res or Job to prevent crashes
+	if res == nil || res.Job == nil {
+		return diag.Errorf("VDB deletion failed: received nil response or job from API")
+	}
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+	}
+
+	job_status, job_err := PollJobStatus(res.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("VDB deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), res.Job.GetId())
+		}
 		tflog.Warn(ctx, DLPX+WARN+"Job Polling failed but continuing with deletion. Error : "+job_err)
 	}
 	tflog.Info(ctx, DLPX+INFO+"Job result is "+job_status)
@@ -2025,8 +2330,8 @@ func resourceVdbDelete(ctx context.Context, d *schema.ResourceData, meta interfa
 		return diag.Errorf("[NOT OK] VDB-Delete %s. JobId: %s / Error: %s", job_status, res.Job.GetId(), job_err)
 	}
 
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.VDBsAPI.GetVdbById(ctx, vdbId).Execute()
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.VDBsAPI.GetVdbById(deleteCtx, vdbId).Execute()
 	})
 
 	return diags

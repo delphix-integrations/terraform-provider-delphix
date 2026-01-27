@@ -44,6 +44,12 @@ resource "delphix_appdata_dsource" "pg_using_external_backup" {
     resync = true 
   }) 
   make_current_account_owner = true 
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 } 
 ```
 
@@ -76,6 +82,12 @@ resource "delphix_appdata_dsource" "pg_using_delphix_initiated_backup" {
     resync = true 
   }) 
   make_current_account_owner = true 
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 } 
 ```
 
@@ -113,6 +125,12 @@ resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" {
     resync = true 
   })
   make_current_account_owner = true 
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 } 
 ```  
 
@@ -176,11 +194,34 @@ The following arguments enable the user to control how the first ingestion and s
 
 ### Advanced 
 The following arguments apply to all dSources but they are not often necessary for simple sources. 
-* `make_current_account_owner` - (Required) True/False. Indicates whether the account creating this reporting schedule must be configured as owner of the reporting schedule. 
+* `make_current_account_owner` - (Optional) Indicates whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: `true`. [Updatable] 
 * `tags` - The tags to be created for dSource. This is a map of two parameters: 
   * `key` - (Required) Key of the tag 
   * `value` - (Required) Value of the tag 
-* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+* `ignore_tag_changes` – (Optional) Whether changes in the tags are identified by Terraform. Default: `true` (changes to tags are ignored).
+
+## Timeout Configuration
+
+The `timeouts` block is a Terraform meta-argument that's handled specially by Terraform itself and should not be treated as a regular resource attribute. It's used to configure operation timeouts but doesn't represent actual infrastructure state.
+
+The AppData dSource resource supports customizable timeouts for create, update, and delete operations:
+
+```hcl
+resource "delphix_appdata_dsource" "example" {
+  # ... other configuration ...
+  
+  timeouts {
+    create = "20m"  # Default: 20 minutes
+    update = "20m"  # Default: 20 minutes
+    delete = "20m"  # Default: 20 minutes
+  }
+}
+```
+
+If an operation exceeds the configured timeout:
+- For CREATE operations: The resource will not be added to Terraform state. Check DCT UI to verify if the dSource was created, then import it if necessary.
+- For UPDATE operations: Changes may be partially applied. Verify the dSource state in DCT UI.
+- For DELETE operations: The resource may still exist in DCT. Verify and manually delete if necessary.
 
 ## Import
 Use the import block to add Appdata dSources created directly in DCT into a Terraform state file.  
