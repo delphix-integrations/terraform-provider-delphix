@@ -289,7 +289,7 @@ func apiErrorResponseHelper(ctx context.Context, res interface{}, httpRes *http.
 			diags = diag.FromErr(nerr)
 		} else {
 			tflog.Info(ctx, DLPX+INFO+"Error: "+resBody)
-			diags = diag.Errorf(resBody)
+			diags = diag.Errorf("API error response: %s", resBody)
 		}
 		return diags
 	}
@@ -524,7 +524,13 @@ func toSourceOperationArray(array interface{}) []dctapi.SourceOperation {
 	items := []dctapi.SourceOperation{}
 	for _, item := range array.([]interface{}) {
 		item_map := item.(map[string]interface{})
-		sourceOperation := dctapi.NewSourceOperation(item_map["name"].(string), item_map["command"].(string))
+		sourceOperation := dctapi.NewSourceOperation()
+		if item_map["name"].(string) != "" {
+			sourceOperation.SetName(item_map["name"].(string))
+		}
+		if item_map["command"].(string) != "" {
+			sourceOperation.SetCommand(item_map["command"].(string))
+		}
 		if item_map["shell"].(string) != "" {
 			sourceOperation.SetShell(item_map["shell"].(string))
 		}
