@@ -2,8 +2,7 @@
 This resource helps to configure Delphix Engine.
 This resource allow you to configure Delphix Engine with several parameters like DNS, SMTP, NTP, etc .
 Engine can be either of type Virtualization or Compliance.
-## Requirements
-For Engine configuration the Delphix Engine must be on version >= 2026.1.0
+
 ## Example Usage
 
 ### Configure an Engine with Object store.
@@ -110,6 +109,8 @@ object_storage_params {
 ## Argument Reference
 The following arguments apply to all configurations.
 * `engine_host` - (Required) Full URL of Engine to configure. example - `https://example-engine.dlpxdc.co`.
+* `api_version` - Engine API version which is used to create the API session.
+The oldest supported engine version is `1.11.40` and is the default. For a specific API version, please refer to [API version mapping for engine](https://help.delphix.com/cd/current/content/api_version_information.htm) [NOTE: Due to a known issue, the API version has to be set to `1.11.47` specifically for engine version `2026.1.0.0`]
 * `engine_type ` - (Required) Type of Engine to configure.This can be either `CD` (for Virtualisation Engine ) or `CC` (for Masking Engine).
 * `sys_user` - (Required) Name of system administrator user.
 * `sys_password ` - (Required) Current password of system administrator.
@@ -157,7 +158,7 @@ The following arguments apply to all configurations.
      * `username ` - Username for  Web proxy.
      * `password` - Password for Web proxy.
 * `user_analytics_enabled ` - Boolean flag for setting User click analytics. This service will automatically send a stream of anonymous, non-personal metadata describing user interaction with the product's user interface.
-* `sso_config ` - Configuration for SSO based authentication
+* `sso_config ` - Configuration for SSO based authentication.
      * `enabled ` - (Required) Boolean flag for sso enable/disable.
      * `saml_metadata` - (Required) SSO/SAML metadata.
      * `response_skew_time ` - Maximum time difference allowed between a SAML response and the engine's current time, in seconds. If not set, it defaults to `120 seconds `.

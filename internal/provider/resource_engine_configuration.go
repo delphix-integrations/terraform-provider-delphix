@@ -275,6 +275,10 @@ func resourceEngineConfiguration() *schema.Resource {
 				Default:     false,
 				Description: "Skip SSL certificate verification when connecting to the engine",
 			},
+			"api_version": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 			"object_storage_params": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -491,6 +495,7 @@ func resourceEngineConfiguration() *schema.Resource {
 
 func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
+	var version string
 	// Create a cookie jar to store session cookies
 	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)
@@ -505,7 +510,13 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	engine_host, _ := d.Get("engine_host").(string)
 
 	//hardcoded for backward compatibility
-	version := ENGINE_API_VERSION
+	api_version := d.Get("api_version").(string)
+	if api_version == "" {
+		//if not provided, use safe default
+		version = ENGINE_API_VERSION
+	} else {
+		version = api_version
+	}
 
 	sys_user, _ := d.Get("sys_user").(string)
 	sys_curr_pass, _ := d.Get("sys_password").(string)
@@ -782,10 +793,15 @@ func engineConfigUpdate(ctx context.Context, d *schema.ResourceData, meta interf
 
 func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	var diags diag.Diagnostics
+	var version string
 	tflog.Info(ctx, DLPX+INFO+"Reading engine configuration")
 	engineId := d.Id()
-	version := ENGINE_API_VERSION
-
+	api_version := d.Get("api_version").(string)
+	if api_version == "" {
+		version = ENGINE_API_VERSION
+	} else {
+		version = api_version
+	}
 	// Create a cookie jar to store session cookies
 	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)
