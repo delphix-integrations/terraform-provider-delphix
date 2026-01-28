@@ -282,7 +282,7 @@ const (
 	SYSTEM                   = "SYSTEM"
 	AZURE                    = "AZURE"
 	AWS                      = "AWS"
-	ENGINE_API_VERSION       = "1.11.47"
+	ENGINE_API_VERSION       = "1.11.40"
 )
 
 type ConfigTask struct {
