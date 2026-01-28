@@ -55,6 +55,7 @@ var updatableVdbKeys = map[string]bool{
 	"ignore_tag_changes":            true,
 	"make_current_account_owner":    true,
 	"auto_select_repository":        true,
+	"invoke_datapatch":              true,
 }
 
 var isDestructiveVdbUpdate = map[string]bool{
@@ -95,6 +96,7 @@ var isDestructiveVdbUpdate = map[string]bool{
 	"ignore_tag_changes":            false,
 	"make_current_account_owner":    false,
 	"auto_select_repository":        false,
+	"invoke_datapatch":              false,
 }
 
 var updatableOracleDsourceKeys = map[string]bool{

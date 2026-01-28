@@ -716,6 +716,11 @@ func resourceVdb() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
+			"invoke_datapatch": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default: false,
+			},
 			"oracle_rac_custom_env_vars": {
 				Type:     schema.TypeList,
 				Optional: true,
@@ -1050,6 +1055,9 @@ func helper_provision_by_snapshot(ctx context.Context, d *schema.ResourceData, m
 	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
 		provisionVDBBySnapshotParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
+	if v, has_v := d.GetOk("invoke_datapatch"); has_v {
+		provisionVDBBySnapshotParameters.SetInvokeDatapatch(v.(bool))
+	}
 
 	req := client.VDBsAPI.ProvisionVdbBySnapshot(createCtx)
 
@@ -1344,6 +1352,9 @@ func helper_provision_by_timestamp(ctx context.Context, d *schema.ResourceData, 
 	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
 		provisionVDBByTimestampParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
 	}
+	if v, has_v := d.GetOk("invoke_datapatch"); has_v {
+		provisionVDBByTimestampParameters.SetInvokeDatapatch(v.(bool))
+	}
 
 	req := client.VDBsAPI.ProvisionVdbByTimestamp(createCtx)
 
@@ -1622,6 +1633,9 @@ func helper_provision_by_bookmark(ctx context.Context, d *schema.ResourceData, m
 	}
 	if v, has_v := d.GetOk("oracle_rac_custom_env_vars"); has_v {
 		provisionVDBFromBookmarkParameters.SetOracleRacCustomEnvVars(toOracleRacCustomEnvVars(v))
+	}
+	if v, has_v := d.GetOk("invoke_datapatch"); has_v {
+		provisionVDBFromBookmarkParameters.SetInvokeDatapatch(v.(bool))
 	}
 
 	req := client.VDBsAPI.ProvisionVdbFromBookmark(createCtx)
@@ -2181,6 +2195,9 @@ func resourceVdbUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		config_params := make(map[string]interface{})
 		json.Unmarshal([]byte(d.Get("config_params").(string)), &config_params)
 		updateVDBParam.SetConfigParams(config_params)
+	}
+	if d.HasChange("invoke_datapatch") {
+		updateVDBParam.SetInvokeDatapatch(d.Get("invoke_datapatch").(bool))
 	}
 	if !isStructEmpty(updateVDBParam) {
 		res, httpRes, err := client.VDBsAPI.UpdateVdbById(updateCtx, d.Get("id").(string)).UpdateVDBParameters(*updateVDBParam).Execute()
