@@ -98,7 +98,8 @@ __General Oracle__
 * `archive_log` - TRUE or FALSE boolean to create a VDB in `archivelog` mode.  
 * `new_dbid` - TRUE or FALSE boolean to generate a new DB ID for the created VDB. [Updatable]  
 * `listener_ids` - The listener IDs for this provision operation. This is a list of listener IDs. For eg: `[ "listener-123", "listener-456" ]`. [Updatable]  
-* `file_mapping_rules` - The VDB file mapping rules. Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.  
+* `file_mapping_rules` - The VDB file mapping rules. Rules must be line separated (\n or \r) and each line must have the format "pattern:replacement". Lines are applied in order.
+* `invoke_datapatch` - Boolean to to invoke Oracle's datapatch utility in various Delphix workflows. Default: `false`.  
 
 __Oracle Multitenant__  
 <br /> In addition to the General Oracle arguments, the following list applies to the Oracle Multitenant deployment configuration.  

@@ -6,7 +6,7 @@ terraform {
   required_providers {
     delphix = {
       version = "4.2.0"
-      source  = "delphix.com/dct/delphix"
+      source  = "delphix-integrations/delphix"
     }
   }
 }
@@ -60,10 +60,10 @@ resource "delphix_engine_configuration" "config2" {
   object_storage_params {
     cloud_provider = "AWS"
     auth_type = "ROLE"
-    region = "us-west-2"
-    bucket = "dcoa-prod-object"
-    endpoint = "s3.us-west-2.amazonaws.com"
-    size = "30GB"
+    region = "<region>"
+    bucket = "<bucket_name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
   }
   ntp_timezone = "Africa/Asmera"
   ntp_servers = ["Europe.pool.ntp.org"]
@@ -81,12 +81,12 @@ resource "delphix_engine_configuration" "config2" {
   engine_type  = "CD"
   device_type = "OBJECT"
   object_storage_params {
-    cloud_provider = "<AWS> OR <AZURE>"
+    cloud_provider = "<AWS>"
     auth_type = "ACCESS_KEY"
     region = "us-west-2"
-    bucket = "dcoa-prod-object"
-    endpoint = "s3.us-west-2.amazonaws.com"
-    size = "30GB"
+    bucket = "<bucket_name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
     access_id = "XXXX"
     access_key = "XXXX" 
   }
@@ -108,9 +108,9 @@ resource "delphix_engine_configuration" "config2" {
   object_storage_params {
     cloud_provider = "AZURE"
     auth_type = "MANAGED_IDENTITIES"
-    azure_container = "XXXX"
-    azure_account = "XXXX"
-    size = "30GB"
+    azure_container = "<azure_container>"
+    azure_account = "<azure_account>"
+    size = "<size>"
   }
   ntp_timezone = "Africa/Asmera"
   ntp_servers = ["Europe.pool.ntp.org"]
@@ -130,28 +130,28 @@ resource "delphix_engine_configuration" "config2" {
   object_storage_params {
     cloud_provider = "AWS"
     auth_type = "ROLE"
-    region = "us-west-2"
-    bucket = "dcoa-prod-object"
-    endpoint = "s3.us-west-2.amazonaws.com"
-    size = "30GB"
+    region = "<region>"
+    bucket = "<bucket_name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
   }
   ntp_timezone = "Africa/Asmera"
   ntp_servers = ["Europe.pool.ntp.org"]
   smtp_config {
-    server = "delphix.com"
+    server = "<smtp_server>"
     port = 25
     from_email_address = "noreply@perforce.com"
     send_timeout = 80
     tls_authentication = true
   }
   dns_config {
-    servers = ["172.16.105.23","172.16.105.24"]
-    domains = ["perforce.com","delphix.com"]
+    servers = ["<dns-server1>","<dns-server2>"]
+    domains = ["<domain1>","<domain2>"]
   }
   phone_home_enabled = true
   
   web_proxy_config {
-    host = "delphix.com"
+    host = "<web_proxy_host>"
     port = 8081
   }
   user_analytics_enabled = true
@@ -171,10 +171,10 @@ resource "delphix_engine_configuration" "config2" {
   object_storage_params {
     cloud_provider = "AWS"
     auth_type = "ROLE"
-    region = "us-west-2"
-    bucket = "dcoa-prod-object"
-    endpoint = "s3.us-west-2.amazonaws.com"
-    size = "30GB"
+    region = "<region>"
+    bucket = "<bucket_name>"
+    endpoint = "<endpoint>"
+    size = "<size>"
   }
 
   sso_config {
