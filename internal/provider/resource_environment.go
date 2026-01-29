@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -23,6 +24,12 @@ func resourceEnvironment() *schema.Resource {
 		UpdateContext: resourceEnvironmentUpdate,
 		DeleteContext: resourceEnvironmentDelete,
 		CustomizeDiff: CustomizeDiffTags,
+
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
 
 		Schema: map[string]*schema.Schema{
 			"name": {
@@ -56,6 +63,15 @@ func resourceEnvironment() *schema.Resource {
 			"toolkit_path": {
 				Type:     schema.TypeString,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff when transitioning from any value to empty/null
+					// This allows silent migration from top-level toolkit_path to hosts.toolkit_path
+					if new == "" || new == "null" {
+						return true
+					}
+					// Suppress diff if both old and new are empty/null
+					return (old == "" || old == "null") && (new == "" || new == "null")
+				},
 			},
 			"username": {
 				Type:     schema.TypeString,
@@ -204,6 +220,20 @@ func resourceEnvironment() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "null" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -512,15 +542,33 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		createEnvParams.SetTags(toTagArray(v))
 	}
 
-	apiReq := client.EnvironmentsAPI.CreateEnvironment(ctx)
+	// respect resource create timeout
+	createCtx, createCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutCreate))
+	defer createCancel()
+
+	apiReq := client.EnvironmentsAPI.CreateEnvironment(createCtx)
 	apiRes, httpRes, err := apiReq.EnvironmentCreateParameters(*createEnvParams).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && createCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Environment creation API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a creation job was created. "+
+			"If a job exists, wait for it to complete, then import the environment. "+
+			"To avoid timeouts, increase the timeout: timeouts { create = \"60m\" }", 
+			d.Timeout(schema.TimeoutCreate))
+	}
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("Environment creation failed: received nil response or job from API")
+	}
+
 	d.SetId(apiRes.GetEnvironmentId())
-	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 
 	if job_err != "" {
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env creation. Error: "+job_err)
@@ -531,7 +579,7 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("[NOT OK] Env-Create %s. JobId: %s / Error: %s", job_status, apiRes.Job.GetId(), job_err)
 	}
 	// Get environment info and store state.
-	readDiags := resourceEnvironmentRead(ctx, d, meta)
+	readDiags := resourceEnvironmentRead(createCtx, d, meta)
 	if readDiags.HasError() {
 		return readDiags
 	}
@@ -541,8 +589,12 @@ func resourceEnvironmentCreate(ctx context.Context, d *schema.ResourceData, meta
 func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*apiClient).client
 	envId := d.Id()
-	apiRes, diags := PollForObjectExistence(ctx, func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
+	// respect resource read timeout
+	readCtx, readCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutRead))
+	defer readCancel()
+
+	apiRes, diags := PollForObjectExistence(readCtx, func() (interface{}, *http.Response, error) {
+		return client.EnvironmentsAPI.GetEnvironmentById(readCtx, envId).Execute()
 	})
 
 	if diags != nil {
@@ -561,6 +613,18 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	if !os_type_exists {
 		// its an import or upgrade, set to default value
 		d.Set("os_type", "UNIX")
+	}
+	
+	// This handles import scenario where parameter is not in config
+	rawConfig := d.GetRawConfig()
+	if rawConfig.IsKnown() && !rawConfig.IsNull() {
+		ignoreTagChangesAttr := rawConfig.GetAttr("ignore_tag_changes")
+		if ignoreTagChangesAttr.IsNull() || !ignoreTagChangesAttr.IsKnown() {
+			// Parameter not in config (import scenario) - set default
+			d.Set("ignore_tag_changes", true)
+		}
+	} else {
+		d.Set("ignore_tag_changes", true)
 	}
 
 	envRes, _ := apiRes.(*dctapi.Environment)
@@ -583,7 +647,7 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 	if user_ref, has_user_ref := d.GetOk("user_ref"); has_user_ref {
 		// this is set from update
 		tflog.Info(ctx, "Setting username in state(read)")
-		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, envId).Execute()
+		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(readCtx, envId).Execute()
 		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
 			tflog.Error(ctx, DLPX+ERROR+"Failed to fetch user list for environment: "+envId+". Error: "+diags[0].Summary)
 			// return diag.Errorf("unable to retrieve user list")
@@ -596,8 +660,13 @@ func resourceEnvironmentRead(ctx context.Context, d *schema.ResourceData, meta i
 		}
 	}
 
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
+
 	// get the tags and set it
-	resTagsEnv, httpRes, err := client.EnvironmentsAPI.GetTagsEnvironment(ctx, envId).Execute()
+	resTagsEnv, httpRes, err := client.EnvironmentsAPI.GetTagsEnvironment(readCtx, envId).Execute()
 	if err != nil {
 		tflog.Error(ctx, DLPX+ERROR+"Failed to fetch tags for environment: "+envId+". Error: "+err.Error())
 	} else if httpRes != nil && httpRes.StatusCode >= 400 {
@@ -620,6 +689,10 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		if strings.Contains(k, "tags") { // this is because the changed keys are of the form tag.0.key
 			k = "tags"
 		}
+		// Skip timeouts - it's a Terraform meta-argument that shouldn't trigger resource updates
+		if strings.Contains(k, "timeouts") {
+			continue
+		}
 		if d.HasChange(k) {
 			changedKeys = append(changedKeys, k)
 		}
@@ -636,7 +709,16 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		modifiedChangedKeys = append(modifiedChangedKeys, ck)
 	}
 
+	// If no actual changes, skip update and just read
+	if len(modifiedChangedKeys) == 0 {
+		tflog.Debug(ctx, "No updatable fields changed, skipping update operation")
+		return resourceEnvironmentRead(ctx, d, meta)
+	}
+
 	client := meta.(*apiClient).client
+	// respect resource update timeout
+	updateCtx, updateCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutUpdate))
+	defer updateCancel()
 	environmentId := d.Get("id").(string)
 	var updateFailure, destructiveUpdate bool = false, false
 	var nonUpdatableField []string
@@ -667,14 +749,14 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	if destructiveUpdate {
 		// get dsources and vdbs
-		vdbs, vdbDiags = filterVDBs(ctx, client, environmentId)
+		vdbs, vdbDiags = filterVDBs(updateCtx, client, environmentId)
 		if vdbDiags.HasError() {
 			revertChanges(d, changedKeys)
 			return vdbDiags
 		}
 
 		// get sources to get dsources
-		sources, sourceDiag := filterSources(ctx, client, environmentId)
+		sources, sourceDiag := filterSources(updateCtx, client, environmentId)
 		if sourceDiag.HasError() {
 			revertChanges(d, changedKeys)
 			return sourceDiag
@@ -687,7 +769,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		// retrieve dsources from source list
 
 		if len(sourceIds) > 0 {
-			dsourceItems, dsourceDiags = filterdSources(ctx, client, sourceIds)
+			dsourceItems, dsourceDiags = filterdSources(updateCtx, client, sourceIds)
 			if dsourceDiags != nil {
 				revertChanges(d, changedKeys)
 				return dsourceDiags
@@ -696,7 +778,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// disable vdb
 		for _, item := range vdbs {
-			if diags := disableVDB(ctx, client, item.GetId()); diags != nil {
+			if diags := disableVDB(updateCtx, client, item.GetId()); diags != nil {
 				tflog.Error(ctx, "failure in disabling vdbs")
 				//disableVdbFailure = true
 				revertChanges(d, changedKeys)
@@ -706,15 +788,15 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		// disable dsources
 		for _, item := range dsourceItems {
-			if diags := disabledSource(ctx, client, item.GetId()); diags != nil {
+			if diags := disabledSource(updateCtx, client, item.GetId()); diags != nil {
 				tflog.Error(ctx, "failure in disabling Dsources")
 				disableDsourceFailure = true
 			}
 		}
 		if disableDsourceFailure {
 			//enable back vdbs and return
-			for _, item := range vdbs {
-				if diags := enableVDB(ctx, client, item.GetId()); diags != nil {
+				for _, item := range vdbs {
+				if diags := enableVDB(updateCtx, client, item.GetId()); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
 				}
@@ -747,7 +829,18 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			}
 		}
 		if !isStructEmpty(envUpdateParam) {
-			res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(ctx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
+			res, httpRes, err := client.EnvironmentsAPI.UpdateEnvironment(updateCtx, environmentId).EnvironmentUpdateParameters(*envUpdateParam).Execute()
+			
+			// Check if the API call itself timed out
+			if err != nil && updateCtx.Err() == context.DeadlineExceeded {
+				revertChanges(d, changedKeys)
+				return diag.Errorf("Environment update API call timed out after %s. The request may still be processing on the DCT server. "+
+					"Check the Delphix DCT UI or API to verify if an update job was created (Environment ID: %s). "+
+					"If a job exists, wait for it to complete, then run 'terraform refresh' to update state. "+
+					"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+					d.Timeout(schema.TimeoutUpdate), environmentId)
+			}
+			
 			if diags := apiErrorResponseHelper(ctx, res, httpRes, err); diags != nil {
 				revertChanges(d, changedKeys)
 				updateFailure = true
@@ -760,8 +853,31 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 			// if the above api call fails, no point in polling as res will be nil
 			if res != nil {
-				job_res, job_err := PollJobStatus(res.Job.GetId(), ctx, client)
+				// Check if context timed out before polling
+				if updateCtx.Err() == context.DeadlineExceeded {
+					revertChanges(d, changedKeys)
+					return diag.Errorf("Environment update timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+						"To resolve:\n"+
+						"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+						"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+						"3. If needed, revert changes manually or reapply the configuration\n"+
+						"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+						d.Timeout(schema.TimeoutUpdate), res.Job.GetId())
+				}
+
+				job_res, job_err := PollJobStatus(res.Job.GetId(), updateCtx, client)
 				if job_err != "" {
+					// Check if the error is due to timeout
+					if updateCtx.Err() == context.DeadlineExceeded {
+						revertChanges(d, changedKeys)
+						return diag.Errorf("Environment update timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+							"To resolve:\n"+
+							"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+							"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+							"3. If needed, revert changes manually or reapply the configuration\n"+
+							"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+							d.Timeout(schema.TimeoutUpdate), res.Job.GetId())
+					}
 					tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
 				}
 				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -792,7 +908,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		}
 		// get the user ref
 		tflog.Info(ctx, "Getting the userlist")
-		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(ctx, environmentId).Execute()
+		resUserList, httpResUserList, errUserList := client.EnvironmentsAPI.ListEnvironmentUsers(updateCtx, environmentId).Execute()
 		if diags := apiErrorResponseHelper(ctx, resUserList, httpResUserList, errUserList); diags != nil {
 			revertChanges(d, changedKeys)
 			return diags
@@ -822,7 +938,18 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 		if !isStructEmpty(envUserUpdateParam) {
 			tflog.Info(ctx, "Updating the user: "+user_ref)
-			resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(ctx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
+			resEnvUser, httpResEnvUser, errEnvUser := client.EnvironmentsAPI.UpdateEnvironmentUser(updateCtx, environmentId, user_ref).EnvironmentUserParams(*envUserUpdateParam).Execute()
+			
+			// Check if the API call itself timed out
+			if errEnvUser != nil && updateCtx.Err() == context.DeadlineExceeded {
+				revertChanges(d, changedKeys)
+				return diag.Errorf("Environment user update API call timed out after %s. The request may still be processing on the DCT server. "+
+					"Check the Delphix DCT UI or API to verify if an update job was created (Environment ID: %s, User Ref: %s). "+
+					"If a job exists, wait for it to complete, then run 'terraform refresh' to update state. "+
+					"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+					d.Timeout(schema.TimeoutUpdate), environmentId, user_ref)
+			}
+			
 			if diags := apiErrorResponseHelper(ctx, resEnvUser, httpResEnvUser, errEnvUser); diags != nil {
 				revertChanges(d, changedKeys)
 				updateFailure = true
@@ -834,8 +961,31 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			}
 
 			if resEnvUser != nil {
-				job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), ctx, client)
+				// Check if context timed out before polling
+				if updateCtx.Err() == context.DeadlineExceeded {
+					revertChanges(d, changedKeys)
+					return diag.Errorf("Environment user update timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+						"To resolve:\n"+
+						"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+						"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+						"3. If needed, revert changes manually or reapply the configuration\n"+
+						"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+						d.Timeout(schema.TimeoutUpdate), resEnvUser.Job.GetId())
+				}
+
+				job_res, job_err := PollJobStatus(resEnvUser.Job.GetId(), updateCtx, client)
 				if job_err != "" {
+					// Check if the error is due to timeout
+					if updateCtx.Err() == context.DeadlineExceeded {
+						revertChanges(d, changedKeys)
+						return diag.Errorf("Environment user update timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+							"To resolve:\n"+
+							"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+							"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+							"3. If needed, revert changes manually or reapply the configuration\n"+
+							"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+							d.Timeout(schema.TimeoutUpdate), resEnvUser.Job.GetId())
+					}
 					tflog.Warn(ctx, DLPX+WARN+"Env User Update Job Polling failed but continuing with update. Error: "+job_err)
 				}
 				tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -922,7 +1072,18 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			// }
 
 			if !isStructEmpty(hostUpdateParam) {
-				hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(ctx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
+				hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(updateCtx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
+				
+				// Check if the API call itself timed out
+				if hostUpdateErr != nil && updateCtx.Err() == context.DeadlineExceeded {
+					revertChanges(d, changedKeys)
+					return diag.Errorf("Environment host update API call timed out after %s. The request may still be processing on the DCT server. "+
+						"Check the Delphix DCT UI or API to verify if an update job was created (Environment ID: %s, Host ID: %s). "+
+						"If a job exists, wait for it to complete, then run 'terraform refresh' to update state. "+
+						"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+						d.Timeout(schema.TimeoutUpdate), environmentId, hostId)
+				}
+				
 				if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -934,8 +1095,31 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 				}
 
 				if hostUpdateRes != nil {
-					job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), ctx, client)
+					// Check if context timed out before polling
+					if updateCtx.Err() == context.DeadlineExceeded {
+						revertChanges(d, changedKeys)
+						return diag.Errorf("Environment host update timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+							"To resolve:\n"+
+							"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+							"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+							"3. If needed, revert changes manually or reapply the configuration\n"+
+							"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+							d.Timeout(schema.TimeoutUpdate), hostUpdateRes.Job.GetId())
+					}
+
+					job_res, job_err := PollJobStatus(hostUpdateRes.Job.GetId(), updateCtx, client)
 					if job_err != "" {
+						// Check if the error is due to timeout
+						if updateCtx.Err() == context.DeadlineExceeded {
+							revertChanges(d, changedKeys)
+							return diag.Errorf("Environment host update timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+								"To resolve:\n"+
+								"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+								"2. Run 'terraform refresh' to update the state with the actual resource details\n"+
+								"3. If needed, revert changes manually or reapply the configuration\n"+
+								"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
+								d.Timeout(schema.TimeoutUpdate), hostUpdateRes.Job.GetId())
+						}
 						tflog.Warn(ctx, DLPX+WARN+"Env Host Update Job Polling failed but continuing with update. Error: "+job_err)
 					}
 					tflog.Info(ctx, DLPX+INFO+"Job result is "+job_res)
@@ -953,7 +1137,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 
 	// update tags
 	if !d.Get("ignore_tag_changes").(bool) {
-		apiRes, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, environmentId).Execute()
+		apiRes, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(updateCtx, environmentId).Execute()
 		if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 			d.SetId("")
 			return diags
@@ -989,7 +1173,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			if len(toTagArray(oldTags)) != 0 {
 				tflog.Debug(ctx, "tag to be deleted: "+toTagArray(oldTags)[0].GetKey()+" "+toTagArray(oldTags)[0].GetValue())
 				deleteTag := *dctapi.NewDeleteTag()
-				tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(ctx, environmentId).DeleteTag(deleteTag).Execute()
+					tagDelResp, tagDelErr := client.EnvironmentsAPI.DeleteEnvironmentTags(updateCtx, environmentId).DeleteTag(deleteTag).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, tagDelResp, tagDelErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -1003,7 +1187,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			// create tag
 			if len(toTagArray(newTags)) != 0 {
 				tflog.Info(ctx, "creating new tags")
-				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(ctx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
+				_, httpResp, tagCrtErr := client.EnvironmentsAPI.CreateEnvironmentTags(updateCtx, environmentId).TagsRequest(*dctapi.NewTagsRequest(toTagArray(newTags))).Execute()
 				if diags := apiErrorResponseHelper(ctx, nil, httpResp, tagCrtErr); diags != nil {
 					revertChanges(d, changedKeys)
 					return diags
@@ -1015,13 +1199,13 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	if destructiveUpdate {
 		// enable Dsources back
 		for _, item := range dsourceItems {
-			if diags := enableDsource(ctx, client, item.GetId()); diags != nil {
+			if diags := enableDsource(updateCtx, client, item.GetId()); diags != nil {
 				return diags
 			}
 		}
 		// enable VDB back
 		for _, item := range vdbs {
-			if diags := enableVDB(ctx, client, item.GetId()); diags != nil {
+			if diags := enableVDB(updateCtx, client, item.GetId()); diags != nil {
 				return diags
 			}
 		}
@@ -1032,7 +1216,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return diag.Errorf("[NOT OK] Update failed with error %s", failureEvents)
 	}
 
-	readDiags := resourceEnvironmentRead(ctx, d, meta)
+	readDiags := resourceEnvironmentRead(updateCtx, d, meta)
 	if readDiags.HasError() {
 		return readDiags
 	}
@@ -1044,21 +1228,61 @@ func resourceEnvironmentDelete(ctx context.Context, d *schema.ResourceData, meta
 	client := meta.(*apiClient).client
 	envId := d.Id()
 
-	apiRes, httpRes, err := client.EnvironmentsAPI.DeleteEnvironment(ctx, envId).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	apiRes, httpRes, err := client.EnvironmentsAPI.DeleteEnvironment(deleteCtx, envId).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Environment deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if a deletion job was created (Environment ID: %s). "+
+			"If a job exists, wait for it to complete, then run 'terraform refresh' to verify the resource was deleted. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), envId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
 
-	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), ctx, client)
+	// Check for nil apiRes or Job to prevent crashes
+	if apiRes == nil || apiRes.Job == nil {
+		return diag.Errorf("Environment deletion failed: received nil response or job from API")
+	}
+
+	// Check if context timed out before polling
+	if deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("Environment deletion timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
+			"To resolve:\n"+
+			"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+			"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+			"3. If still in state, retry 'terraform destroy'\n"+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), apiRes.Job.GetId())
+	}
+
+	job_status, job_err := PollJobStatus(apiRes.Job.GetId(), deleteCtx, client)
 	if job_err != "" {
+		// Check if the error is due to timeout
+		if deleteCtx.Err() == context.DeadlineExceeded {
+			return diag.Errorf("Environment deletion timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
+				"To resolve:\n"+
+				"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
+				"2. Run 'terraform refresh' to check if the resource was deleted\n"+
+				"3. If still in state, retry 'terraform destroy'\n"+
+				"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+				d.Timeout(schema.TimeoutDelete), apiRes.Job.GetId())
+		}
 		tflog.Error(ctx, DLPX+ERROR+"Job Polling failed but continuing with env deletion. Error: "+job_err)
 	}
 	if isJobTerminalFailure(job_status) {
 		return diag.Errorf("[NOT OK] Env-Delete %s. JobId: %s / Error: %s", job_status, apiRes.Job.GetId(), job_err)
 	}
-	_, diags := PollForObjectDeletion(ctx, func() (interface{}, *http.Response, error) {
-		return client.EnvironmentsAPI.GetEnvironmentById(ctx, envId).Execute()
+	_, diags := PollForObjectDeletion(deleteCtx, func() (interface{}, *http.Response, error) {
+		return client.EnvironmentsAPI.GetEnvironmentById(deleteCtx, envId).Execute()
 	})
 
 	return diags

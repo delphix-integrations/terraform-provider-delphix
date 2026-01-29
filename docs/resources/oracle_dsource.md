@@ -18,6 +18,8 @@ For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSou
 * `status` and `enabled` are computed values and are subject to change in the tfstate file based on the dSource state. 
 * Parameters `credentials_env_vars` within `ops_pre_sync`, `ops_post_sync` and `ops_pre_log_sync` object blocks are not updatable. Any changes reflected on the state file do not reflect the actual value of the actual infrastructure. 
 * Sensitive values in `credentials_env_vars` are stored as plain text in the state file. 
+* `make_current_account_owner` now defaults to `true`. When upgrading from previous versions, this value will be silently set to `true` if not explicitly configured.
+* `ignore_tag_changes` now defaults to `true`. When upgrading from previous versions, this value will be silently set to `true` if not explicitly configured.
 * `Make_current_account_owner `,`wait_time` and `skip_wait_for_snapshot_creation` are relevant only during the creation of dsource. Note, they can only be used once and are not applicable to updates.
 * `source_value` and `group_id` parameters cannot be updated after the initial resource creation. However, any differences detected in these parameters are suppressed from the Terraform plan to prevent unnecessary drift detection
 
@@ -35,6 +37,12 @@ For other connectors, such as PostgreSQL and SAP HANA, refer to the AppData dSou
 resource "delphix_oracle_dsource" "test_oracle_dsource" { 
   name                       = "test2" 
   source_value               = "DBOMSRB331B3"
+  
+  timeouts {
+    create = "20m"
+    update = "20m"
+    delete = "20m"
+  }
 } 
 
 ``` 
@@ -112,11 +120,11 @@ The following arguments define how the Delphix Continuous Data will authenticate
 
 The following arguments apply to all dSources but they are not often necessary for simple sources. 
 
-* `make_current_account_owner` - Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: true. 
+* `make_current_account_owner` - (Optional) Whether the account creating this reporting schedule must be configured as owner of the reporting schedule. Default: `true`. [Updatable] 
 * `tags` - The tags to be created for dSource. This is a map of 2 parameters: [Updatable] 
     * `key` - (Required) Key of the tag 
     * `value` - (Required) Value of the tag 
-* `ignore_tag_changes` –  This flag enables whether changes in the tags are identified by Terraform. By default, this is set to true, meaning changes to the resource's tags are ignored.
+* `ignore_tag_changes` – (Optional) Whether changes in the tags are identified by Terraform. Default: `true` (changes to tags are ignored).
 
 ### Hooks
 Any combination of the following hooks can be provided on the Oracle dSource resource. The available arguments are identical for each hook and are consolidated in a single list to save space. 
@@ -142,6 +150,29 @@ Any combination of the following hooks can be provided on the Oracle dSource res
     * `azure_vault_username_key` - Azure vault key in the key-value store. 
     * `azure_vault_secret_key` - Azure vault key in the key-value store.  
     * `cyberark_vault_query_string` - Query to find a credential in the CyberArk vault. 
+
+## Timeout Configuration
+
+The `timeouts` block is a Terraform meta-argument that's handled specially by Terraform itself and should not be treated as a regular resource attribute. It's used to configure operation timeouts but doesn't represent actual infrastructure state.
+
+The Oracle dSource resource supports customizable timeouts for create, update, and delete operations:
+
+```hcl
+resource "delphix_oracle_dsource" "example" {
+  # ... other configuration ...
+  
+  timeouts {
+    create = "20m"  # Default: 20 minutes
+    update = "20m"  # Default: 20 minutes
+    delete = "20m"  # Default: 20 minutes
+  }
+}
+```
+
+If an operation exceeds the configured timeout:
+- For CREATE operations: The resource will not be added to Terraform state. Check DCT UI to verify if the dSource was created, then import it if necessary.
+- For UPDATE operations: Changes may be partially applied. Verify the dSource state in DCT UI.
+- For DELETE operations: The resource may still exist in DCT. Verify and manually delete if necessary.
 
 ## Import
 Use the [`import` block](https://developer.hashicorp.com/terraform/language/import) to add Oracle Dsources created directly in DCT into a Terraform state file.  

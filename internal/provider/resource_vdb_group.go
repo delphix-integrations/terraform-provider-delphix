@@ -24,6 +24,12 @@ func resourceVdbGroup() *schema.Resource {
 		},
 		CustomizeDiff: CustomizeDiffTags,
 
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(20 * time.Minute),
+			Update: schema.DefaultTimeout(20 * time.Minute),
+			Delete: schema.DefaultTimeout(20 * time.Minute),
+		},
+
 		Schema: map[string]*schema.Schema{
 			"id": {
 				Type:     schema.TypeString,
@@ -44,6 +50,20 @@ func resourceVdbGroup() *schema.Resource {
 				Type:     schema.TypeBool,
 				Default:  true,
 				Optional: true,
+				DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+					// Suppress diff ONLY when upgrading from null/empty to default true (silent upgrade)
+					// Do NOT suppress when user explicitly changes from false to true
+					if (old == "" || old == "<null>") && new == "true" {
+						rawConfig := d.GetRawConfig()
+						if rawConfig.IsKnown() && !rawConfig.IsNull() {
+							attr := rawConfig.GetAttr("ignore_tag_changes")
+							if attr.IsNull() || !attr.IsKnown() {
+								return true
+							}
+						}
+					}
+					return false
+				},
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -86,6 +106,13 @@ func resourceVdbGroupCreate(ctx context.Context, d *schema.ResourceData, meta in
 
 	apiRes, httpRes, err := client.VDBGroupsAPI.CreateVdbGroup(ctx).CreateVDBGroupRequest(vdbGroupCreateReq).Execute()
 
+	// Check if the API call itself timed out
+	if err != nil && ctx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB Group creation API call timed out. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if the VDB Group was created. "+
+			"If created, import it using terraform import.")
+	}
+
 	if diags := apiErrorResponseHelper(ctx, apiRes, httpRes, err); diags != nil {
 		return diags
 	}
@@ -116,6 +143,12 @@ func resourceVdbGroupRead(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.Set("name", apiRes.GetName())
 	d.Set("vdb_ids", apiRes.GetVdbIds())
+
+	// Set ignore_tag_changes to default true if not explicitly set
+	if _, has_ignore_tags := d.GetOk("ignore_tag_changes"); !has_ignore_tags {
+		d.Set("ignore_tag_changes", true)
+	}
+
 	tflog.Debug(ctx, "Getting Raw Config")
 	errors := HandleRawConfigReadContext(ctx, d, apiRes)
 	if errors != nil {
@@ -317,7 +350,21 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 	deleteVdbParams := dctapi.NewDeleteVDBParametersWithDefaults()
 	deleteVdbParams.SetForce(false)
 
-	httpRes, err := client.VDBGroupsAPI.DeleteVdbGroup(ctx, vdbGroupId).Execute()
+	// respect resource delete timeout
+	deleteCtx, deleteCancel := context.WithTimeout(ctx, d.Timeout(schema.TimeoutDelete))
+	defer deleteCancel()
+
+	httpRes, err := client.VDBGroupsAPI.DeleteVdbGroup(deleteCtx, vdbGroupId).Execute()
+
+	// Check if the API call itself timed out
+	if err != nil && deleteCtx.Err() == context.DeadlineExceeded {
+		return diag.Errorf("VDB Group deletion API call timed out after %s. The request may still be processing on the DCT server. "+
+			"Check the Delphix DCT UI or API to verify if the deletion completed (VDB Group ID: %s). "+
+			"If deleted, run 'terraform refresh' to verify the resource was removed. "+
+			"If the resource still exists in state, retry 'terraform destroy'. "+
+			"To avoid timeouts, increase the timeout: timeouts { delete = \"60m\" }",
+			d.Timeout(schema.TimeoutDelete), vdbGroupId)
+	}
 
 	if diags := apiErrorResponseHelper(ctx, nil, httpRes, err); diags != nil {
 		return diags
@@ -327,7 +374,7 @@ func resourceVdbGroupDelete(ctx context.Context, d *schema.ResourceData, meta in
 		if err != nil {
 			return diag.FromErr(err)
 		}
-		return diag.Errorf(resBody)
+		return diag.Errorf("VDB Group deletion failed: %s", resBody)
 	}
 
 	return diags
