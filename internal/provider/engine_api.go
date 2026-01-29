@@ -77,6 +77,14 @@ func login(ctx context.Context, client *http.Client, engine_host string, user st
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error marshalling login data: "+err.Error())
 		return err
 	}
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Login JSON payload created: %d bytes", len(loginJSON)))
+	// Clear sensitive data from loginJSON after use
+	defer func() {
+		tflog.Debug(ctx, "[SECURITY] Clearing login credentials from memory")
+		SecureClearByteSlice(ctx, loginJSON)
+		tflog.Debug(ctx, "[SECURITY] Login credentials cleared")
+	}()
+	
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {
@@ -356,6 +364,13 @@ func updatePassword(ctx context.Context, client *http.Client, engine_host string
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error marshalling login data: "+err.Error())
 		return nil, err
 	}
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Password update payload created: %d bytes for user %s", len(UpdateParametersJSON), user_id))
+	// Clear sensitive data from UpdateParametersJSON after use
+	defer func() {
+		tflog.Debug(ctx, "[SECURITY] Clearing password update credentials from memory")
+		SecureClearByteSlice(ctx, UpdateParametersJSON)
+		tflog.Debug(ctx, "[SECURITY] Password update credentials cleared")
+	}()
 
 	req, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewReader(UpdateParametersJSON))
 	if err != nil {
@@ -804,6 +819,14 @@ func loginComplianceUser(ctx context.Context, client *http.Client, engine_host s
 		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] error marshalling compliance user login data: "+err.Error())
 		return "", err
 	}
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Compliance login JSON payload created: %d bytes", len(loginJSON)))
+	// Clear sensitive data from loginJSON after use
+	defer func() {
+		tflog.Debug(ctx, "[SECURITY] Clearing compliance login credentials from memory")
+		SecureClearByteSlice(ctx, loginJSON)
+		tflog.Debug(ctx, "[SECURITY] Compliance login credentials cleared")
+	}()
+	
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Compliance User Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {

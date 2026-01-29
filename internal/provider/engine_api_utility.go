@@ -33,7 +33,7 @@ func pollActionStatus(ctx context.Context, client *http.Client, engine_host stri
 		}
 		// Check for nil actionResult to prevent crashes
 		if actionResult.Result.State == "" {
-			return diag.Errorf("[" + engine_host + "] Action result state is empty or nil")
+			return diag.Errorf("[%s] Action result state is empty or nil", engine_host)
 		}
 		tflog.Info(ctx, DLPX+INFO+" ["+engine_host+"] action state "+actionResult.Result.State)
 		if actionResult.Result.State == "COMPLETED" {
@@ -76,7 +76,7 @@ func UpdateUserPassword(ctx context.Context, client *http.Client, engine_host st
 	}
 	// Check for nil result or empty reference to prevent crashes
 	if result.Result.Reference == "" {
-		return diag.Errorf("[" + engine_host + "] User reference is empty or nil")
+		return diag.Errorf("[%s] User reference is empty or nil", engine_host)
 	}
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Current User Reference "+result.Result.Reference)
 
@@ -107,7 +107,7 @@ func initializeSystemAndDevices(ctx context.Context, client *http.Client, engine
 	}
 	// Check for nil resultList to prevent crashes
 	if resultList.Result == nil {
-		return APIResponse{}, diag.Errorf("[" + engine_host + "] Device list result is nil")
+		return APIResponse{}, diag.Errorf("[%s] Device list result is nil", engine_host)
 	}
 
 	// Initialize System

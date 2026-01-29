@@ -527,6 +527,18 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		default_email = email.(string)
 	}
 	password := d.Get("password").(string)
+	
+	// Secure cleanup of sensitive data from memory when function exits
+	defer func() {
+		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing sensitive credentials from memory")
+		SecureClearString(ctx, &sys_curr_pass)
+		SecureClearString(ctx, &sys_new_pass)
+		SecureClearString(ctx, &password)
+		SecureClearString(ctx, &compl_password)
+		SecureClearString(ctx, &compl_new_password)
+		tflog.Info(ctx, fmt.Sprintf("Password after clear call: %v,%v,%v,%v,%v", sys_curr_pass, sys_new_pass, password, compl_password, compl_new_password))
+		tflog.Info(ctx, DLPX+INFO+"[SECURITY] All credentials cleared successfully")
+	}()
 	engine_type := d.Get("engine_type").(string)
 	device_type := d.Get("device_type").(string)
 	ntp_timezone := d.Get("ntp_timezone").(string)
@@ -802,6 +814,19 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	} else {
 		version = api_version
 	}
+	
+	// Get credentials and ensure they're cleared after use
+	sysUser := d.Get("sys_user").(string)
+	sysNewPassword := d.Get("sys_new_password").(string)
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Read credentials for engine %s (sys_user: %s, password_len: %d)", 
+		engineId, sysUser, len(sysNewPassword)))
+	defer func() {
+		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing credentials from engineConfigRead")
+		SecureClearString(ctx, &sysUser)
+		SecureClearString(ctx, &sysNewPassword)
+		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Credentials cleared from engineConfigRead")
+	}()
+	
 	// Create a cookie jar to store session cookies
 	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)
@@ -819,7 +844,7 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	}
 
 	// Authenticate/login
-	err = login(ctx, client, engineId, d.Get("sys_user").(string), d.Get("sys_new_password").(string), SYSTEM)
+	err = login(ctx, client, engineId, sysUser, sysNewPassword, SYSTEM)
 	if err != nil {
 		return diag.Errorf("Error logging in: %v", err)
 	}
