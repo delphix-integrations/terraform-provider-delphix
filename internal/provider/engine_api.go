@@ -81,7 +81,7 @@ func login(ctx context.Context, client *http.Client, engine_host string, user st
 	// Clear sensitive data from loginJSON after use
 	defer func() {
 		tflog.Debug(ctx, "[SECURITY] Clearing login credentials from memory")
-		SecureClearByteSlice(loginJSON)
+		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Login credentials cleared")
 	}()
 	
@@ -368,7 +368,7 @@ func updatePassword(ctx context.Context, client *http.Client, engine_host string
 	// Clear sensitive data from UpdateParametersJSON after use
 	defer func() {
 		tflog.Debug(ctx, "[SECURITY] Clearing password update credentials from memory")
-		SecureClearByteSlice(UpdateParametersJSON)
+		SecureClearByteSlice(ctx, UpdateParametersJSON)
 		tflog.Debug(ctx, "[SECURITY] Password update credentials cleared")
 	}()
 
@@ -823,7 +823,7 @@ func loginComplianceUser(ctx context.Context, client *http.Client, engine_host s
 	// Clear sensitive data from loginJSON after use
 	defer func() {
 		tflog.Debug(ctx, "[SECURITY] Clearing compliance login credentials from memory")
-		SecureClearByteSlice(loginJSON)
+		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Compliance login credentials cleared")
 	}()
 	

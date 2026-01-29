@@ -531,11 +531,12 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	// Secure cleanup of sensitive data from memory when function exits
 	defer func() {
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing sensitive credentials from memory")
-		SecureClearString(&sys_curr_pass)
-		SecureClearString(&sys_new_pass)
-		SecureClearString(&password)
-		SecureClearString(&compl_password)
-		SecureClearString(&compl_new_password)
+		SecureClearString(ctx, &sys_curr_pass)
+		SecureClearString(ctx, &sys_new_pass)
+		SecureClearString(ctx, &password)
+		SecureClearString(ctx, &compl_password)
+		SecureClearString(ctx, &compl_new_password)
+		tflog.Info(ctx, fmt.Sprintf("Password after clear call: %v,%v,%v,%v,%v", sys_curr_pass, sys_new_pass, password, compl_password, compl_new_password))
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] All credentials cleared successfully")
 	}()
 	engine_type := d.Get("engine_type").(string)
@@ -821,8 +822,8 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		engineId, sysUser, len(sysNewPassword)))
 	defer func() {
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing credentials from engineConfigRead")
-		SecureClearString(&sysUser)
-		SecureClearString(&sysNewPassword)
+		SecureClearString(ctx, &sysUser)
+		SecureClearString(ctx, &sysNewPassword)
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Credentials cleared from engineConfigRead")
 	}()
 	

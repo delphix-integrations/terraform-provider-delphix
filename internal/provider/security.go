@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	
+
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
@@ -34,7 +34,7 @@ func (s *SecureString) GetBytes() []byte {
 }
 
 // Clear securely wipes the sensitive data from memory
-func (s *SecureString) Clear() {
+func (s *SecureString) Clear(ctx context.Context) {
 	if s.data == nil {
 		return
 	}
@@ -47,12 +47,12 @@ func (s *SecureString) Clear() {
 	}
 	s.data = nil
 	// Log successful clearing (without revealing content)
-	tflog.Debug(context.Background(), fmt.Sprintf("[SECURITY] SecureString cleared: %d bytes zeroed", originalLen))
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] SecureString cleared: %d bytes zeroed", originalLen))
 }
 
 // SecureClearString securely clears a string from memory by converting to bytes and zeroing
 // Note: This works on a best-effort basis as Go strings are immutable
-func SecureClearString(s *string) {
+func SecureClearString(ctx context.Context, s *string) {
 	if s == nil || *s == "" {
 		return
 	}
@@ -82,12 +82,12 @@ func SecureClearString(s *string) {
 	
 	// Verify clearing
 	isCleared := len(*s) == 0
-	tflog.Debug(context.Background(), fmt.Sprintf("[SECURITY] String cleared: original_len=%d, prefix_was=%s, cleared=%v", 
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] String cleared: original_len=%d, prefix_was=%s, cleared=%v", 
 		originalLen, debugPrefix, isCleared))
 }
 
 // SecureClearByteSlice securely clears a byte slice from memory
-func SecureClearByteSlice(b []byte) {
+func SecureClearByteSlice(ctx context.Context, b []byte) {
 	if b == nil {
 		return
 	}
@@ -119,12 +119,12 @@ func SecureClearByteSlice(b []byte) {
 		}
 	}
 	
-	tflog.Debug(context.Background(), fmt.Sprintf("[SECURITY] ByteSlice cleared: original_len=%d, first_bytes_were=%s, all_zero=%v", 
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] ByteSlice cleared: original_len=%d, first_bytes_were=%s, all_zero=%v", 
 		originalLen, debugHex, allZero))
 }
 
 // SecureClearMap securely clears sensitive string values from a map
-func SecureClearMap(m map[string]interface{}, sensitiveKeys []string) {
+func SecureClearMap(ctx context.Context, m map[string]interface{}, sensitiveKeys []string) {
 	if m == nil {
 		return
 	}
@@ -133,12 +133,12 @@ func SecureClearMap(m map[string]interface{}, sensitiveKeys []string) {
 		if val, ok := m[key]; ok {
 			if strVal, isString := val.(string); isString {
 				if strVal != "" {
-					SecureClearString(&strVal)
+					SecureClearString(ctx, &strVal)
 					m[key] = ""
 					clearedCount++
 				}
 			}
 		}
 	}
-	tflog.Debug(context.Background(), fmt.Sprintf("[SECURITY] Map cleared: %d sensitive keys processed", clearedCount))
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Map cleared: %d sensitive keys processed", clearedCount))
 }

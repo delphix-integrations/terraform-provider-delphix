@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"context"
 	"testing"
 )
 
@@ -11,7 +12,7 @@ func TestSecureClearString(t *testing.T) {
 	t.Logf("Original password length: %d", originalLen)
 	t.Logf("Original password (first 3 chars): %s***", testPassword[:3])
 	
-	SecureClearString(&testPassword)
+	SecureClearString(context.Background(), &testPassword)
 	
 	if testPassword != "" {
 		t.Errorf("Password was not cleared. Expected empty string, got: %s", testPassword)
@@ -31,7 +32,7 @@ func TestSecureClearByteSlice(t *testing.T) {
 	t.Logf("Original data length: %d", originalLen)
 	t.Logf("Original data (hex): %x", testData[:4])
 	
-	SecureClearByteSlice(testData)
+	SecureClearByteSlice(context.Background(), testData)
 	
 	// Verify all bytes are zero
 	allZero := true
@@ -61,7 +62,7 @@ func TestSecureClearMap(t *testing.T) {
 	
 	t.Logf("Before clear - password: %v", testMap["password"])
 	
-	SecureClearMap(testMap, sensitiveKeys)
+	SecureClearMap(context.Background(), testMap, sensitiveKeys)
 	
 	// Verify sensitive keys are cleared
 	for _, key := range sensitiveKeys {
@@ -91,7 +92,7 @@ func TestSecureString(t *testing.T) {
 		t.Errorf("SecureString does not match original. Expected: %s, Got: %s", original, secureStr.String())
 	}
 	
-	secureStr.Clear()
+	secureStr.Clear(context.Background())
 	
 	if secureStr.data != nil {
 		t.Errorf("SecureString data was not set to nil after Clear()")
@@ -107,35 +108,35 @@ func TestSecureString(t *testing.T) {
 func TestSecureClearNilValues(t *testing.T) {
 	// Test nil string pointer
 	var nilStr *string
-	SecureClearString(nilStr) // Should not panic
+	SecureClearString(context.Background(), nilStr) // Should not panic
 	t.Log("Nil string pointer handled correctly")
 	
 	// Test empty string
 	emptyStr := ""
-	SecureClearString(&emptyStr)
+	SecureClearString(context.Background(), &emptyStr)
 	t.Log("Empty string handled correctly")
 	
 	// Test nil byte slice
 	var nilBytes []byte
-	SecureClearByteSlice(nilBytes) // Should not panic
+	SecureClearByteSlice(context.Background(), nilBytes) // Should not panic
 	t.Log("Nil byte slice handled correctly")
 	
 	// Test nil map
 	var nilMap map[string]interface{}
-	SecureClearMap(nilMap, []string{"key"}) // Should not panic
+	SecureClearMap(context.Background(), nilMap, []string{"key"}) // Should not panic
 	t.Log("Nil map handled correctly")
 }
 
 func BenchmarkSecureClearString(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		testStr := "BenchmarkPassword123456789"
-		SecureClearString(&testStr)
+		SecureClearString(context.Background(), &testStr)
 	}
 }
 
 func BenchmarkSecureClearByteSlice(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		testBytes := []byte("BenchmarkSecretKey123456789")
-		SecureClearByteSlice(testBytes)
+		SecureClearByteSlice(context.Background(), testBytes)
 	}
 }
