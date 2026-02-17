@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -36,14 +37,26 @@ func resourceSource() *schema.Resource {
 			"repository_value": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					v := val.(string)
+					if v == "" {
+						errs = append(errs, fmt.Errorf("%q cannot be empty, must be a valid repository ID. If it is an imported source config, populate the value from the imported state.", key))
+					}
+					return
+				},
 			},
 			"environment_value": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 			"engine_value": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 
 			// Output
@@ -243,26 +256,19 @@ func resourceDatabasePostgressqlRead(ctx context.Context, d *schema.ResourceData
 		return diag.Errorf("Error occured in type casting.")
 	}
 
-	repository_value := d.Get("repository_value").(string)
-
-	if repository_value == "" {
-		resEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, result.GetEnvironmentId()).Execute()
-
-		if diags := apiErrorResponseHelper(ctx, resEnv, httpRes, err); diags != nil {
-			return diags
-		}
-		if result.GetRepository() != "" {
-			for _, repo := range resEnv.Repositories {
-				if strings.EqualFold(repo.GetId(), result.GetRepository()) {
-					repository_value = repo.GetName()
-				}
-			}
+	// Extract engine_id from repository ID (format: "1-REPOSITORY_TYPE-123")
+	repositoryId := result.GetRepository()
+	if repositoryId != "" {
+		parts := strings.Split(repositoryId, "-")
+		if len(parts) > 0 {
+			d.Set("engine_value", parts[0])
 		}
 	}
 
 	d.Set("id", result.GetId())
-	d.Set("repository_value", repository_value)
+	d.Set("repository_value", repositoryId)
 	d.Set("environment_id", result.GetEnvironmentId())
+	d.Set("environment_value", result.GetEnvironmentId())
 	d.Set("database_type", result.GetDatabaseType())
 	d.Set("name", result.GetName())
 	d.Set("is_replica", result.GetIsReplica())
@@ -295,20 +301,6 @@ func resourceDatabasePostgressqlUpdate(ctx context.Context, d *schema.ResourceDa
 		if d.HasChange(k) {
 			changedKeys = append(changedKeys, k)
 		}
-	}
-
-	if d.HasChanges(
-		"repository_value",
-		"environment_value",
-		"engine_value") {
-
-		// revert and set the old value to the changed keys
-		for _, key := range changedKeys {
-			old, _ := d.GetChange(key)
-			d.Set(key, old)
-		}
-
-		return diag.Errorf("cannot update one (or more) of the options changed. Please refer to provider documentation for updatable params.")
 	}
 
 	if d.HasChange("name") {

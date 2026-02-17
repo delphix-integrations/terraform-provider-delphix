@@ -24,9 +24,9 @@ resource "delphix_database_postgresql" "source" {
 ## Argument Reference
 
 * `name` - (Required) The name of the new source.
-* `repository_value` - (Required)  The Id or Name of the Repository onto which the source will be created..
-* `environment_value` - The Id or Name of the environment to create the source on.
-* `engine_value` - The Id or Name of the engine to create the source on.
+* `repository_value` - (Required)  The Id of the Repository onto which the source will be created.
+* `environment_value` - The Id of the environment to create the source on.
+* `engine_value` - The Id of the engine to create the source on.
 * `id` - The Source object entity ID.
 * `database_type` - The type of this source database.
 * `namespace_id` - The namespace id of this source database.

@@ -142,10 +142,13 @@ func resourceVdb() *schema.Resource {
 			"environment_user_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"repository_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
+				ForceNew: true,
 			},
 			"pre_refresh": {
 				Type:     schema.TypeList,
@@ -463,6 +466,7 @@ func resourceVdb() *schema.Resource {
 			"template_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"jdbc_connection_string": {
 				Type:     schema.TypeString,
