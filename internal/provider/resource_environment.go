@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -35,6 +36,7 @@ func resourceEnvironment() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"engine_id": {
 				Type:     schema.TypeString,
@@ -43,14 +45,17 @@ func resourceEnvironment() *schema.Resource {
 			"is_cluster": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"cluster_home": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"staging_environment": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"connector_port": {
 				Type:     schema.TypeInt,
@@ -76,6 +81,7 @@ func resourceEnvironment() *schema.Resource {
 			"username": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"password": {
 				Type:     schema.TypeString,
@@ -211,10 +217,12 @@ func resourceEnvironment() *schema.Resource {
 			"is_replica": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"is_windows_target": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"ignore_tag_changes": {
 				Type:     schema.TypeBool,
@@ -1036,7 +1044,7 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			} else {
 				// if not found, proceed with enable and finally display the failure events
 				updateFailure = true
-				failureEvents = append(failureEvents, "No hostname %s found to update", oldHostName)
+				failureEvents = append(failureEvents, fmt.Sprintf("No hostname %s found to update", oldHostName))
 			}
 		}
 

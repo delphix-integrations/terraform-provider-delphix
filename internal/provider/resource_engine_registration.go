@@ -52,6 +52,7 @@ func resourceEngineRegistration() *schema.Resource {
 			"compliance_user": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"compliance_password": {
 				Type:      schema.TypeString,
@@ -89,22 +90,27 @@ func resourceEngineRegistration() *schema.Resource {
 			"hashicorp_vault_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				Computed: true,
 			},
 			"masking_hashicorp_vault_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
+				Computed: true,
 			},
 			"insecure_ssl": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"unsafe_ssl_hostname_check": {
 				Type:     schema.TypeBool,
 				Optional: true,
+				Computed: true,
 			},
 			"truststore_filename": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"truststore_password": {
 				Type:     schema.TypeString,
@@ -113,6 +119,7 @@ func resourceEngineRegistration() *schema.Resource {
 			"tags": {
 				Type:     schema.TypeList,
 				Optional: true,
+				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"key": {
@@ -291,9 +298,9 @@ func resourceEngineRegistrationRead(ctx context.Context, d *schema.ResourceData,
 }
 
 func resourceEngineRegistrationUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	tflog.Info(ctx, DLPX+INFO+"Not Implemented: resourceEngineRegistrationUpdate")
-	var diags diag.Diagnostics
-	return diags
+	return diag.Errorf("Engine registration updates are not supported by the DCT API. All fields are immutable after registration. " +
+		"Changes to any field require destroying and recreating the resource (unregister and re-register the engine). " +
+		"To update the engine registration, remove the resource from your Terraform configuration and apply the changes, then add the resource back with the updated fields and apply again.")
 }
 
 func resourceEngineRegistrationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
