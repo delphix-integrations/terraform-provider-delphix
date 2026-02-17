@@ -141,7 +141,7 @@ resource "delphix_appdata_dsource" "pg_using_single_db_ingestion" {
 * `source_value` - (Required) ID or Name of the Source to link. 
 * `description` - The notes/description for the dSource. [Updatable] 
 * `group_id` - (Required) ID of the dataset group where this dSource should belong to. 
-* `rollback_on_failure` -  When a dSource linking operation fails during SnapSync, it results in a tainted dsource on the engine. By setting this flag to true, the tainted dSource will be removed from both the Terraform state and the engine. By default, the flag is to false, meaning the tainted dSource is maintained on the Terraform state. 
+* `rollback_on_failure` -  When a dSource linking operation fails during SnapSync or due to invalid inputs, in some cases, it results in a tainted dsource on the engine. By setting this flag to true, the tainted dSource will be removed from both the Terraform state and the engine. By default, the flag is to false, meaning the tainted dSource is maintained on the Terraform state. 
 
 ### Full Backup and Transactional Log requirements 
 * `log_sync_enabled` - (Required) True if LogSync should run for this database.  
