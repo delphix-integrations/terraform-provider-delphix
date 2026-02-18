@@ -822,8 +822,9 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("dSource creation failed: received nil response or job from API")
 	}
 
-	// Store dSource ID temporarily - don't set in state until job completes
+	// Store dSource ID as soon as we have it, for idempotency and recovery
 	dsourceId := apiRes.GetDsourceId()
+	d.SetId(dsourceId)
 
 	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
@@ -834,6 +835,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	if createCtx.Err() != nil {
 		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
@@ -882,6 +884,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	// Check context again before proceeding to snapshot polling
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s during snapshot polling (Job ID: %s). "+
 				"The dSource may have been created. To resolve:\n"+
 				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
@@ -896,6 +899,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 	// Check context one more time before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s). "+
 				"The dSource may have been created. To resolve:\n"+
 				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
@@ -905,8 +909,7 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 	
-	// Only set ID in state after successful completion
-	d.SetId(dsourceId)
+
 
 	readDiags := resourceOracleDsourceRead(createCtx, d, meta)
 

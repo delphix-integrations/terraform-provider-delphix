@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -1015,14 +1014,19 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 	) {
 		tflog.Info(ctx, "Proceeding to update environment hosts")
 		// host update
-		var hostId string
+		hostId := ""
 
 		// get changes
 		oldHosts, newHosts := d.GetChange("hosts")
+		tflog.Debug(ctx, "Host changes detected", map[string]interface{}{
+			"oldHosts": oldHosts,
+			"newHosts": newHosts,
+		})
 
 		// signifies the hostname that will be updated
 		oldHost := oldHosts.([]interface{})
 		oldHostName := oldHost[0].(map[string]interface{})["hostname"].(string)
+		
 
 		// retrieving new params for the update
 		newHost := newHosts.([]interface{})
@@ -1032,20 +1036,31 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		newJavaHome := newHost[0].(map[string]interface{})["java_home"].(string)
 		newNfsAddress := newHost[0].(map[string]interface{})["nfs_addresses"]
 
-		// get the hosts list
-		hostsList := d.Get("hosts").([]interface{})
+		// fetch the current hosts from the Delphix API (not from state)
+		environmentId := d.Get("id").(string)
+		client := meta.(*apiClient).client
+		apiEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(updateCtx, environmentId).Execute()
+		if diags := apiErrorResponseHelper(updateCtx, apiEnv, httpRes, err); diags != nil {
+			return diags
+		}
+		delphixHosts := apiEnv.GetHosts()
+		tflog.Debug(updateCtx, "delphixHosts contents", map[string]interface{}{"delphixHosts": delphixHosts})
+	
 
-		// retrieve the hostId corresponding to the old host name (that will be updated)
-		for _, host := range hostsList {
-			if oldHostName == host.(map[string]interface{})["hostname"].(string) {
-				hostId = host.(map[string]interface{})["id"].(string)
+		// retrieve the hostId corresponding to the old host name (that will be updated) from Delphix API hosts
+		hostId = ""
+		for _, host := range delphixHosts {
+			if oldHostName == host.GetHostname() {
+				hostId = host.GetId()
 				tflog.Info(ctx, "hostsId: "+hostId)
 				break
-			} else {
-				// if not found, proceed with enable and finally display the failure events
-				updateFailure = true
-				failureEvents = append(failureEvents, fmt.Sprintf("No hostname %s found to update", oldHostName))
 			}
+		}
+		if hostId == "" {
+			updateFailure = true
+			// revert hostname in state to old value to prevent drift
+			d.Set("hosts", oldHost)
+			return diag.Errorf("[NOT OK] Update failed with error [No hostname %s found in Delphix environment to update. State reverted. Manual intervention may be required if this persists.]", oldHostName)
 		}
 
 		if !updateFailure {
@@ -1073,25 +1088,22 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 			if newNfsAddress != nil {
 				hostUpdateParam.SetNfsAddresses(toStringArray(newNfsAddress))
 			}
-			// if d.HasChange("oracle_tde_keystores_root_path") {
-			// 	if v, has_v := d.GetOk("oracle_tde_keystores_root_path"); has_v {
-			// 		hostUpdateParam.SetOracleTdeKeystoresRootPath(v.(string))
-			// 	}
-			// }
 
 			if !isStructEmpty(hostUpdateParam) {
 				hostUpdateRes, hostHttpRes, hostUpdateErr := client.EnvironmentsAPI.UpdateHost(updateCtx, environmentId, hostId).HostUpdateParameters(*hostUpdateParam).Execute()
-				
+
 				// Check if the API call itself timed out
 				if hostUpdateErr != nil && updateCtx.Err() == context.DeadlineExceeded {
 					revertChanges(d, changedKeys)
+					// revert hostname in state to old value to prevent drift
+					d.Set("hosts", oldHost)
 					return diag.Errorf("Environment host update API call timed out after %s. The request may still be processing on the DCT server. "+
 						"Check the Delphix DCT UI or API to verify if an update job was created (Environment ID: %s, Host ID: %s). "+
 						"If a job exists, wait for it to complete, then run 'terraform refresh' to update state. "+
 						"To avoid timeouts, increase the timeout: timeouts { update = \"60m\" }",
 						d.Timeout(schema.TimeoutUpdate), environmentId, hostId)
 				}
-				
+
 				if diags := apiErrorResponseHelper(ctx, hostUpdateRes, hostHttpRes, hostUpdateErr); diags != nil {
 					revertChanges(d, changedKeys)
 					updateFailure = true
@@ -1100,12 +1112,16 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 					} else {
 						tflog.Warn(ctx, "UpdateHost Diagnostics is empty or nil; skipping appending to failureEvents")
 					}
+					// revert hostname in state to old value to prevent drift
+					d.Set("hosts", oldHost)
 				}
 
 				if hostUpdateRes != nil {
 					// Check if context timed out before polling
 					if updateCtx.Err() == context.DeadlineExceeded {
 						revertChanges(d, changedKeys)
+						// revert hostname in state to old value to prevent drift
+						d.Set("hosts", oldHost)
 						return diag.Errorf("Environment host update timed out after %s. The operation is still running on the DCT (Job ID: %s). "+
 							"To resolve:\n"+
 							"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
@@ -1120,6 +1136,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 						// Check if the error is due to timeout
 						if updateCtx.Err() == context.DeadlineExceeded {
 							revertChanges(d, changedKeys)
+							// revert hostname in state to old value to prevent drift
+							d.Set("hosts", oldHost)
 							return diag.Errorf("Environment host update timed out after %s while polling job status. The operation is still running on the DCT (Job ID: %s). "+
 								"To resolve:\n"+
 								"1. Wait for the job to complete (check Delphix DCT UI or API)\n"+
@@ -1136,6 +1154,8 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 						revertChanges(d, changedKeys)
 						updateFailure = true
 						failureEvents = append(failureEvents, job_err)
+						// revert hostname in state to old value to prevent drift
+						d.Set("hosts", oldHost)
 						// return diag.Errorf("[NOT OK] Job %s %s with error %s", *hostUpdateRes.Job.Id, job_res, job_err)
 					}
 				}

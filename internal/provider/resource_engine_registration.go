@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 
@@ -14,12 +15,10 @@ import (
 
 func resourceEngineRegistration() *schema.Resource {
 	return &schema.Resource{
-		// Description is used by the doc genertor and language server.
 		Description: "Provider Resource to add an environment to Delphix.",
 
 		CreateContext: resourceEngineRegistrationCreate,
 		ReadContext:   resourceEngineRegistrationRead,
-		UpdateContext: resourceEngineRegistrationUpdate,
 		DeleteContext: resourceEngineRegistrationDelete,
 		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
 			engine_type := rd.Get("engine_type").(string)
@@ -35,29 +34,35 @@ func resourceEngineRegistration() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"hostname": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"username": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 			"password": {
 				Type:      schema.TypeString,
 				Required:  true,
 				Sensitive: true,
+				ForceNew:  true,
 			},
 			"compliance_user": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"compliance_password": {
 				Type:      schema.TypeString,
 				Optional:  true,
 				Sensitive: true,
+				ForceNew:  true,
 			},
 			"hashicorp_vault_username_command_args": {
 				Type:     schema.TypeList,
@@ -65,6 +70,7 @@ func resourceEngineRegistration() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				ForceNew: true,
 			},
 			"hashicorp_vault_masking_username_command_args": {
 				Type:     schema.TypeList,
@@ -72,6 +78,7 @@ func resourceEngineRegistration() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				ForceNew: true,
 			},
 			"hashicorp_vault_password_command_args": {
 				Type:     schema.TypeList,
@@ -79,6 +86,7 @@ func resourceEngineRegistration() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				ForceNew: true,
 			},
 			"hashicorp_vault_masking_password_command_args": {
 				Type:     schema.TypeList,
@@ -86,35 +94,43 @@ func resourceEngineRegistration() *schema.Resource {
 				Elem: &schema.Schema{
 					Type: schema.TypeString,
 				},
+				ForceNew: true,
 			},
 			"hashicorp_vault_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"masking_hashicorp_vault_id": {
 				Type:     schema.TypeInt,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"insecure_ssl": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"unsafe_ssl_hostname_check": {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"truststore_filename": {
 				Type:     schema.TypeString,
 				Optional: true,
 				Computed: true,
+				ForceNew: true,
 			},
 			"truststore_password": {
 				Type:     schema.TypeString,
 				Optional: true,
+				ForceNew: true,
+				Sensitive: true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
@@ -132,6 +148,7 @@ func resourceEngineRegistration() *schema.Resource {
 						},
 					},
 				},
+				ForceNew: true,
 			},
 
 			"id": {
@@ -189,6 +206,7 @@ func resourceEngineRegistration() *schema.Resource {
 			"engine_type": {
 				Type:     schema.TypeString,
 				Required: true,
+				ForceNew: true,
 			},
 		},
 	}
@@ -199,6 +217,14 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
+
+	// Wait a fixed period before create to allow backend to settle after destroy (ForceNew)
+	select {
+	case <-time.After(30 * time.Second):
+		// proceed after delay
+	case <-ctx.Done():
+		return diag.FromErr(ctx.Err())
+	}
 
 	registerEngine := dctapi.NewEngineRegistrationParameter(d.Get("name").(string), d.Get("hostname").(string))
 
@@ -297,11 +323,7 @@ func resourceEngineRegistrationRead(ctx context.Context, d *schema.ResourceData,
 	return diags
 }
 
-func resourceEngineRegistrationUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	return diag.Errorf("Engine registration updates are not supported by the DCT API. All fields are immutable after registration. " +
-		"Changes to any field require destroying and recreating the resource (unregister and re-register the engine). " +
-		"To update the engine registration, remove the resource from your Terraform configuration and apply the changes, then add the resource back with the updated fields and apply again.")
-}
+
 
 func resourceEngineRegistrationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 

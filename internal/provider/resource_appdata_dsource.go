@@ -80,7 +80,6 @@ func resourceAppdataDsource() *schema.Resource {
 				Type:     schema.TypeBool,
 				Optional: true,
 				Computed: true,
-				ForceNew: true,
 			},
 			"make_current_account_owner": {
 				Type:        schema.TypeBool,
@@ -533,8 +532,9 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("dSource creation failed: received nil response or job from API")
 	}
 
-	// Store dSource ID temporarily - don't set in state until job completes
+	// Store dSource ID as soon as we have it, for idempotency and recovery
 	dsourceId := apiRes.GetDsourceId()
+	d.SetId(dsourceId)
 
 	job_res, job_err := PollJobStatus(apiRes.Job.GetId(), createCtx, client)
 	if job_err != "" {
@@ -543,8 +543,8 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 
 	// Check if context was cancelled due to timeout
 	if createCtx.Err() != nil {
-		// Don't set ID in state - let user verify and import
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s (Job ID: %s, dSource ID: %s). "+
 				"Check DCT UI to verify job completion, then import it.",
 				d.Timeout(schema.TimeoutCreate), apiRes.Job.GetId(), dsourceId)
@@ -558,12 +558,10 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
-		
+
 		if rollback_on_failure {
 			// Delete the dSource on any failure when rollback is enabled
 			tflog.Info(ctx, DLPX+INFO+"Rolling back dSource creation due to job failure")
-			// Set ID temporarily so delete can work
-			d.SetId(dsourceId)
 			deleteDiags := resourceDsourceDelete(ctx, d, meta)
 			if deleteDiags.HasError() {
 				// Deletion failed - leave in state for manual cleanup
@@ -579,8 +577,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 			return diag.Errorf("[NOT OK] dSource creation job %s (Job ID: %s). Rolled back successfully. Error: %s", 
 				job_res, apiRes.Job.GetId(), job_err)
 		} else {
-			// Set ID so read can work properly
-			d.SetId(dsourceId)
+			// dSource exists, leave ID set so user can import or clean up
 			readDiags := resourceDsourceRead(ctx, d, meta)
 
 			if readDiags.HasError() {
@@ -593,6 +590,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	// Check context again before proceeding to snapshot polling
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s during snapshot polling (Job ID: %s). "+
 				"The dSource may have been created. To resolve:\n"+
 				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
@@ -607,6 +605,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 	// Check context one more time before reading state
 	if createCtx.Err() != nil {
 		if createCtx.Err() == context.DeadlineExceeded {
+			d.SetId("")
 			return diag.Errorf("dSource creation timed out after %s during final state read (Job ID: %s). "+
 				"The dSource may have been created. To resolve:\n"+
 				"1. Check the Delphix DCT UI or API to verify the dSource exists\n"+
@@ -616,9 +615,6 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 		return diag.Errorf("dSource creation was cancelled during final state read (Job ID: %s): %v", apiRes.Job.GetId(), createCtx.Err())
 	}
 
-	// Only set ID in state after successful completion
-	d.SetId(dsourceId)
-	
 	readDiags := resourceDsourceRead(createCtx, d, meta)
 
 	if readDiags.HasError() {
