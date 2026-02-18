@@ -130,6 +130,7 @@ func resourceEngineRegistration() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				ForceNew: true,
+				Sensitive: true,
 			},
 			"tags": {
 				Type:     schema.TypeList,
