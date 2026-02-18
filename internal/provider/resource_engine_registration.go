@@ -220,7 +220,7 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 
 	// Wait a fixed period before create to allow backend to settle after destroy (ForceNew)
 	select {
-	case <-time.After(15 * time.Second):
+	case <-time.After(30 * time.Second):
 		// proceed after delay
 	case <-ctx.Done():
 		return diag.FromErr(ctx.Err())

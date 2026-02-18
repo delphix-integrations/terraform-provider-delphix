@@ -2,7 +2,6 @@ package provider
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -1040,12 +1039,12 @@ func resourceEnvironmentUpdate(ctx context.Context, d *schema.ResourceData, meta
 		// fetch the current hosts from the Delphix API (not from state)
 		environmentId := d.Get("id").(string)
 		client := meta.(*apiClient).client
-		apiEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(ctx, environmentId).Execute()
-		if diags := apiErrorResponseHelper(ctx, apiEnv, httpRes, err); diags != nil {
+		apiEnv, httpRes, err := client.EnvironmentsAPI.GetEnvironmentById(updateCtx, environmentId).Execute()
+		if diags := apiErrorResponseHelper(updateCtx, apiEnv, httpRes, err); diags != nil {
 			return diags
 		}
 		delphixHosts := apiEnv.GetHosts()
-		tflog.Debug(ctx, "delphixHosts contents", map[string]interface{}{"delphixHosts": delphixHosts})
+		tflog.Debug(updateCtx, "delphixHosts contents", map[string]interface{}{"delphixHosts": delphixHosts})
 	
 
 		// retrieve the hostId corresponding to the old host name (that will be updated) from Delphix API hosts
