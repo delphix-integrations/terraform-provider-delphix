@@ -577,7 +577,7 @@ func resourceAppdataDsourceCreate(ctx context.Context, d *schema.ResourceData, m
 			return diag.Errorf("[NOT OK] dSource creation job %s (Job ID: %s). Rolled back successfully. Error: %s", 
 				job_res, apiRes.Job.GetId(), job_err)
 		} else {
-			// dSource exists, leave ID set so user can import or clean up
+
 			readDiags := resourceDsourceRead(ctx, d, meta)
 
 			if readDiags.HasError() {
