@@ -35,6 +35,7 @@ func resourceOracleDsource() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"rollback_on_failure": {
 				Type:     schema.TypeBool,
@@ -272,6 +273,7 @@ func resourceOracleDsource() *schema.Resource {
 			"environment_user_id": {
 				Type:     schema.TypeString,
 				Optional: true,
+				Computed: true,
 			},
 			"backup_level_enabled": {
 				Type:     schema.TypeBool,
@@ -845,18 +847,29 @@ func resourceOracleDsourceCreate(ctx context.Context, d *schema.ResourceData, me
 
 	if job_res == Failed || job_res == Canceled || job_res == Abandoned {
 		tflog.Error(ctx, DLPX+ERROR+"Job "+job_res+" "+apiRes.Job.GetId()+"!")
+		
 		if rollback_on_failure {
-			if job_res == Failed {
-				res := isSnapSyncFailure(apiRes.Job.GetId(), ctx, client)
-				if res {
-					deleteDiags := resourceOracleDsourceDelete(ctx, d, meta)
-					if deleteDiags.HasError() {
-						return deleteDiags
-					}
-					d.SetId("")
-				}
+			// Delete the dSource on any failure when rollback is enabled
+			tflog.Info(ctx, DLPX+INFO+"Rolling back dSource creation due to job failure")
+			// Set ID temporarily so delete can work
+			d.SetId(dsourceId)
+			deleteDiags := resourceOracleDsourceDelete(ctx, d, meta)
+			if deleteDiags.HasError() {
+				// Deletion failed - leave in state for manual cleanup
+				tflog.Error(ctx, DLPX+ERROR+"Rollback deletion failed. dSource may still exist on backend.")
+				return append(deleteDiags, diag.Diagnostic{
+					Severity: diag.Error,
+					Summary:  "dSource creation failed and rollback deletion also failed",
+					Detail:   "The dSource may still exist on the backend. Please check DCT UI and clean up manually if needed.",
+				})
 			}
+			// Successfully deleted, clear from state
+			d.SetId("")
+			return diag.Errorf("[NOT OK] dSource creation job %s (Job ID: %s). Rolled back successfully. Error: %s", 
+				job_res, apiRes.Job.GetId(), job_err)
 		} else {
+			// Set ID so read can work properly
+			d.SetId(dsourceId)
 			readDiags := resourceOracleDsourceRead(ctx, d, meta)
 
 			if readDiags.HasError() {
