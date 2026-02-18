@@ -218,8 +218,13 @@ func resourceEngineRegistrationCreate(ctx context.Context, d *schema.ResourceDat
 	var diags diag.Diagnostics
 	client := meta.(*apiClient).client
 
-	// Wait configurable seconds before create to allow backend to settle after destroy (ForceNew)
-	time.Sleep(time.Duration(15) * time.Second)
+	// Wait a fixed period before create to allow backend to settle after destroy (ForceNew)
+	select {
+	case <-time.After(15 * time.Second):
+		// proceed after delay
+	case <-ctx.Done():
+		return diag.FromErr(ctx.Err())
+	}
 
 	registerEngine := dctapi.NewEngineRegistrationParameter(d.Get("name").(string), d.Get("hostname").(string))
 
