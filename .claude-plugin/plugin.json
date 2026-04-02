@@ -6,5 +6,6 @@
     "name": "Delphix"
   },
   "keywords": ["terraform", "delphix", "dct", "provider"],
-  "skills": "./.claude/skills/"
+  "skills": "./.claude/skills/",
+  "agents": "./.claude/agents/"
 }
