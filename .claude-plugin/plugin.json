@@ -1,0 +1,10 @@
+{
+  "name": "terraform-provider-delphix",
+  "version": "4.2.1",
+  "description": "Claude Code plugin for the Delphix Terraform provider — build, test, scaffold resources and generate docs",
+  "author": {
+    "name": "Delphix"
+  },
+  "keywords": ["terraform", "delphix", "dct", "provider"],
+  "skills": "./.claude/skills/"
+}
