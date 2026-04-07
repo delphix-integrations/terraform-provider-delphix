@@ -85,6 +85,10 @@ func resourceEngineConfiguration() *schema.Resource {
 								return errors.New("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider")
 							}
 						}
+					} else if cloud_provider == GCP {
+						if _, ok := block["bucket"]; !ok {
+							return errors.New("bucket must be provided in object_storage_params for GCP cloud_provider")
+						}
 					}
 				}
 				ntp_servers := rd.Get("ntp_servers").([]interface{})
@@ -287,7 +291,7 @@ func resourceEngineConfiguration() *schema.Resource {
 						"cloud_provider": {
 							Type:         schema.TypeString,
 							Required:     true,
-							ValidateFunc: validation.StringInSlice([]string{AWS, AZURE}, false),
+							ValidateFunc: validation.StringInSlice([]string{AWS, AZURE, GCP}, false),
 						},
 						"region": {
 							Type:     schema.TypeString,
@@ -527,7 +531,7 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		default_email = email.(string)
 	}
 	password := d.Get("password").(string)
-	
+
 	// Secure cleanup of sensitive data from memory when function exits
 	defer func() {
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing sensitive credentials from memory")
@@ -626,6 +630,8 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 			} else {
 				params.AzureManagedIdentities = object_storage_params[0].(map[string]interface{})["azure_managed_identities"].(string)
 			}
+		} else if params.CloudProvider == GCP {
+			params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
 		}
 
 	}
@@ -814,11 +820,11 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 	} else {
 		version = api_version
 	}
-	
+
 	// Get credentials and ensure they're cleared after use
 	sysUser := d.Get("sys_user").(string)
 	sysNewPassword := d.Get("sys_new_password").(string)
-	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Read credentials for engine %s (sys_user: %s, password_len: %d)", 
+	tflog.Debug(ctx, fmt.Sprintf("[SECURITY] Read credentials for engine %s (sys_user: %s, password_len: %d)",
 		engineId, sysUser, len(sysNewPassword)))
 	defer func() {
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Clearing credentials from engineConfigRead")
@@ -826,7 +832,7 @@ func engineConfigRead(ctx context.Context, d *schema.ResourceData, meta interfac
 		SecureClearString(ctx, &sysNewPassword)
 		tflog.Info(ctx, DLPX+INFO+"[SECURITY] Credentials cleared from engineConfigRead")
 	}()
-	
+
 	// Create a cookie jar to store session cookies
 	insecureSSL := d.Get("insecure_ssl").(bool)
 	jar, _ := cookiejar.New(nil)

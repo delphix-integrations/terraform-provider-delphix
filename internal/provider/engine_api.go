@@ -84,7 +84,7 @@ func login(ctx context.Context, client *http.Client, engine_host string, user st
 		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Login credentials cleared")
 	}()
-	
+
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {
@@ -200,6 +200,13 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 				Size:         sizeInBytes,
 				CacheDevices: deviceRefs,
 				Container:    params.Container,
+			}
+		case GCP:
+			objectStorage = &ObjectStore{
+				Type:         "GcpObjectStore",
+				Size:         sizeInBytes,
+				CacheDevices: deviceRefs,
+				Bucket:       params.Bucket,
 			}
 		}
 
@@ -491,6 +498,12 @@ func testConnectionForObjectStore(ctx context.Context, client *http.Client, engi
 					AZURE_KEY:     params.AZURE_KEY,
 				},
 			}
+		}
+	} else if params.CloudProvider == GCP {
+		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for GCP object store")
+		payload = TestConnection{
+			Type:   "GcpObjectStoreTest",
+			Bucket: params.Bucket,
 		}
 	}
 
@@ -826,7 +839,7 @@ func loginComplianceUser(ctx context.Context, client *http.Client, engine_host s
 		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Compliance login credentials cleared")
 	}()
-	
+
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Compliance User Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {

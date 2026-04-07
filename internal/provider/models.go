@@ -282,6 +282,7 @@ const (
 	SYSTEM                   = "SYSTEM"
 	AZURE                    = "AZURE"
 	AWS                      = "AWS"
+	GCP                      = "GCP"
 	ENGINE_API_VERSION       = "1.11.40"
 )
 

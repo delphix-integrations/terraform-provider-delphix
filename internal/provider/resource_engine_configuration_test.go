@@ -103,6 +103,102 @@ func TestAccEngineConfiguration_objectStorageWithAccessKey(t *testing.T) {
 	})
 }
 
+func TestAccEngineConfiguration_gcpObjectStorage(t *testing.T) {
+	resourceName := "delphix_engine_configuration.test"
+	engineHost := os.Getenv("DELPHIX_ENGINE_HOST")
+	bucketName := os.Getenv("GCP_BUCKET_NAME")
+
+	if engineHost == "" || bucketName == "" {
+		t.Skip("DELPHIX_ENGINE_HOST or GCP_BUCKET_NAME environment variable not set")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccEngineConfigurationGCPObjectStorage(engineHost, bucketName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckEngineConfigurationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "device_type", "OBJECT"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.cloud_provider", "GCP"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.bucket", bucketName),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.size", "20GB"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.0", "pool.ntp.org"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.1", "time.nist.gov"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_timezone", "America/New_York"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccEngineConfiguration_azureObjectStorageWithManagedIdentities(t *testing.T) {
+	resourceName := "delphix_engine_configuration.test"
+	engineHost := os.Getenv("DELPHIX_ENGINE_HOST")
+	containerName := os.Getenv("AZURE_CONTAINER_NAME")
+	azureAccount := os.Getenv("AZURE_ACCOUNT_NAME")
+
+	if engineHost == "" || containerName == "" || azureAccount == "" {
+		t.Skip("DELPHIX_ENGINE_HOST, AZURE_CONTAINER_NAME or AZURE_ACCOUNT_NAME environment variable not set")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccEngineConfigurationAzureObjectStorageManagedIdentities(engineHost, containerName, azureAccount),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckEngineConfigurationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "device_type", "OBJECT"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.cloud_provider", "AZURE"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.azure_container", containerName),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.azure_account", azureAccount),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.size", "20GB"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.auth_type", "MANAGED_IDENTITIES"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.0", "pool.ntp.org"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.1", "time.nist.gov"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_timezone", "Europe/London"),
+				),
+			},
+		},
+	})
+}
+
+func TestAccEngineConfiguration_azureObjectStorageWithAccessKey(t *testing.T) {
+	resourceName := "delphix_engine_configuration.test"
+	engineHost := os.Getenv("DELPHIX_ENGINE_HOST")
+	containerName := os.Getenv("AZURE_CONTAINER_NAME")
+	azureAccount := os.Getenv("AZURE_ACCOUNT_NAME")
+	azureKey := os.Getenv("AZURE_ACCESS_KEY")
+
+	if engineHost == "" || containerName == "" || azureAccount == "" || azureKey == "" {
+		t.Skip("Required environment variables not set: DELPHIX_ENGINE_HOST, AZURE_CONTAINER_NAME, AZURE_ACCOUNT_NAME, AZURE_ACCESS_KEY")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccEngineConfigurationAzureObjectStorageAccessKey(engineHost, containerName, azureAccount, azureKey),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckEngineConfigurationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "device_type", "OBJECT"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.cloud_provider", "AZURE"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.auth_type", "ACCESS_KEY"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.azure_container", containerName),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.azure_account", azureAccount),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.azure_key", azureKey),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.#", "3"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_timezone", "UTC"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccEngineConfiguration_validationErrors(t *testing.T) {
 	engineHost := "http://test-engine.example.com"
 
@@ -125,6 +221,22 @@ func TestAccEngineConfiguration_validationErrors(t *testing.T) {
 			{
 				Config:      testAccEngineConfigurationInvalidStorageSize(engineHost),
 				ExpectError: regexp.MustCompile("must be a valid storage size with units"),
+			},
+			{
+				Config:      testAccEngineConfigurationGCPMissingBucket(engineHost),
+				ExpectError: regexp.MustCompile("bucket must be provided in object_storage_params for GCP cloud_provider"),
+			},
+			{
+				Config:      testAccEngineConfigurationAzureMissingContainer(engineHost),
+				ExpectError: regexp.MustCompile("azure_container must be provided in object_storage_params for AZURE cloud_provider"),
+			},
+			{
+				Config:      testAccEngineConfigurationAzureMissingAccount(engineHost),
+				ExpectError: regexp.MustCompile("azure_account must be provided in object_storage_params for AZURE cloud_provider"),
+			},
+			{
+				Config:      testAccEngineConfigurationAzureMissingKey(engineHost),
+				ExpectError: regexp.MustCompile("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider"),
 			},
 		},
 	})
@@ -453,6 +565,186 @@ resource "delphix_engine_configuration" "test" {
     endpoint  = "s3.us-west-2.amazonaws.com"
     size      = "20MB"  # Invalid size unit
     auth_type = "ROLE"
+  }
+}
+`, engineHost)
+}
+
+func testAccEngineConfigurationGCPObjectStorage(engineHost, bucketName string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org", "time.nist.gov"]
+  ntp_timezone = "America/New_York"
+  
+  object_storage_params {
+    cloud_provider = "GCP"
+    bucket = "%s"
+    size   = "20GB"
+  }
+}
+`, engineHost, bucketName)
+}
+
+func testAccEngineConfigurationGCPMissingBucket(engineHost string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org"]
+  ntp_timezone = "UTC"
+  
+  object_storage_params {
+    cloud_provider = "GCP"
+    # Missing bucket parameter
+    size = "20GB"
+  }
+}
+`, engineHost)
+}
+
+func testAccEngineConfigurationAzureObjectStorageManagedIdentities(engineHost, containerName, azureAccount string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org", "time.nist.gov"]
+  ntp_timezone = "Europe/London"
+  
+  object_storage_params {
+    cloud_provider   = "AZURE"
+    azure_container  = "%s"
+    azure_account    = "%s"
+    size            = "20GB"
+    auth_type       = "MANAGED_IDENTITIES"
+  }
+}
+`, engineHost, containerName, azureAccount)
+}
+
+func testAccEngineConfigurationAzureObjectStorageAccessKey(engineHost, containerName, azureAccount, azureKey string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org", "time.nist.gov", "1.ubuntu.pool.ntp.org"]
+  ntp_timezone = "UTC"
+  
+  object_storage_params {
+    cloud_provider   = "AZURE"
+    azure_container  = "%s"
+    azure_account    = "%s"
+    azure_key       = "%s"
+    size            = "20GB"
+    auth_type       = "ACCESS_KEY"
+  }
+}
+`, engineHost, containerName, azureAccount, azureKey)
+}
+
+func testAccEngineConfigurationAzureMissingContainer(engineHost string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org"]
+  ntp_timezone = "UTC"
+  
+  object_storage_params {
+    cloud_provider = "AZURE"
+    # Missing azure_container parameter
+    azure_account = "test-account"
+    size = "20GB"
+    auth_type = "MANAGED_IDENTITIES"
+  }
+}
+`, engineHost)
+}
+
+func testAccEngineConfigurationAzureMissingAccount(engineHost string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org"]
+  ntp_timezone = "UTC"
+  
+  object_storage_params {
+    cloud_provider   = "AZURE"
+    azure_container  = "test-container"
+    # Missing azure_account parameter
+    size = "20GB"
+    auth_type = "MANAGED_IDENTITIES"
+  }
+}
+`, engineHost)
+}
+
+func testAccEngineConfigurationAzureMissingKey(engineHost string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host  = "%s"
+  sys_user     = "sysadmin"
+  sys_password = "sysadmin"
+  user         = "admin"
+  password     = "delphix"
+  email        = "test@example.com"
+  engine_type  = "CD"
+  device_type  = "OBJECT"
+  
+  ntp_servers  = ["pool.ntp.org"]
+  ntp_timezone = "UTC"
+  
+  object_storage_params {
+    cloud_provider   = "AZURE"
+    azure_container  = "test-container"
+    azure_account    = "test-account"
+    size            = "20GB"
+    auth_type       = "ACCESS_KEY"
+    # Missing azure_key parameter
   }
 }
 `, engineHost)
