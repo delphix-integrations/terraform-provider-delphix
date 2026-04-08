@@ -48,6 +48,9 @@ var bookmark_id string
 var vdb_id string
 
 func TestAccVdb_bookmark_provision(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless env 'TF_ACC' set")
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,

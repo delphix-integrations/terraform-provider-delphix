@@ -305,7 +305,7 @@ func validateStorageSize(v interface{}, k string) (warnings []string, errors []e
 	value := v.(string)
 
 	// Regular expression to match number followed by GB, TB, or PB (case insensitive)
-	pattern := `^\d+(?:\.\d+)?\s*(GB|TB|PB)$`
+	pattern := `^\d+(?:\.\d+)?(GB|TB|PB)$`
 	matched, err := regexp.MatchString(pattern, value)
 
 	if err != nil {
