@@ -133,6 +133,37 @@ func TestAccEngineConfiguration_gcpObjectStorage(t *testing.T) {
 	})
 }
 
+func TestAccEngineConfiguration_gcpObjectStorage_CC(t *testing.T) {
+	resourceName := "delphix_engine_configuration.test"
+	engineHost := os.Getenv("DELPHIX_ENGINE_HOST")
+	bucketName := os.Getenv("GCP_BUCKET_NAME")
+
+	if engineHost == "" || bucketName == "" {
+		t.Skip("DELPHIX_ENGINE_HOST or GCP_BUCKET_NAME environment variable not set (requires a CC engine)")
+	}
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:  func() { testAccPreCheck(t) },
+		Providers: testAccProviders,
+		Steps: []resource.TestStep{
+			{
+				Config: testAccEngineConfigurationGCPObjectStorageCC(engineHost, bucketName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckEngineConfigurationExists(resourceName),
+					resource.TestCheckResourceAttr(resourceName, "engine_type", "CC"),
+					resource.TestCheckResourceAttr(resourceName, "device_type", "OBJECT"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.cloud_provider", "GCP"),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.bucket", bucketName),
+					resource.TestCheckResourceAttr(resourceName, "object_storage_params.0.size", "20GB"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.0", "pool.ntp.org"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_servers.1", "time.nist.gov"),
+					resource.TestCheckResourceAttr(resourceName, "ntp_timezone", "America/New_York"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccEngineConfiguration_azureObjectStorageWithManagedIdentities(t *testing.T) {
 	resourceName := "delphix_engine_configuration.test"
 	engineHost := os.Getenv("DELPHIX_ENGINE_HOST")
@@ -573,18 +604,48 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationGCPObjectStorage(engineHost, bucketName string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
-  email        = "test@example.com"
-  engine_type  = "CD"
-  device_type  = "OBJECT"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
+  email            = "test@example.com"
+  engine_type      = "CD"
+  device_type      = "OBJECT"
   
   ntp_servers  = ["pool.ntp.org", "time.nist.gov"]
   ntp_timezone = "America/New_York"
   
+  object_storage_params {
+    cloud_provider = "GCP"
+    bucket = "%s"
+    size   = "20GB"
+  }
+}
+`, engineHost, bucketName)
+}
+
+func testAccEngineConfigurationGCPObjectStorageCC(engineHost, bucketName string) string {
+	return fmt.Sprintf(`
+resource "delphix_engine_configuration" "test" {
+  engine_host             = "%s"
+  sys_user                = "sysadmin"
+  sys_password            = "sysadmin"
+  sys_new_password        = "delphix"
+  user                    = "admin"
+  password                = "delphix"
+  email                   = "test@example.com"
+  engine_type             = "CC"
+  compliance_user         = "admin"
+  compliance_password     = "Admin-12"
+  compliance_new_password = "Admin@45"
+  compliance_email        = "compliance@example.com"
+  device_type             = "OBJECT"
+
+  ntp_servers  = ["pool.ntp.org", "time.nist.gov"]
+  ntp_timezone = "America/New_York"
+
   object_storage_params {
     cloud_provider = "GCP"
     bucket = "%s"
