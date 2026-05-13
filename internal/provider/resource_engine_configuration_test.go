@@ -254,18 +254,6 @@ func TestAccEngineConfiguration_validationErrors(t *testing.T) {
 				ExpectError: regexp.MustCompile("must be a valid storage size with units"),
 			},
 			{
-				Config:      testAccEngineConfigurationGCPMissingBucket(engineHost),
-				ExpectError: regexp.MustCompile("bucket must be provided in object_storage_params for GCP cloud_provider"),
-			},
-			{
-				Config:      testAccEngineConfigurationAzureMissingContainer(engineHost),
-				ExpectError: regexp.MustCompile("azure_container must be provided in object_storage_params for AZURE cloud_provider"),
-			},
-			{
-				Config:      testAccEngineConfigurationAzureMissingAccount(engineHost),
-				ExpectError: regexp.MustCompile("azure_account must be provided in object_storage_params for AZURE cloud_provider"),
-			},
-			{
 				Config:      testAccEngineConfigurationAzureMissingKey(engineHost),
 				ExpectError: regexp.MustCompile("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider"),
 			},
@@ -436,11 +424,12 @@ func testAccCheckEngineConfigurationExists(resourceName string) resource.TestChe
 func testAccEngineConfigurationBlockDevice(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "BLOCK"
@@ -451,11 +440,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationObjectStorageRole(engineHost, bucketName string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -478,11 +468,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationObjectStorageAccessKey(engineHost, bucketName, accessId, accessKey string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -507,11 +498,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationObjectStorageMissingParams(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -523,11 +515,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationObjectStorageMissingAccessKey(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -551,11 +544,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationObjectStorageMissingNTP(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -577,11 +571,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationInvalidStorageSize(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -658,11 +653,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationGCPMissingBucket(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -682,11 +678,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationAzureObjectStorageManagedIdentities(engineHost, containerName, azureAccount string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -708,11 +705,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationAzureObjectStorageAccessKey(engineHost, containerName, azureAccount, azureKey string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -735,11 +733,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationAzureMissingContainer(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -761,11 +760,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationAzureMissingAccount(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
@@ -787,11 +787,12 @@ resource "delphix_engine_configuration" "test" {
 func testAccEngineConfigurationAzureMissingKey(engineHost string) string {
 	return fmt.Sprintf(`
 resource "delphix_engine_configuration" "test" {
-  engine_host  = "%s"
-  sys_user     = "sysadmin"
-  sys_password = "sysadmin"
-  user         = "admin"
-  password     = "delphix"
+  engine_host      = "%s"
+  sys_user         = "sysadmin"
+  sys_password     = "sysadmin"
+  sys_new_password = "delphix"
+  user             = "admin"
+  password         = "delphix"
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"

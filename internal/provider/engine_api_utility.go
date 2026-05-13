@@ -304,8 +304,8 @@ func configureSSO(ctx context.Context, client *http.Client, engine_host string, 
 func validateStorageSize(v interface{}, k string) (warnings []string, errors []error) {
 	value := v.(string)
 
-	// Regular expression to match number followed by GB, TB, or PB (case insensitive)
-	pattern := `^\d+(?:\.\d+)?\s*(GB|TB|PB)$`
+	// Regular expression to match number followed by GB, TB, or PB (no whitespace, case sensitive)
+	pattern := `^\d+(?:\.\d+)?(GB|TB|PB)$`
 	matched, err := regexp.MatchString(pattern, value)
 
 	if err != nil {
