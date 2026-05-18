@@ -17,7 +17,7 @@ The vision/functional/design phases were skipped for this ticket (testing-only).
 | FR-005 | GCP bucket parameter passed through to engine API (CloudProvider==GCP branch) | PASS | internal/provider/resource_engine_configuration.go:633 |
 | FR-006 | `GCP` constant defined in models | PASS | internal/provider/models.go:285 |
 | FR-007 | End-to-end: CD engine configured with GCP Object Storage via Terraform | PASS | internal/provider/resource_engine_configuration_test.go:106 (`TestAccEngineConfiguration_gcpObjectStorage` — live run PASS, 251.65s) |
-| FR-008 | CC engine configured with GCP Object Storage via Terraform (`engine_type=CC`) | PASS | internal/provider/resource_engine_configuration_test.go:136 (`TestAccEngineConfiguration_gcpObjectStorage_CC` — live run PASS, 295.19s against sho-gcp-cc.dlpxdc.co / dcoa-prod-sho-gcp-cc, re-run 2026-05-13) |
+| FR-008 | CC engine configured with GCP Object Storage via Terraform (`engine_type=CC`) | PASS | internal/provider/resource_engine_configuration_test.go:136 (`TestAccEngineConfiguration_gcpObjectStorage_CC` — live run PASS, 295.19s against sho-gcp-cc / <bucket>, re-run 2026-05-13) |
 
 ---
 

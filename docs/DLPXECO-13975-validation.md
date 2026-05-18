@@ -23,7 +23,7 @@
 | FR-005 | GCP bucket parameter passed through to engine API | PASS | internal/provider/resource_engine_configuration.go:633 |
 | FR-006 | `GCP` constant defined in models | PASS | internal/provider/models.go:285 |
 | FR-007 | End-to-end: CD engine configured with GCP Object Storage via Terraform | PASS | internal/provider/resource_engine_configuration_test.go:106 (live run: 251.65s, all checks passed) |
-| FR-008 | CC engine configured with GCP Object Storage via Terraform (`engine_type=CC`) | PASS | resource_engine_configuration_test.go:136 — live run PASS, 295.19s against sho-gcp-cc.dlpxdc.co / dcoa-prod-sho-gcp-cc (re-run 2026-05-13) |
+| FR-008 | CC engine configured with GCP Object Storage via Terraform (`engine_type=CC`) | PASS | resource_engine_configuration_test.go:136 — live run PASS, 295.19s against sho-gcp-cc / <bucket> (re-run 2026-05-13) |
 
 ### Coverage Summary
 
@@ -51,8 +51,8 @@
 
 | Task | Description | Status | Notes |
 |------|-------------|--------|-------|
-| Test GCP Object Storage — CD engine | Run `TestAccEngineConfiguration_gcpObjectStorage` against live GCP CD engine | COMPLETE | Passed in 251.65s against sho-gcp-cd.dlpxdc.co / bucket dcoa-prod-sho-gcp-cd |
-| Test GCP Object Storage — CC engine | Run `TestAccEngineConfiguration_gcpObjectStorage_CC` against live GCP CC engine | COMPLETE | Passed in 295.19s against sho-gcp-cc.dlpxdc.co / bucket dcoa-prod-sho-gcp-cc (re-run 2026-05-13) |
+| Test GCP Object Storage — CD engine | Run `TestAccEngineConfiguration_gcpObjectStorage` against live GCP CD engine | COMPLETE | Passed in 251.65s against sho-gcp-cd / bucket <bucket> |
+| Test GCP Object Storage — CC engine | Run `TestAccEngineConfiguration_gcpObjectStorage_CC` against live GCP CC engine | COMPLETE | Passed in 295.19s against sho-gcp-cc / bucket <bucket> (re-run 2026-05-13) |
 | Document and fix pre-existing test failures | Identify, triage, and fix test failures not caused by this feature | COMPLETE | TestValidateStorageSize fixed (regex tightened). TestAccEngineConfiguration_validationErrors fixed via test-only changes (added sys_new_password; removed 3 steps exercising a latent CustomizeDiff bug — tracked as PRE-03 in coverage doc). |
 
 ---
@@ -108,8 +108,8 @@ None.
 |------|--------|-------|
 | Build (`make build`) | PASS | `go build -o terraform-provider-delphix` exits 0. Build phase was skipped in the orchestrator (testing-only ticket) but build verified manually during validate phase. |
 | Unit tests (`make test`) | PASS WITH WARNINGS | All unit tests pass except two pre-existing failures: `TestValidateStorageSize` (regex permissiveness, pre-dates this feature) and `TestAccEngineConfiguration_validationErrors` (stale test configs missing `sys_new_password`, pre-dates this feature). These failures are not regressions. |
-| GCP CD acceptance test | PASS | `TestAccEngineConfiguration_gcpObjectStorage` passed in 251.65s against sho-gcp-cd.dlpxdc.co / dcoa-prod-sho-gcp-cd. Full Terraform lifecycle (plan/apply/read/destroy) completed successfully. |
-| GCP CC acceptance test | PASS | `TestAccEngineConfiguration_gcpObjectStorage_CC` passed in 295.19s against sho-gcp-cc.dlpxdc.co / dcoa-prod-sho-gcp-cc (re-run 2026-05-13). |
+| GCP CD acceptance test | PASS | `TestAccEngineConfiguration_gcpObjectStorage` passed in 251.65s against sho-gcp-cd / <bucket>. Full Terraform lifecycle (plan/apply/read/destroy) completed successfully. |
+| GCP CC acceptance test | PASS | `TestAccEngineConfiguration_gcpObjectStorage_CC` passed in 295.19s against sho-gcp-cc / <bucket> (re-run 2026-05-13). |
 
 **Test Evidence**: See `docs/DLPXECO-13975-test-evidence.md` for full detail.
 

@@ -2,6 +2,16 @@
 
 This file describes the *infrastructure* required to run `engine_configuration` acceptance tests — how to SSH into the `dc` host that owns the lifecycle of test engines, and how to clone / configure / destroy those engines.
 
+> ## ⚠️ Secret-handling rule (applies to ALL commands in this file)
+>
+> **Never print, echo, log, or display `DCOA_PASSWORD` (or any other secret env var) in shell output, command text, tool calls, transcripts, or chat messages.**
+>
+> - Do **not** run commands like `echo $DCOA_PASSWORD`, `env | grep DCOA`, `set`, `printenv DCOA_PASSWORD`, or any command that prints the value.
+> - Do **not** interpolate `$DCOA_PASSWORD` into a command string that gets echoed back (e.g. avoid `sshpass -p "$DCOA_PASSWORD" ...` in a way that appears in logs — prefer reading the value from the environment inside a script like [test/ssh_dcoa.go](../../test/ssh_dcoa.go)).
+> - Do **not** paste the value into chat — refer to it only by variable name (`$DCOA_PASSWORD`).
+> - If the helper script needs the password, it must read it from `os.Getenv` / equivalent at runtime — never from a command-line argument that shows up in shell history or process listings.
+> - The same rule applies to `DCT_KEY`, `DCOA_USER` credentials, the 2FA TOTP code, and any other sensitive value sourced from `settings.local.json`.
+
 ## Provisioning fresh test infrastructure (engine_configuration)
 
 > `engine_configuration` tests need a freshly-cloned **engine** VM — `engine_configuration` is a destructive first-boot config and cannot be re-run against an already-configured engine.

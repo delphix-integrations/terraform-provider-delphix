@@ -28,8 +28,8 @@ Result: 1 passed, 0 failed
 Infrastructure provisioned:
 - VM: sho-gcp-cd (GCP) — RUNNING
 - Cloned from: dlpx-dose-2026.2.0.0 (GCP cloud)
-- Engine URL: http://sho-gcp-cd.dlpxdc.co
-- GCP bucket: dcoa-prod-sho-gcp-cd
+- Engine URL: <engine-url>
+- GCP bucket: <bucket>
 - Hand-off file: .claude/DLPXECO-13975-test-env.sh
 
 ### Step: test-infra (re-run 2026-05-13)
@@ -47,8 +47,8 @@ Infrastructure re-provisioned (2026-05-13):
 - Prior VM sho-gcp-cd: GONE (destroyed/expired since last run)
 - Settings change detected: ENGINE_NAME changed from sho-gcp-cd to sho-gcp-cc; DELPHIX_ENGINE_TYPE changed from CD to CC
 - New VM: sho-gcp-cc (GCP CC engine, XLARGE) — cloned from dlpx-dose-2026.2.0.0 — RUNNING
-- Engine URL: http://sho-gcp-cc.dlpxdc.co
-- GCP bucket: dcoa-prod-sho-gcp-cc
+- Engine URL: <engine-url>
+- GCP bucket: <bucket>
 - Hand-off file refreshed: .claude/DLPXECO-13975-test-env.sh (new VM name, IP, and CC type)
 - Notable playbook edit: CC requires -S XLARGE (honoured in dc clone-latest command above)
 
@@ -72,8 +72,8 @@ Result: 9 passed, 0 failed
 ```
 
 Test run summary:
-- TestAccEngineConfiguration_gcpObjectStorage (CD + GCP): PASS (251.65s) against sho-gcp-cd.dlpxdc.co / bucket dcoa-prod-sho-gcp-cd
-- TestAccEngineConfiguration_gcpObjectStorage_CC (CC + GCP): PASS (295.19s) against sho-gcp-cc.dlpxdc.co / bucket dcoa-prod-sho-gcp-cc (re-run 2026-05-13)
+- TestAccEngineConfiguration_gcpObjectStorage (CD + GCP): PASS (251.65s) against sho-gcp-cd / bucket <bucket>
+- TestAccEngineConfiguration_gcpObjectStorage_CC (CC + GCP): PASS (295.19s) against sho-gcp-cc / bucket <bucket> (re-run 2026-05-13)
 - Pre-existing failures: TestValidateStorageSize (regex allows spaces), TestAccEngineConfiguration_validationErrors (missing sys_new_password in test configs)
 
 ### Step: validate
@@ -116,8 +116,8 @@ Validate summary:
 ### Step: test (CC re-run 2026-05-13)
 
 Test: `TestAccEngineConfiguration_gcpObjectStorage_CC`
-Engine: sho-gcp-cc.dlpxdc.co (CC, GCP, XLARGE)
-Bucket: dcoa-prod-sho-gcp-cc
+Engine: sho-gcp-cc (CC, GCP, XLARGE)
+Bucket: <bucket>
 
 ```
 === RUN   TestAccEngineConfiguration_gcpObjectStorage_CC
@@ -132,8 +132,8 @@ Note: VM sho-gcp-cc remains running per playbook (CLONED_ENGINE=true — user mu
 ### Step: test (AWS CD Role re-run 2026-05-14)
 
 **Test**: `TestAccEngineConfiguration_objectStorageWithRole`
-**Engine**: sho-aws-cc.dlpxdc.co (CD, AWS, XLARGE)
-**S3 Bucket**: dcoa-prod-sho-aws-cc
+**Engine**: sho-aws-cc (CD, AWS, XLARGE)
+**S3 Bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret required)
 
 ```
@@ -145,7 +145,7 @@ ok  	terraform-provider-delphix/internal/provider	176.923s
 
 Result: PASS — 176.13s.
 - device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com
-- bucket=dcoa-prod-sho-aws-cc, size=20GB, auth_type=ROLE
+- bucket=<bucket>, size=20GB, auth_type=ROLE
 - NTP: pool.ntp.org + time.nist.gov, timezone=America/New_York
 - `TestAccEngineConfiguration_objectStorageWithAccessKey` SKIPPED — AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY intentionally empty.
 - VM sho-aws-cc remains RUNNING per playbook (CLONED_ENGINE=true — user must confirm before destroying).
@@ -188,7 +188,7 @@ Exit code: 0
 | ENGINE_NAME | sho-aws-cc | sho-aws-cd |
 | DELPHIX_ENGINE_CLOUD | AWS | AWS |
 | DELPHIX_ENGINE_TYPE | CD | CD |
-| S3_BUCKET_NAME | dcoa-prod-sho-aws-cc | dcoa-prod-sho-aws-cd |
+| S3_BUCKET_NAME | <bucket> | <bucket> |
 
 **Action**: VM sho-aws-cd did not exist — cloned fresh.
 
@@ -204,8 +204,8 @@ Exit code: 0
 
 **Hand-off file**: `.claude/DLPXECO-13975-test-env.sh` regenerated with fully expanded values (no template variables):
 - ENGINE_NAME=sho-aws-cd
-- DELPHIX_ENGINE_HOST=http://sho-aws-cd.dlpxdc.co
-- S3_BUCKET_NAME=dcoa-prod-sho-aws-cd
+- DELPHIX_ENGINE_HOST=<engine-url>
+- S3_BUCKET_NAME=<bucket>
 - DELPHIX_ENGINE_CLOUD=AWS
 - DELPHIX_ENGINE_TYPE=CD
 - CLONED_ENGINE=true
@@ -222,8 +222,8 @@ Exit code: 0
 ### Step: test (AWS CD Role on sho-aws-cd 2026-05-14)
 
 **Test**: `TestAccEngineConfiguration_objectStorageWithRole`
-**Engine**: sho-aws-cd.dlpxdc.co (CD, AWS, default size)
-**S3 Bucket**: dcoa-prod-sho-aws-cd
+**Engine**: sho-aws-cd (CD, AWS, default size)
+**S3 Bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret required)
 **Note**: First attempt at 11:27 IST returned HTTP 405 (engine still booting). Waited ~3 min until session API returned HTTP 200, then retried at 11:31 IST.
 
@@ -236,7 +236,7 @@ ok  	terraform-provider-delphix/internal/provider	275.822s
 
 Result: PASS — 275.20s.
 - device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com
-- bucket=dcoa-prod-sho-aws-cd, size=20GB, auth_type=ROLE
+- bucket=<bucket>, size=20GB, auth_type=ROLE
 - NTP: pool.ntp.org + time.nist.gov, timezone=America/New_York
 - `TestAccEngineConfiguration_objectStorageWithAccessKey` SKIPPED — AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY intentionally empty.
 - VM sho-aws-cd remains RUNNING per playbook (CLONED_ENGINE=true — user must confirm before destroying).
@@ -249,14 +249,14 @@ Result: PASS — 275.20s.
 - ENGINE_NAME=sho-aws-cd2
 - DELPHIX_ENGINE_TYPE=CD
 - DELPHIX_ENGINE_CLOUD=AWS
-- S3_BUCKET_NAME=dcoa-prod-${ENGINE_NAME} → dcoa-prod-sho-aws-cd2
+- S3_BUCKET_NAME=dcoa-prod-${ENGINE_NAME} → <bucket>
 
 **Action**: sho-aws-cd2 did not exist — cloned fresh.
 
 **Clone command**: `dc clone-latest dlpx-dose-2026.2.0.0 sho-aws-cd2 -w`
 - Golden image: `dlpx-dose-2026.2.0.0`
 - Size: default (CD engine — no -S XLARGE per playbook rule)
-- Cloud: AWS (default — no `--cloud` flag needed; dlpxdc.co provisions AWS by default)
+- Cloud: AWS (default — no `--cloud` flag needed; internal provisioner defaults to AWS)
 
 **VM state after clone**:
 - Name: sho-aws-cd2
@@ -265,9 +265,9 @@ Result: PASS — 275.20s.
 
 **Hand-off file**: `.claude/DLPXECO-13975-test-env.sh` regenerated with fully expanded values (no template variables):
 - ENGINE_NAME=sho-aws-cd2
-- DELPHIX_ENGINE_HOST=http://sho-aws-cd2.dlpxdc.co
-- S3_BUCKET_NAME=dcoa-prod-sho-aws-cd2
-- GCP_BUCKET_NAME=dcoa-prod-sho-aws-cd2
+- DELPHIX_ENGINE_HOST=<engine-url>
+- S3_BUCKET_NAME=<bucket>
+- GCP_BUCKET_NAME=<bucket>
 - DELPHIX_ENGINE_CLOUD=AWS
 - DELPHIX_ENGINE_TYPE=CD
 - CLONED_ENGINE=true
@@ -284,8 +284,8 @@ Exit code: 0
 ### Step: test (AWS CD Role on sho-aws-cd2 2026-05-14)
 
 **Test**: `TestAccEngineConfiguration_objectStorageWithRole`
-**Engine**: sho-aws-cd2.dlpxdc.co (CD, AWS, default size)
-**S3 Bucket**: dcoa-prod-sho-aws-cd2
+**Engine**: sho-aws-cd2 (CD, AWS, default size)
+**S3 Bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret required)
 **Note**: Engine was freshly cloned (CLONED_ENGINE=true). Boot-wait required — session endpoint returned HTML "Engine is booting up" page on attempts 1–5; responded with JSON on attempt 6 of 10 (approx 2.5 min after initial check). Test dispatched only after JSON API confirmed live.
 
@@ -302,7 +302,7 @@ ok  	terraform-provider-delphix/internal/provider	245.399s
 
 Result: PASS — 244.50s.
 - device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com
-- bucket=dcoa-prod-sho-aws-cd2, size=20GB, auth_type=ROLE
+- bucket=<bucket>, size=20GB, auth_type=ROLE
 - NTP: pool.ntp.org + time.nist.gov, timezone=America/New_York
 - `TestAccEngineConfiguration_objectStorageWithAccessKey` SKIPPED — AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY intentionally empty.
 - VM sho-aws-cd2 remains RUNNING (CLONED_ENGINE=true — prompt user before destroying).

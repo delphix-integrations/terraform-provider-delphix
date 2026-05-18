@@ -8,10 +8,10 @@ GCP Object Storage support for `delphix_engine_configuration` (CD + CC, delivere
 
 | Item | Value |
 |---|---|
-| Engine host | http://sho-gcp-cd.dlpxdc.co |
+| Engine host | <engine-url> |
 | Engine VM | sho-gcp-cd (freshly cloned from dlpx-dose-2026.2.0.0, GCP cloud) |
-| GCP bucket | dcoa-prod-sho-gcp-cd |
-| DCT host | dct-k8s.dlpxdc.co |
+| GCP bucket | <bucket> |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -27,7 +27,7 @@ GCP Object Storage support for `delphix_engine_configuration` (CD + CC, delivere
 |---|---|
 | Provider | v4.3.0 (commit 263cf5e) |
 | Delphix Engine image | dlpx-dose-2026.2.0.0 (GCP) |
-| DCT | dct-k8s.dlpxdc.co |
+| DCT | <dct-host> |
 | Go | 1.25+ |
 | Terraform Plugin SDK | v2 |
 
@@ -37,8 +37,8 @@ GCP Object Storage support for `delphix_engine_configuration` (CD + CC, delivere
 
 | Scenario | Version(s) | Outcome | Notes |
 |---|---|---|---|
-| GCP Object Storage — CD engine (`TestAccEngineConfiguration_gcpObjectStorage`) | dlpx-dose-2026.2.0.0 / GCP | PASS | Completed in 256.82s (2026-05-14 re-run, sho-gcp-cd). Verified: device_type=OBJECT, cloud_provider=GCP, bucket=dcoa-prod-sho-gcp-cd, size=20GB, NTP servers and timezone set. |
-| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | dlpx-dose-2026.2.0.0 / GCP / XLARGE | PASS | Completed in 274.95s (2026-05-14 re-run, sho-gcp-cc). Verified: engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=dcoa-prod-sho-gcp-cc, size=20GB, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
+| GCP Object Storage — CD engine (`TestAccEngineConfiguration_gcpObjectStorage`) | dlpx-dose-2026.2.0.0 / GCP | PASS | Completed in 256.82s (2026-05-14 re-run, sho-gcp-cd). Verified: device_type=OBJECT, cloud_provider=GCP, bucket=<bucket>, size=20GB, NTP servers and timezone set. |
+| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | dlpx-dose-2026.2.0.0 / GCP / XLARGE | PASS | Completed in 274.95s (2026-05-14 re-run, sho-gcp-cc). Verified: engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=<bucket>, size=20GB, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
 | GCP Block Storage — CD engine (`TestAccEngineConfiguration_blockDevice`) | dlpx-dose-2026.2.0.0 / GCP | PASS | Completed in 231.96s (2026-05-14, sho-gcp-blk). Verified: device_type=BLOCK, engine_type=CD, sys_user=sysadmin, user=admin, configured=true, hostname and product_type populated. |
 
 ---
@@ -93,19 +93,19 @@ Smoke: skipped — first feature on this workflow in this repo.
 ## CC test run
 
 **Date**: 2026-05-13  
-**Engine**: sho-gcp-cc.dlpxdc.co (CC engine, GCP, XLARGE)  
-**Bucket**: dcoa-prod-sho-gcp-cc  
-**DCT**: dct-k8s.dlpxdc.co  
+**Engine**: sho-gcp-cc (CC engine, GCP, XLARGE)  
+**Bucket**: <bucket>  
+**DCT**: <dct-host>  
 **Branch**: gcp-support
 
 ### Landscape / Environment
 
 | Item | Value |
 |---|---|
-| Engine host | http://sho-gcp-cc.dlpxdc.co |
+| Engine host | <engine-url> |
 | Engine VM | sho-gcp-cc (freshly cloned from dlpx-dose-2026.2.0.0, GCP CC, XLARGE) |
-| GCP bucket | dcoa-prod-sho-gcp-cc |
-| DCT host | dct-k8s.dlpxdc.co |
+| GCP bucket | <bucket> |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -117,7 +117,7 @@ Smoke: skipped — first feature on this workflow in this repo.
 
 | Scenario | Version(s) | Outcome | Notes |
 |---|---|---|---|
-| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | dlpx-dose-2026.2.0.0 / GCP / XLARGE | PASS | Completed in 295.19s. Verified: engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=dcoa-prod-sho-gcp-cc, size=20GB, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
+| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | dlpx-dose-2026.2.0.0 / GCP / XLARGE | PASS | Completed in 295.19s. Verified: engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=<bucket>, size=20GB, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
 
 ### Raw test output
 
@@ -137,21 +137,21 @@ ok  	terraform-provider-delphix/internal/provider	296.219s
 ## AWS CD test run (Role auth)
 
 **Date**: 2026-05-14
-**Engine**: sho-aws-cc.dlpxdc.co (CD engine, AWS, XLARGE)
-**S3 bucket**: dcoa-prod-sho-aws-cc
+**Engine**: sho-aws-cc (CD engine, AWS, XLARGE)
+**S3 bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret)
-**DCT**: dct-k8s.dlpxdc.co
+**DCT**: <dct-host>
 **Branch**: gcp-support
 
 ### Landscape / Environment
 
 | Item | Value |
 |---|---|
-| Engine host | http://sho-aws-cc.dlpxdc.co |
+| Engine host | <engine-url> |
 | Engine VM | sho-aws-cc (freshly cloned from dlpx-dose-2026.2.0.0, AWS, XLARGE) |
-| S3 bucket | dcoa-prod-sho-aws-cc |
+| S3 bucket | <bucket> |
 | Auth type | ROLE (IAM instance role) |
-| DCT host | dct-k8s.dlpxdc.co |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -163,7 +163,7 @@ ok  	terraform-provider-delphix/internal/provider	296.219s
 
 | Scenario | Version(s) | Outcome | Notes |
 |---|---|---|---|
-| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / XLARGE | PASS | Completed in 176.13s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=dcoa-prod-sho-aws-cc, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
+| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / XLARGE | PASS | Completed in 176.13s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=<bucket>, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
 
 ### Skipped tests (intentional)
 
@@ -182,17 +182,17 @@ ok  	terraform-provider-delphix/internal/provider	176.923s
 
 ### Summary
 
-1 of 1 AWS CD Role-auth scenario PASSED (176.13s). Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=dcoa-prod-sho-aws-cc. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided).
+1 of 1 AWS CD Role-auth scenario PASSED (176.13s). Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=<bucket>. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided).
 
 ---
 
 ## AWS CD test run (Role auth, sho-aws-cd, 2026-05-14)
 
 **Date**: 2026-05-14
-**Engine**: sho-aws-cd.dlpxdc.co (CD engine, AWS, default size)
-**S3 bucket**: dcoa-prod-sho-aws-cd
+**Engine**: sho-aws-cd (CD engine, AWS, default size)
+**S3 bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret)
-**DCT**: dct-k8s.dlpxdc.co
+**DCT**: <dct-host>
 **Branch**: gcp-support
 **Note**: Engine was freshly cloned and required ~3 min boot wait before the session API returned HTTP 200.
 
@@ -200,11 +200,11 @@ ok  	terraform-provider-delphix/internal/provider	176.923s
 
 | Item | Value |
 |---|---|
-| Engine host | http://sho-aws-cd.dlpxdc.co |
+| Engine host | <engine-url> |
 | Engine VM | sho-aws-cd (freshly cloned from dlpx-dose-2026.2.0.0, AWS CD, default size) |
-| S3 bucket | dcoa-prod-sho-aws-cd |
+| S3 bucket | <bucket> |
 | Auth type | ROLE (IAM instance role) |
-| DCT host | dct-k8s.dlpxdc.co |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -216,7 +216,7 @@ ok  	terraform-provider-delphix/internal/provider	176.923s
 
 | Scenario | Version(s) | Outcome | Notes |
 |---|---|---|---|
-| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / default | PASS | Completed in 275.20s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=dcoa-prod-sho-aws-cd, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
+| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / default | PASS | Completed in 275.20s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=<bucket>, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
 
 ### Skipped tests (intentional)
 
@@ -235,7 +235,7 @@ ok  	terraform-provider-delphix/internal/provider	275.822s
 
 ### Summary
 
-1 of 1 AWS CD Role-auth scenario PASSED (275.20s) on sho-aws-cd. Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=dcoa-prod-sho-aws-cd. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided). VM sho-aws-cd remains running (CLONED_ENGINE=true — user must confirm before destroying).
+1 of 1 AWS CD Role-auth scenario PASSED (275.20s) on sho-aws-cd. Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=<bucket>. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided). VM sho-aws-cd remains running (CLONED_ENGINE=true — user must confirm before destroying).
 
 ---
 
@@ -251,12 +251,12 @@ ok  	terraform-provider-delphix/internal/provider	275.822s
 
 | Item | Value |
 |---|---|
-| Scenario 1 — Engine host | http://sho-gcp-cd.dlpxdc.co |
-| Scenario 1 — GCP bucket | dcoa-prod-sho-gcp-cd |
-| Scenario 2 — Engine host | http://sho-gcp-cc.dlpxdc.co |
-| Scenario 2 — GCP bucket | dcoa-prod-sho-gcp-cc |
-| Scenario 3 — Engine host | http://sho-gcp-blk.dlpxdc.co |
-| DCT host | dct-k8s.dlpxdc.co |
+| Scenario 1 — Engine host | <engine-url> |
+| Scenario 1 — GCP bucket | <bucket> |
+| Scenario 2 — Engine host | <engine-url> |
+| Scenario 2 — GCP bucket | <bucket> |
+| Scenario 3 — Engine host | <engine-url> |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -268,8 +268,8 @@ ok  	terraform-provider-delphix/internal/provider	275.822s
 
 | Scenario | VM | Version(s) | Outcome | Duration | Notes |
 |---|---|---|---|---|---|
-| GCP Object Storage — CD engine (`TestAccEngineConfiguration_gcpObjectStorage`) | sho-gcp-cd | dlpx-dose-2026.2.0.0 / GCP | PASS | 256.82s | device_type=OBJECT, cloud_provider=GCP, bucket=dcoa-prod-sho-gcp-cd, size=20GB, NTP (pool.ntp.org, time.nist.gov), timezone=America/New_York |
-| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | sho-gcp-cc (XLARGE) | dlpx-dose-2026.2.0.0 / GCP | PASS | 274.95s | engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=dcoa-prod-sho-gcp-cc, size=20GB, NTP (pool.ntp.org, time.nist.gov), timezone=America/New_York |
+| GCP Object Storage — CD engine (`TestAccEngineConfiguration_gcpObjectStorage`) | sho-gcp-cd | dlpx-dose-2026.2.0.0 / GCP | PASS | 256.82s | device_type=OBJECT, cloud_provider=GCP, bucket=<bucket>, size=20GB, NTP (pool.ntp.org, time.nist.gov), timezone=America/New_York |
+| GCP Object Storage — CC engine (`TestAccEngineConfiguration_gcpObjectStorage_CC`) | sho-gcp-cc (XLARGE) | dlpx-dose-2026.2.0.0 / GCP | PASS | 274.95s | engine_type=CC, device_type=OBJECT, cloud_provider=GCP, bucket=<bucket>, size=20GB, NTP (pool.ntp.org, time.nist.gov), timezone=America/New_York |
 | GCP Block Storage — CD engine (`TestAccEngineConfiguration_blockDevice`) | sho-gcp-blk | dlpx-dose-2026.2.0.0 / GCP | PASS | 231.96s | device_type=BLOCK, engine_type=CD, sys_user=sysadmin, user=admin. Verified: configured=true, hostname set, product_type set. |
 
 ### Raw test output
@@ -303,10 +303,10 @@ ok      terraform-provider-delphix/internal/provider    233.099s
 ## AWS CD test run (Role auth, sho-aws-cd2, 2026-05-14)
 
 **Date**: 2026-05-14
-**Engine**: sho-aws-cd2.dlpxdc.co (CD engine, AWS, default size)
-**S3 bucket**: dcoa-prod-sho-aws-cd2
+**Engine**: sho-aws-cd2 (CD engine, AWS, default size)
+**S3 bucket**: <bucket>
 **Auth type**: ROLE (IAM instance role — no access key/secret)
-**DCT**: dct-k8s.dlpxdc.co
+**DCT**: <dct-host>
 **Branch**: gcp-support
 **Note**: Engine was freshly cloned (CLONED_ENGINE=true). Required boot-wait — session endpoint returned boot HTML until attempt 6 of 10 (approx 2.5 min after check start). Engine confirmed live before test dispatch.
 
@@ -314,11 +314,11 @@ ok      terraform-provider-delphix/internal/provider    233.099s
 
 | Item | Value |
 |---|---|
-| Engine host | http://sho-aws-cd2.dlpxdc.co |
+| Engine host | <engine-url> |
 | Engine VM | sho-aws-cd2 (freshly cloned from dlpx-dose-2026.2.0.0, AWS CD, default size) |
-| S3 bucket | dcoa-prod-sho-aws-cd2 |
+| S3 bucket | <bucket> |
 | Auth type | ROLE (IAM instance role) |
-| DCT host | dct-k8s.dlpxdc.co |
+| DCT host | <dct-host> |
 | DCT TLS skip | true (dev/test) |
 | Branch | gcp-support |
 | Go version | 1.25+ |
@@ -330,7 +330,7 @@ ok      terraform-provider-delphix/internal/provider    233.099s
 
 | Scenario | Version(s) | Outcome | Notes |
 |---|---|---|---|
-| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / default | PASS | Completed in 244.50s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=dcoa-prod-sho-aws-cd2, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
+| AWS Object Storage — CD engine, Role auth (`TestAccEngineConfiguration_objectStorageWithRole`) | dlpx-dose-2026.2.0.0 / AWS / default | PASS | Completed in 244.50s. Verified: device_type=OBJECT, cloud_provider=AWS, region=us-west-2, endpoint=s3.us-west-2.amazonaws.com, bucket=<bucket>, size=20GB, auth_type=ROLE, NTP servers (pool.ntp.org, time.nist.gov) and timezone (America/New_York) set. |
 
 ### Skipped tests (intentional)
 
@@ -349,4 +349,4 @@ ok  	terraform-provider-delphix/internal/provider	245.399s
 
 ### Summary
 
-1 of 1 AWS CD Role-auth scenario PASSED (244.50s) on sho-aws-cd2. Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=dcoa-prod-sho-aws-cd2. Boot-wait required (engine served HTML boot page for approx 2.5 min after clone); test was held until JSON API responded. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided). VM sho-aws-cd2 remains running (CLONED_ENGINE=true — prompt user before destroying).
+1 of 1 AWS CD Role-auth scenario PASSED (244.50s) on sho-aws-cd2. Engine first-boot completed successfully with AWS Object Storage (ROLE auth), cloud_provider=AWS, region=us-west-2, bucket=<bucket>. Boot-wait required (engine served HTML boot page for approx 2.5 min after clone); test was held until JSON API responded. No failures or regressions observed. AccessKey variant intentionally skipped (credentials not provided). VM sho-aws-cd2 remains running (CLONED_ENGINE=true — prompt user before destroying).
