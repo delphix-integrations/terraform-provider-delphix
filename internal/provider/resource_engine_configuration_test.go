@@ -269,6 +269,8 @@ func TestValidateStorageSize(t *testing.T) {
 		"0.5PB",
 		"1000GB",
 		"2.5TB",
+		"100 GB",
+		"20 TB",
 	}
 
 	invalidSizes := []string{
@@ -276,7 +278,6 @@ func TestValidateStorageSize(t *testing.T) {
 		"100MB",
 		"100KB",
 		"abc",
-		"100 GB",
 		"100gb",
 		"1.5.5TB",
 		"TB",
@@ -297,6 +298,24 @@ func TestValidateStorageSize(t *testing.T) {
 		_, errors := validateStorageSize(size, "size")
 		if len(errors) == 0 {
 			t.Errorf("Expected %s to be invalid, but got no errors", size)
+		}
+	}
+}
+
+func TestNormalizeStorageSize(t *testing.T) {
+	cases := map[string]string{
+		"100GB":     "100GB",
+		"100 GB":    "100GB",
+		"  20 TB ":  "20TB",
+		"1.5 PB":    "1.5PB",
+		"1000   GB": "1000GB",
+		"20\tGB":    "20GB",
+		"20 \t GB":  "20GB",
+	}
+	for in, want := range cases {
+		got := normalizeStorageSize(in)
+		if got != want {
+			t.Errorf("normalizeStorageSize(%q) = %q, want %q", in, got, want)
 		}
 	}
 }

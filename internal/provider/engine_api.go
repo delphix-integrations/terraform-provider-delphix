@@ -84,7 +84,7 @@ func login(ctx context.Context, client *http.Client, engine_host string, user st
 		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Login credentials cleared")
 	}()
-
+	
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {
@@ -839,7 +839,7 @@ func loginComplianceUser(ctx context.Context, client *http.Client, engine_host s
 		SecureClearByteSlice(ctx, loginJSON)
 		tflog.Debug(ctx, "[SECURITY] Compliance login credentials cleared")
 	}()
-
+	
 	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Compliance User Login ")
 	req, err := http.NewRequest(http.MethodPost, loginURL, bytes.NewReader(loginJSON))
 	if err != nil {

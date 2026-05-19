@@ -40,3 +40,8 @@ website/vendor
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Claude Code feature-implement workflow state (per-feature runtime files)
+.claude/*-state.json
+.claude/*-checkpoint.md
+.claude/*-test-env.sh
