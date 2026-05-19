@@ -68,11 +68,11 @@ func resourceEngineConfiguration() *schema.Resource {
 						}
 
 					} else if cloud_provider == AZURE {
-						if _, ok := block["azure_container"]; !ok {
+						if container, _ := block["azure_container"].(string); container == "" {
 							return errors.New("azure_container must be provided in object_storage_params for AZURE cloud_provider")
 						}
 
-						if _, ok := block["azure_account"]; !ok {
+						if account, _ := block["azure_account"].(string); account == "" {
 							return errors.New("azure_account must be provided in object_storage_params for AZURE cloud_provider")
 						}
 

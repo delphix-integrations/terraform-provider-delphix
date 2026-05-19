@@ -257,6 +257,18 @@ func TestAccEngineConfiguration_validationErrors(t *testing.T) {
 				Config:      testAccEngineConfigurationAzureMissingKey(engineHost),
 				ExpectError: regexp.MustCompile("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider"),
 			},
+			{
+				Config:      testAccEngineConfigurationGCPMissingBucket(engineHost),
+				ExpectError: regexp.MustCompile("bucket must be a non-empty string in object_storage_params for GCP cloud_provider"),
+			},
+			{
+				Config:      testAccEngineConfigurationAzureMissingContainer(engineHost),
+				ExpectError: regexp.MustCompile("azure_container must be provided in object_storage_params for AZURE cloud_provider"),
+			},
+			{
+				Config:      testAccEngineConfigurationAzureMissingAccount(engineHost),
+				ExpectError: regexp.MustCompile("azure_account must be provided in object_storage_params for AZURE cloud_provider"),
+			},
 		},
 	})
 }
