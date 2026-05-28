@@ -106,6 +106,15 @@ object_storage_params {
   }
 ```
 
+### Object storage params for GCP based storage.
+```hcl
+object_storage_params {
+    cloud_provider = "GCP"
+    bucket = "<gcp-bucket-name>"
+    size = "<size>"
+  }
+```
+
 ## Argument Reference
 The following arguments apply to all configurations.
 * `engine_host` - (Required) Full URL of Engine to configure. example - `https://example-engine.dlpxdc.co`.
@@ -127,10 +136,10 @@ The oldest supported engine version is `1.11.40` and is the default. For a speci
 * `ntp_servers ` - List of NTP servers (Required for Object Storage)
 * `device_type ` - This is to configure storage. This can be either `BLOCK`(for Block Storage) or `OBJECT`(AWS S3 Object store).
 * `object_storage_params ` - Configuration parameters for `OBJECT` storage.
-     * `cloud_provider ` - Cloud provider for Object Store. This can be either `AWS` or `AZURE`
-     * `auth_type ` - Authentication type for Object Store. This can be either `ROLE` or `ACCESS_KEY` if `cloud_provider` is `AWS` and `MANAGED_IDENTITIES` and `ACCESS_KEY` if `cloud_provider` is `AZURE`.
+     * `cloud_provider ` - Cloud provider for Object Store. This can be one of `AWS` or `AZURE` or `GCP`
+     * `auth_type ` - Authentication type for Object Store. Valid values: `ROLE` or `ACCESS_KEY` if `cloud_provider` is `AWS`; `MANAGED_IDENTITIES` or `ACCESS_KEY` if `cloud_provider` is `AZURE`. Not applicable when `cloud_provider` is `GCP`.
      * `region` - (Required for `AWS `) Region of the bucket for Object store.
-     * `bucket` - (Required for `AWS `) Name of the bucket for Object store.
+     * `bucket` - (Required for `AWS ` and `GCP`) Name of the bucket for Object store.
      * `endpoint ` - (Required for `AWS `) Endpoint for Object store.
      * `size ` - Size of the Object store to configure.
      * `access_id ` - (Required for `AWS `) access id if using `auth_type ` as `ACCESS_KEY`.
