@@ -68,11 +68,11 @@ func resourceEngineConfiguration() *schema.Resource {
 						}
 
 					} else if cloud_provider == AZURE {
-						if _, ok := block["azure_container"]; !ok {
+						if container, _ := block["azure_container"].(string); container == "" {
 							return errors.New("azure_container must be provided in object_storage_params for AZURE cloud_provider")
 						}
 
-						if _, ok := block["azure_account"]; !ok {
+						if account, _ := block["azure_account"].(string); account == "" {
 							return errors.New("azure_account must be provided in object_storage_params for AZURE cloud_provider")
 						}
 
@@ -84,6 +84,10 @@ func resourceEngineConfiguration() *schema.Resource {
 							if authTypeStr == ACCESS_KEY && block["azure_key"] == "" {
 								return errors.New("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider")
 							}
+						}
+					} else if cloud_provider == GCP {
+						if bucket, ok := block["bucket"].(string); !ok || bucket == "" {
+							return errors.New("bucket must be a non-empty string in object_storage_params for GCP cloud_provider")
 						}
 					}
 				}
@@ -287,7 +291,7 @@ func resourceEngineConfiguration() *schema.Resource {
 						"cloud_provider": {
 							Type:         schema.TypeString,
 							Required:     true,
-							ValidateFunc: validation.StringInSlice([]string{AWS, AZURE}, false),
+							ValidateFunc: validation.StringInSlice([]string{AWS, AZURE, GCP}, false),
 						},
 						"region": {
 							Type:     schema.TypeString,
@@ -603,7 +607,7 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 	if device_type == OBJECT {
 		object_storage_params := d.Get("object_storage_params").([]interface{})
 		params.CloudProvider = object_storage_params[0].(map[string]interface{})["cloud_provider"].(string)
-		params.Size = object_storage_params[0].(map[string]interface{})["size"].(string)
+		params.Size = normalizeStorageSize(object_storage_params[0].(map[string]interface{})["size"].(string))
 		params.AuthType = object_storage_params[0].(map[string]interface{})["auth_type"].(string)
 
 		if params.CloudProvider == AWS {
@@ -626,6 +630,8 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 			} else {
 				params.AzureManagedIdentities = object_storage_params[0].(map[string]interface{})["azure_managed_identities"].(string)
 			}
+		} else if params.CloudProvider == GCP {
+			params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
 		}
 
 	}

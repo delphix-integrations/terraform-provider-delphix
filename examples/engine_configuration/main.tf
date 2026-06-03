@@ -116,6 +116,26 @@ resource "delphix_engine_configuration" "config2" {
   ntp_servers = ["Europe.pool.ntp.org"]
 }
 
+/* OBJECT STORAGE with GCP Object Storage configuration */
+resource "delphix_engine_configuration" "config2" {
+  engine_host  = "http://object.dlpxdc.co"
+  sys_user     = "XXXX"
+  sys_password = "XXXX"
+  sys_new_password = "xxx"
+  user         = "XXXX"
+  password     = "XXXX"
+  email        = "no-reply@delphix.com"
+  engine_type  = "CD"
+  device_type = "OBJECT"
+  object_storage_params {
+    cloud_provider = "GCP"
+    bucket = "<bucket_name>"
+    size = "<size>"
+  }
+  ntp_timezone = "Africa/Asmera"
+  ntp_servers = ["Europe.pool.ntp.org"]
+}
+
 /*SMTP, NTP, DNS, WEB PROXY, USER ANALYTICS, PHONEHOME CONFIGS*/
 resource "delphix_engine_configuration" "config2" {
   engine_host  = "http://object.dlpxdc.co"

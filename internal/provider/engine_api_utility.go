@@ -304,7 +304,10 @@ func configureSSO(ctx context.Context, client *http.Client, engine_host string, 
 func validateStorageSize(v interface{}, k string) (warnings []string, errors []error) {
 	value := v.(string)
 
-	// Regular expression to match number followed by GB, TB, or PB (case insensitive)
+	// Regular expression to match number followed by GB, TB, or PB (case sensitive — uppercase only).
+	// Optional whitespace between the number and the unit is tolerated so existing
+	// configs like "20 GB" continue to validate; normalizeStorageSize() strips it
+	// before the value reaches the engine API.
 	pattern := `^\d+(?:\.\d+)?\s*(GB|TB|PB)$`
 	matched, err := regexp.MatchString(pattern, value)
 
@@ -319,6 +322,15 @@ func validateStorageSize(v interface{}, k string) (warnings []string, errors []e
 	}
 
 	return
+}
+
+// normalizeStorageSize strips any whitespace (spaces, tabs, etc.) so values
+// like "100 GB" or "100\tGB" reach the engine API in the canonical "100GB"
+// form. The validator's \s* tolerates the gap for backwards compatibility;
+// the engine API does not. strings.Fields splits on any unicode whitespace,
+// so this stays in sync with what the validator accepts.
+func normalizeStorageSize(value string) string {
+	return strings.Join(strings.Fields(value), "")
 }
 
 func processRequestAndResponse(ctx context.Context, client *http.Client, payload interface{}, apiURL string, config_name string, engine_host string) (APIResponse, error) {

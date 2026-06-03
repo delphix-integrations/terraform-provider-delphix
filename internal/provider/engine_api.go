@@ -201,6 +201,13 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 				CacheDevices: deviceRefs,
 				Container:    params.Container,
 			}
+		case GCP:
+			objectStorage = &ObjectStore{
+				Type:         "GcpObjectStore",
+				Size:         sizeInBytes,
+				CacheDevices: deviceRefs,
+				Bucket:       params.Bucket,
+			}
 		}
 
 		if params.CloudProvider == AWS {
@@ -491,6 +498,12 @@ func testConnectionForObjectStore(ctx context.Context, client *http.Client, engi
 					AZURE_KEY:     params.AZURE_KEY,
 				},
 			}
+		}
+	} else if params.CloudProvider == GCP {
+		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for GCP object store")
+		payload = TestConnection{
+			Type:   "GcpObjectStoreTest",
+			Bucket: params.Bucket,
 		}
 	}
 
