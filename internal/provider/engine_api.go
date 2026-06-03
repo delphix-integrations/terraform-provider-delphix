@@ -184,60 +184,11 @@ func initializeSystem(ctx context.Context, client *http.Client, engine_host stri
 			return nil, err
 		}
 
-		switch params.CloudProvider {
-		case AWS:
-			objectStorage = &ObjectStore{
-				Type:         "S3ObjectStore",
-				Size:         sizeInBytes,
-				CacheDevices: deviceRefs,
-				Endpoint:     params.Endpoint,
-				Region:       params.Region,
-				Bucket:       params.Bucket,
-			}
-		case AZURE:
-			objectStorage = &ObjectStore{
-				Type:         "BlobObjectStore",
-				Size:         sizeInBytes,
-				CacheDevices: deviceRefs,
-				Container:    params.Container,
-			}
-		case GCP:
-			objectStorage = &ObjectStore{
-				Type:         "GcpObjectStore",
-				Size:         sizeInBytes,
-				CacheDevices: deviceRefs,
-				Bucket:       params.Bucket,
-			}
+		provider, err := cloudProviderFor(params.CloudProvider)
+		if err != nil {
+			return nil, err
 		}
-
-		if params.CloudProvider == AWS {
-			switch params.AuthType {
-			case ROLE:
-				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-					Type: params.S3_INSTANCE_PROFILE,
-				}
-			case ACCESS_KEY:
-				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-					Type:       "S3ObjectStoreAccessKey",
-					ACCESS_ID:  params.ACCESS_ID,
-					ACCESS_KEY: params.ACCESS_KEY,
-				}
-			}
-		} else if params.CloudProvider == AZURE {
-			switch params.AuthType {
-			case ACCESS_KEY:
-				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-					Type:          "BlobObjectStoreAccessKey",
-					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
-					AZURE_KEY:     params.AZURE_KEY,
-				}
-			case MANAGED_IDENTITIES:
-				objectStorage.AccessCredentials = &ObjectStoreAccessCredentials{
-					Type:          params.AzureManagedIdentities,
-					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
-				}
-			}
-		}
+		objectStorage = provider.BuildObjectStore(params, sizeInBytes, deviceRefs)
 
 		initializationParams = SystemInitializationObjectStore{
 			Type:            "SystemInitializationParameters",
@@ -451,61 +402,13 @@ func testConnectionForObjectStore(ctx context.Context, client *http.Client, engi
 	testConnectionURL := engine_host + ENGINE_APIS["OBJECT_STORE_TEST_CONNECTION"]
 	var payload TestConnection
 
-	if params.CloudProvider == AWS {
-		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for AWS S3 object store")
-		if params.AuthType == ACCESS_KEY {
-			payload = TestConnection{
-				Type:     "S3ObjectStoreTest",
-				Endpoint: params.Endpoint,
-				Region:   params.Region,
-				Bucket:   params.Bucket,
-				AccessCredentials: ObjectStoreAccessCredentials{
-					Type:       "S3ObjectStoreAccessKey",
-					ACCESS_ID:  params.ACCESS_ID,
-					ACCESS_KEY: params.ACCESS_KEY,
-				},
-			}
-		} else {
-			tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Using instance profile for S3")
-			payload = TestConnection{
-				Type:     "S3ObjectStoreTest",
-				Endpoint: params.Endpoint,
-				Region:   params.Region,
-				Bucket:   params.Bucket,
-				AccessCredentials: ObjectStoreAccessCredentials{
-					Type: params.S3_INSTANCE_PROFILE,
-				},
-			}
-		}
-	} else if params.CloudProvider == AZURE {
-		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for AZURE Blob object store")
-		if params.AuthType == MANAGED_IDENTITIES {
-			payload = TestConnection{
-				Type:      "BlobObjectStoreTest",
-				Container: params.Container,
-				AccessCredentials: ObjectStoreAccessCredentials{
-					Type:          params.AzureManagedIdentities,
-					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
-				},
-			}
-		} else if params.AuthType == ACCESS_KEY {
-			payload = TestConnection{
-				Type:      "BlobObjectStoreTest",
-				Container: params.Container,
-				AccessCredentials: ObjectStoreAccessCredentials{
-					Type:          "BlobObjectStoreAccessKey",
-					AZURE_ACCOUNT: params.AZURE_ACCOUNT,
-					AZURE_KEY:     params.AZURE_KEY,
-				},
-			}
-		}
-	} else if params.CloudProvider == GCP {
-		tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for GCP object store")
-		payload = TestConnection{
-			Type:   "GcpObjectStoreTest",
-			Bucket: params.Bucket,
-		}
+	provider, err := cloudProviderFor(params.CloudProvider)
+	if err != nil {
+		tflog.Error(ctx, DLPX+ERROR+"["+engine_host+"] "+err.Error())
+		return nil, err
 	}
+	tflog.Info(ctx, DLPX+INFO+"["+engine_host+"] Testing connection for "+params.CloudProvider+" object store")
+	payload = provider.BuildTestConnection(params)
 
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
