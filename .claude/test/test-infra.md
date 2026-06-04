@@ -7,10 +7,10 @@ This file describes the *infrastructure* required to run `engine_configuration` 
 > **Never print, echo, log, or display `DCOA_PASSWORD` (or any other secret env var) in shell output, command text, tool calls, transcripts, or chat messages.**
 >
 > - Do **not** run commands like `echo $DCOA_PASSWORD`, `env | grep DCOA`, `set`, `printenv DCOA_PASSWORD`, or any command that prints the value.
-> - Do **not** interpolate `$DCOA_PASSWORD` into a command string that gets echoed back (e.g. avoid `sshpass -p "$DCOA_PASSWORD" ...` in a way that appears in logs — prefer reading the value from the environment inside a script like [test/ssh_dcoa.go](../../test/ssh_dcoa.go)).
+> - Do **not** interpolate `$DCOA_PASSWORD` into a command string that gets echoed back (e.g. avoid `sshpass -p "$DCOA_PASSWORD" ...` in a way that appears in logs). `DCOA_PASSWORD` is **not** used for the SSH connection itself (SSH uses key auth — see below); it is only supplied to the `dc` application login *inside* the session.
 > - Do **not** paste the value into chat — refer to it only by variable name (`$DCOA_PASSWORD`).
-> - If the helper script needs the password, it must read it from `os.Getenv` / equivalent at runtime — never from a command-line argument that shows up in shell history or process listings.
-> - The same rule applies to `DCT_KEY`, `DCOA_USER` credentials, the 2FA TOTP code, and any other sensitive value sourced from `settings.local.json`.
+> - Any secret a script consumes must be read from `os.Getenv` / equivalent at runtime — never from a command-line argument that shows up in shell history or process listings.
+> - The same rule applies to `DCT_KEY`, `DCOA_USER` credentials, the SSH private key (`DCOA_KEY_PATH`), the 2FA TOTP code, and any other sensitive value sourced from `settings.local.json`.
 
 ## Provisioning fresh test infrastructure (engine_configuration)
 
@@ -22,7 +22,7 @@ Clone VMs from golden images on the dc host.
 
 > **NEVER install the `dc` CLI — anywhere, under any circumstance.** The `dc` CLI is already installed and configured on `DCOA_HOST`. Do not run any installer (brew, pip, curl-to-shell, package manager, etc.) on the test runner, dev laptop, or remote host. **The only supported workflow is:** run [test/ssh_dcoa.go](../../test/ssh_dcoa.go) to open an SSH session to `DCOA_HOST`, then issue the relevant `dc` commands inside that session. If `dc` appears to be missing or broken on the remote host, surface that to the user — do not attempt any install workaround.
 
-**Before** running any provisioning step below, open an SSH session to `DCOA_HOST` using the credentials from `.claude/settings.local.json`. Use the helper script [test/ssh_dcoa.go](../../test/ssh_dcoa.go) — it reads `DCOA_HOST`, `DCOA_USER`, and `DCOA_PASSWORD` from the environment, opens an SSH session, and runs an arbitrary command on the dc host. All `dc` commands must be issued through this script (or an interactive session it opens) — never locally.
+**Before** running any provisioning step below, open an SSH session to `DCOA_HOST` using the credentials from `.claude/settings.local.json`. Use the helper script [test/ssh_dcoa.go](../../test/ssh_dcoa.go) — it reads `DCOA_HOST` and `DCOA_USER` from the environment and authenticates with an **SSH private key** (key-based / passwordless auth — no SSH password). The key is resolved from `DCOA_KEY_PATH` if set, otherwise the first match under `~/.ssh/` in the order `dcoa_ed25519`, `id_ed25519`, `id_rsa`. The key must be **unencrypted** (or backed by an ssh-agent); encrypted keys are rejected. The script opens the session and runs an arbitrary command on the dc host. All `dc` commands must be issued through this script (or an interactive session it opens) — never locally.
 
 Once the SSH session is established, **log in to `dc`** before any other operation:
 
@@ -32,21 +32,22 @@ Once the SSH session is established, **log in to `dc`** before any other operati
 
 Workflow when using [test/ssh_dcoa.go](../../test/ssh_dcoa.go) to drive the dc login:
 
-1. The script opens the SSH connection using `DCOA_HOST` + `DCOA_USER` + `DCOA_PASSWORD`.
+1. The script opens the SSH connection using `DCOA_HOST` + `DCOA_USER` + the SSH private key (`DCOA_KEY_PATH` / `~/.ssh` fallback). SSH itself does **not** use `DCOA_PASSWORD`.
 2. It triggers the dc login on the remote host.
-3. When prompted for the password, supply `DCOA_PASSWORD` (same value used for SSH).
+3. When the **`dc` application** prompts for the password, supply `DCOA_PASSWORD`. (This is the app login, distinct from the SSH connection — the SSH layer is keyless.)
 4. When prompted for the **Authenticator code**, the assistant must **pause and ask the user** for the current TOTP — it is a time-based 2FA token that is **not** stored in `settings.local.json` and cannot be derived from any other env var. Do not guess, do not retry with stale codes.
 
 
-If `DCOA_HOST`, `DCOA_USER`, or `DCOA_PASSWORD` is empty in `settings.local.json`, halt and ask the user to populate them before continuing.
+If `DCOA_HOST` or `DCOA_USER` is empty, or no usable SSH key can be found (`DCOA_KEY_PATH` / `~/.ssh` fallback), halt and ask the user before continuing. `DCOA_PASSWORD` is required for the `dc` app login step — if it is empty when a login is needed, halt and ask the user to populate it.
 
 ### Required env vars in `.claude/settings.local.json`
 
 | Var | Required | Purpose | Example |
 |---|---|---|---|
 | `DCOA_HOST` | **Always** | Hostname of the dc host you SSH into to provision VMs | `dlpxdc.co` |
-| `DCOA_USER` | **Always** | SSH user on the dc host | `user@example.com` |
-| `DCOA_PASSWORD` | **Always** | SSH password on the dc host (sensitive — gitignored) | — |
+| `DCOA_USER` | **Always** | SSH user on the dc host (also the `dc` app username) | `user@example.com` |
+| `DCOA_KEY_PATH` | Optional | Path to the SSH private key for the dc host. If unset, falls back to `~/.ssh/{dcoa_ed25519, id_ed25519, id_rsa}`. Key must be unencrypted or ssh-agent-backed. | `~/.ssh/dcoa_ed25519` |
+| `DCOA_PASSWORD` | **For `dc` login** | Password for the **`dc` application** login on the host (sensitive — gitignored). **Not** used for the SSH connection (SSH is key-based). | — |
 | `ENGINE_NAME` | **Always** (source for `DELPHIX_ENGINE_HOST` template) | VM name for the engine — cloned fresh per `engine_configuration` run | `tergcpcc` |
 | `ENGINE_GOLDEN_IMAGE` | **Always** | Golden image group used to create a fresh engine VM | `dlpx-develop` |
 | `DELPHIX_ENGINE_CLOUD` | **Always** | Target cloud for the cloned VM (also narrows the test regex) | `GCP` |
