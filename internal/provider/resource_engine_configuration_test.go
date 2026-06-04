@@ -1,12 +1,17 @@
 package provider
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
@@ -827,10 +832,10 @@ resource "delphix_engine_configuration" "test" {
   email        = "test@example.com"
   engine_type  = "CD"
   device_type  = "OBJECT"
-  
+
   ntp_servers  = ["pool.ntp.org"]
   ntp_timezone = "UTC"
-  
+
   object_storage_params {
     cloud_provider   = "AZURE"
     azure_container  = "test-container"
@@ -841,4 +846,688 @@ resource "delphix_engine_configuration" "test" {
   }
 }
 `, engineHost)
+}
+
+// =============================================================================
+// Unit tests (no live engine required)
+//
+// The acceptance tests above only run with TF_ACC=1 against a real engine, so
+// they contribute nothing to unit-test coverage of resource_engine_configuration.go.
+// The tests below exercise the schema, the CustomizeDiff validation closure,
+// and the Read/Update/Delete handlers directly so the file is covered by
+// `make test`.
+// =============================================================================
+
+// TestEngineConfigurationSchemaInternalValidate runs the SDK's schema
+// validation over the full resource definition, exercising every schema entry
+// and guarding against malformed schema (bad defaults, conflicting
+// Required/Computed, etc.).
+func TestEngineConfigurationSchemaInternalValidate(t *testing.T) {
+	res := resourceEngineConfiguration()
+	if err := res.InternalValidate(nil, true); err != nil {
+		t.Fatalf("resourceEngineConfiguration schema InternalValidate failed: %v", err)
+	}
+
+	if res.CreateContext == nil || res.ReadContext == nil ||
+		res.UpdateContext == nil || res.DeleteContext == nil {
+		t.Error("expected all CRUD context handlers to be set")
+	}
+	if res.CustomizeDiff == nil {
+		t.Error("expected CustomizeDiff to be set")
+	}
+	if _, ok := res.Schema["object_storage_params"]; !ok {
+		t.Error("expected object_storage_params in schema")
+	}
+}
+
+// runCustomizeDiff drives the real CustomizeDiff closure through Resource.Diff
+// with a raw config and returns any error it produces.
+func runCustomizeDiff(t *testing.T, raw map[string]interface{}) error {
+	t.Helper()
+	res := resourceEngineConfiguration()
+	cfg := terraform.NewResourceConfigRaw(raw)
+	_, err := res.Diff(context.Background(), nil, cfg, nil)
+	return err
+}
+
+// baseObjectConfig returns a minimal-but-valid OBJECT/AWS/ROLE config that
+// passes CustomizeDiff; individual test cases mutate it to trigger failures.
+func baseObjectConfig() map[string]interface{} {
+	return map[string]interface{}{
+		"engine_host":      "http://engine.example.com",
+		"sys_user":         "sysadmin",
+		"sys_password":     "sysadmin",
+		"sys_new_password": "delphix",
+		"user":             "admin",
+		"password":         "delphix",
+		"email":            "test@example.com",
+		"engine_type":      "CD",
+		"device_type":      "OBJECT",
+		"ntp_servers":      []interface{}{"pool.ntp.org"},
+		"ntp_timezone":     "UTC",
+		"object_storage_params": []interface{}{
+			map[string]interface{}{
+				"cloud_provider": "AWS",
+				"region":         "us-west-2",
+				"bucket":         "my-bucket",
+				"endpoint":       "s3.us-west-2.amazonaws.com",
+				"size":           "20GB",
+				"auth_type":      "ROLE",
+			},
+		},
+	}
+}
+
+func TestEngineConfigCustomizeDiff(t *testing.T) {
+	tests := []struct {
+		name      string
+		mutate    func(m map[string]interface{})
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:    "valid object/aws/role passes",
+			mutate:  func(m map[string]interface{}) {},
+			wantErr: false,
+		},
+		{
+			name: "block device skips object validation",
+			mutate: func(m map[string]interface{}) {
+				m["device_type"] = "BLOCK"
+				delete(m, "object_storage_params")
+				delete(m, "ntp_servers")
+				delete(m, "ntp_timezone")
+			},
+			wantErr: false,
+		},
+		{
+			name: "object without object_storage_params errors",
+			mutate: func(m map[string]interface{}) {
+				delete(m, "object_storage_params")
+			},
+			wantErr:   true,
+			errSubstr: "object_storage_params must be provided when device_type is OBJECT",
+		},
+		{
+			name: "object without ntp errors",
+			mutate: func(m map[string]interface{}) {
+				delete(m, "ntp_servers")
+				delete(m, "ntp_timezone")
+			},
+			wantErr:   true,
+			errSubstr: "ntp_servers and ntp_timezone must be provided when device_type is OBJECT",
+		},
+		{
+			name: "unknown cloud provider errors",
+			mutate: func(m map[string]interface{}) {
+				osp := m["object_storage_params"].([]interface{})[0].(map[string]interface{})
+				osp["cloud_provider"] = "ORACLE"
+			},
+			wantErr: true,
+			// Schema ValidateFunc does not run during Diff, so the unknown
+			// provider surfaces from cloudProviderFor inside CustomizeDiff.
+			errSubstr: `unsupported cloud_provider "ORACLE"`,
+		},
+		{
+			name: "aws access_key without credentials errors",
+			mutate: func(m map[string]interface{}) {
+				osp := m["object_storage_params"].([]interface{})[0].(map[string]interface{})
+				osp["auth_type"] = "ACCESS_KEY"
+			},
+			wantErr:   true,
+			errSubstr: "access_id and access_key must be provided when auth_type is ACCESS_KEY",
+		},
+		{
+			name: "azure missing container errors",
+			mutate: func(m map[string]interface{}) {
+				m["object_storage_params"] = []interface{}{
+					map[string]interface{}{
+						"cloud_provider": "AZURE",
+						"azure_account":  "acct",
+						"size":           "20GB",
+						"auth_type":      "MANAGED_IDENTITIES",
+					},
+				}
+			},
+			wantErr:   true,
+			errSubstr: "azure_container must be provided in object_storage_params for AZURE cloud_provider",
+		},
+		{
+			name: "gcp missing bucket errors",
+			mutate: func(m map[string]interface{}) {
+				m["object_storage_params"] = []interface{}{
+					map[string]interface{}{
+						"cloud_provider": "GCP",
+						"size":           "20GB",
+					},
+				}
+			},
+			wantErr:   true,
+			errSubstr: "bucket must be a non-empty string in object_storage_params for GCP cloud_provider",
+		},
+		{
+			name: "smtp config with authentication passes",
+			mutate: func(m map[string]interface{}) {
+				m["smtp_config"] = []interface{}{
+					map[string]interface{}{
+						"server":             "smtp.example.com",
+						"port":               587,
+						"from_email_address": "noreply@example.com",
+						"smtp_authentication": []interface{}{
+							map[string]interface{}{
+								"user":     "smtp_user",
+								"password": "smtp_pass",
+							},
+						},
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name: "continuous compliance without compliance fields errors",
+			mutate: func(m map[string]interface{}) {
+				m["engine_type"] = "CC"
+			},
+			wantErr:   true,
+			errSubstr: "must be provided when engine_type is CONTINUOUS_COMPLIANCE",
+		},
+		{
+			name: "continuous compliance with all compliance fields passes",
+			mutate: func(m map[string]interface{}) {
+				m["engine_type"] = "CC"
+				m["compliance_user"] = "admin"
+				m["compliance_password"] = "Admin-12"
+				m["compliance_new_password"] = "Admin@45"
+				m["compliance_email"] = "compliance@example.com"
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			raw := baseObjectConfig()
+			tt.mutate(raw)
+			err := runCustomizeDiff(t, raw)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.errSubstr)
+				}
+				if tt.errSubstr != "" && !strings.Contains(err.Error(), tt.errSubstr) {
+					t.Fatalf("expected error containing %q, got: %v", tt.errSubstr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got: %v", err)
+			}
+		})
+	}
+}
+
+// engineStub is an in-memory stand-in for an engine's CDB API used to drive
+// engineConfigRead without a live engine.
+type engineStub struct {
+	sessionStatus int
+	loginStatus   int
+	systemStatus  int
+	systemBody    string
+}
+
+func (s engineStub) server() *httptest.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc(ENGINE_APIS["SESSION"], func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(orDefaultStatus(s.sessionStatus))
+	})
+	mux.HandleFunc(ENGINE_APIS["LOGIN"], func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(orDefaultStatus(s.loginStatus))
+	})
+	mux.HandleFunc(ENGINE_APIS["SYSTEM_INFO"], func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(orDefaultStatus(s.systemStatus))
+		body := s.systemBody
+		if body == "" {
+			body = `{"type":"OKResult","status":"OK","result":{}}`
+		}
+		_, _ = w.Write([]byte(body))
+	})
+	return httptest.NewServer(mux)
+}
+
+func orDefaultStatus(v int) int {
+	if v == 0 {
+		return http.StatusOK
+	}
+	return v
+}
+
+func newEngineConfigData(t *testing.T, id string, extra map[string]interface{}) *schema.ResourceData {
+	t.Helper()
+	res := resourceEngineConfiguration()
+	raw := map[string]interface{}{
+		"engine_host":      id,
+		"sys_user":         "sysadmin",
+		"sys_password":     "sysadmin",
+		"sys_new_password": "delphix",
+		"user":             "admin",
+		"password":         "delphix",
+		"email":            "test@example.com",
+		"engine_type":      "CD",
+		"device_type":      "BLOCK",
+	}
+	for k, v := range extra {
+		raw[k] = v
+	}
+	d := schema.TestResourceDataRaw(t, res.Schema, raw)
+	d.SetId(id)
+	return d
+}
+
+func TestEngineConfigReadSuccess(t *testing.T) {
+	stub := engineStub{
+		systemBody: `{"type":"OKResult","status":"OK","result":{
+			"configured":true,
+			"hostname":"engine-host",
+			"productType":"standard",
+			"ssoEnabled":false,
+			"vendorName":"Delphix",
+			"productName":"Delphix Engine",
+			"platform":"linux",
+			"kernelName":"Linux"
+		}}`,
+	}
+	srv := stub.server()
+	defer srv.Close()
+
+	d := newEngineConfigData(t, srv.URL, nil)
+	diags := engineConfigRead(context.Background(), d, nil)
+	if diags.HasError() {
+		t.Fatalf("engineConfigRead returned diagnostics: %+v", diags)
+	}
+
+	if got := d.Get("hostname").(string); got != "engine-host" {
+		t.Errorf("hostname = %q, want engine-host", got)
+	}
+	if got := d.Get("configured").(bool); !got {
+		t.Errorf("configured = %v, want true", got)
+	}
+	if got := d.Get("product_name").(string); got != "Delphix Engine" {
+		t.Errorf("product_name = %q, want Delphix Engine", got)
+	}
+	if got := d.Get("platform").(string); got != "linux" {
+		t.Errorf("platform = %q, want linux", got)
+	}
+}
+
+func TestEngineConfigReadCustomAPIVersion(t *testing.T) {
+	stub := engineStub{}
+	srv := stub.server()
+	defer srv.Close()
+
+	// Provide an explicit api_version to exercise the non-default branch.
+	d := newEngineConfigData(t, srv.URL, map[string]interface{}{"api_version": "1.11.40"})
+	diags := engineConfigRead(context.Background(), d, nil)
+	if diags.HasError() {
+		t.Fatalf("engineConfigRead returned diagnostics: %+v", diags)
+	}
+}
+
+func TestEngineConfigReadErrors(t *testing.T) {
+	tests := []struct {
+		name      string
+		stub      engineStub
+		badHost   bool
+		errSubstr string
+	}{
+		{
+			name:      "session failure",
+			stub:      engineStub{sessionStatus: http.StatusInternalServerError},
+			errSubstr: "Error starting session",
+		},
+		{
+			name:      "login failure",
+			stub:      engineStub{loginStatus: http.StatusUnauthorized},
+			errSubstr: "Error logging in",
+		},
+		{
+			name:      "system info unmarshal failure",
+			stub:      engineStub{systemBody: "not-json"},
+			errSubstr: "Error unmarshalling system info response",
+		},
+		{
+			name:      "unreachable host",
+			badHost:   true,
+			errSubstr: "Error starting session",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var host string
+			if tt.badHost {
+				host = "http://127.0.0.1:1" // nothing listening
+			} else {
+				srv := tt.stub.server()
+				defer srv.Close()
+				host = srv.URL
+			}
+
+			d := newEngineConfigData(t, host, nil)
+			diags := engineConfigRead(context.Background(), d, nil)
+			if !diags.HasError() {
+				t.Fatalf("expected diagnostics error, got none")
+			}
+			if !strings.Contains(diags[0].Summary, tt.errSubstr) {
+				t.Fatalf("expected error containing %q, got: %s", tt.errSubstr, diags[0].Summary)
+			}
+		})
+	}
+}
+
+func TestEngineConfigUpdateNotSupported(t *testing.T) {
+	d := newEngineConfigData(t, "http://engine.example.com", nil)
+	diags := engineConfigUpdate(context.Background(), d, nil)
+	if !diags.HasError() {
+		t.Fatal("expected engineConfigUpdate to return an error")
+	}
+	if !strings.Contains(diags[0].Summary, "Action update not available for engine config") {
+		t.Errorf("unexpected error: %s", diags[0].Summary)
+	}
+}
+
+func TestEngineConfigDeleteNotSupported(t *testing.T) {
+	t.Setenv("TF_ACC", "")
+	d := newEngineConfigData(t, "http://engine.example.com", nil)
+	diags := engineConfigDelete(context.Background(), d, nil)
+	if !diags.HasError() {
+		t.Fatal("expected engineConfigDelete to return an error when TF_ACC is unset")
+	}
+	if !strings.Contains(diags[0].Summary, "Action delete not available for engine config") {
+		t.Errorf("unexpected error: %s", diags[0].Summary)
+	}
+}
+
+func TestEngineConfigDeleteUnderAcceptance(t *testing.T) {
+	t.Setenv("TF_ACC", "1")
+	d := newEngineConfigData(t, "http://engine.example.com", nil)
+	diags := engineConfigDelete(context.Background(), d, nil)
+	if diags.HasError() {
+		t.Fatalf("expected engineConfigDelete to succeed under TF_ACC, got: %+v", diags)
+	}
+	if d.Id() != "" {
+		t.Errorf("expected ID to be cleared under TF_ACC, got %q", d.Id())
+	}
+}
+
+// =============================================================================
+// engineConfigCreate
+//
+// Create drives the full engine-initialization flow over ~17 distinct HTTP
+// calls.  We mock all of them with an in-memory engine so the real handler
+// runs end-to-end without a live engine.
+//
+// NOTE on timing: engineConfigCreate calls time.Sleep(10s) before
+// initialization and time.Sleep(60s) afterwards. Those sleeps live in the
+// production handler and cannot be stubbed from a test. The full-flow test
+// therefore takes ~80s of real wall-clock time, which is why `make test` must
+// be run with an explicit longer -timeout. The tests are marked t.Parallel()
+// so their sleeps overlap.
+// =============================================================================
+
+// mockEngineOptions controls how the in-memory engine responds, so a single
+// handler can serve the happy path and the various failure paths.
+type mockEngineOptions struct {
+	complianceUpdateFails bool // compliance user update returns an errorMessage
+	initFails             bool // SYSTEM_INITIALIZATION returns an ERROR status
+}
+
+func newMockEngine(opts mockEngineOptions) *httptest.Server {
+	const okResult = `{"type":"OKResult","status":"OK","action":"","job":"","result":""}`
+	writeOK := func(w http.ResponseWriter) { _, _ = w.Write([]byte(okResult)) }
+
+	mux := http.NewServeMux()
+
+	// Session / auth (used repeatedly).
+	mux.HandleFunc(ENGINE_APIS["SESSION"], func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{}`)) })
+	mux.HandleFunc(ENGINE_APIS["LOGIN"], func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{}`)) })
+
+	// Continuous Compliance setup.
+	mux.HandleFunc(ENGINE_APIS["START_MASKING"], func(w http.ResponseWriter, r *http.Request) { writeOK(w) })
+	mux.HandleFunc(ENGINE_APIS["COMPLIANCE_LOGIN"], func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"Authorization":"masking-token-123"}`))
+	})
+	complianceUsers := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"responseList":[{"userName":"admin","userId":5,"userStatus":"ACTIVE"}]}`))
+			return
+		}
+		if opts.complianceUpdateFails { // PUT update
+			_, _ = w.Write([]byte(`{"errorMessage":"compliance update rejected"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"userName":"admin","userStatus":"ACTIVE"}`)) // PUT update
+	}
+	mux.HandleFunc(ENGINE_APIS["COMPLIANCE_USER"], complianceUsers)
+	mux.HandleFunc(ENGINE_APIS["COMPLIANCE_USER"]+"/", complianceUsers)
+
+	// Optional service configuration tasks.
+	mux.HandleFunc(ENGINE_APIS["SMTP_CONFIG"], func(w http.ResponseWriter, r *http.Request) { writeOK(w) })
+	mux.HandleFunc(ENGINE_APIS["PHONE_HOME_CONFIG"], func(w http.ResponseWriter, r *http.Request) { writeOK(w) })
+	mux.HandleFunc(ENGINE_APIS["USER_ANALYTICS_CONFIG"], func(w http.ResponseWriter, r *http.Request) { writeOK(w) })
+	mux.HandleFunc(ENGINE_APIS["WEB_PROXY_CONFIG"], func(w http.ResponseWriter, r *http.Request) { writeOK(w) })
+	mux.HandleFunc(ENGINE_APIS["DNS_CONFIG"], func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"status":"OK","result":{"type":"DNSConfig","servers":[],"domain":[]}}`))
+			return
+		}
+		writeOK(w)
+	})
+	mux.HandleFunc(ENGINE_APIS["NTP_CONFIG"], func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"status":"OK","result":{"type":"TimeConfig","systemTimeZone":"UTC","ntpConfig":{"type":"NTPConfig","servers":[]}}}`))
+			return
+		}
+		writeOK(w)
+	})
+
+	// Storage / initialization.
+	mux.HandleFunc(ENGINE_APIS["STORAGE_DEVICE"], func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"OK","result":[{"type":"StorageDevice","reference":"STORAGE_DEVICE-1","configured":false,"size":1000}]}`))
+	})
+	mux.HandleFunc(ENGINE_APIS["OBJECT_STORE_TEST_CONNECTION"], func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"OK","result":{"type":"ObjectStoreTestResult","result":true}}`))
+	})
+	mux.HandleFunc(ENGINE_APIS["SYSTEM_INITIALIZATION"], func(w http.ResponseWriter, r *http.Request) {
+		if opts.initFails {
+			_, _ = w.Write([]byte(`{"type":"ErrorResult","status":"ERROR","error":{"details":"init blew up"}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"type":"OKResult","status":"OK","action":"ACTION-1","job":"","result":""}`))
+	})
+	// Poll: report COMPLETED so pollActionStatus succeeds and the handler
+	// proceeds through the post-init tail (set engine type, SSO, password
+	// updates, read).
+	mux.HandleFunc(ENGINE_APIS["ACTION"], func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"OK","result":{"type":"ActionResult","state":"COMPLETED","reference":"ACTION-1"}}`))
+	})
+
+	// Post-init endpoints.
+	mux.HandleFunc(ENGINE_APIS["SYSTEM_INFO"], func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"type":"OKResult","status":"OK","result":{"configured":true,"hostname":"h"}}`))
+			return
+		}
+		writeOK(w)
+	})
+	mux.HandleFunc(ENGINE_APIS["SSO_CONFIG"], func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			_, _ = w.Write([]byte(`{"status":"OK","result":{"entityId":"entity-1"}}`))
+			return
+		}
+		writeOK(w)
+	})
+	mux.HandleFunc(ENGINE_APIS["USER"], func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/current") {
+			_, _ = w.Write([]byte(`{"status":"OK","result":{"type":"User","reference":"USER-2"}}`))
+			return
+		}
+		writeOK(w)
+	})
+
+	return httptest.NewServer(mux)
+}
+
+// newCreateData builds the ResourceData passed to engineConfigCreate. It uses a
+// fully-populated Continuous Compliance + OBJECT(AWS) config with every
+// optional service-configuration block enabled, so the create handler executes
+// the CC branch and every config task closure.
+func newCreateData(t *testing.T, engineHost, engineType string) *schema.ResourceData {
+	t.Helper()
+	res := resourceEngineConfiguration()
+	raw := map[string]interface{}{
+		"engine_host":            engineHost,
+		"sys_user":               "sysadmin",
+		"sys_password":           "sysadmin",
+		"sys_new_password":       "delphix",
+		"user":                   "admin",
+		"password":               "delphix",
+		"email":                  "test@example.com",
+		"engine_type":            engineType,
+		"device_type":            "OBJECT",
+		"phone_home_enabled":     true,
+		"user_analytics_enabled": true,
+		"ntp_servers":            []interface{}{"pool.ntp.org", "time.nist.gov"},
+		"ntp_timezone":           "UTC",
+		"object_storage_params": []interface{}{
+			map[string]interface{}{
+				"cloud_provider": "AWS",
+				"region":         "us-west-2",
+				"bucket":         "my-bucket",
+				"endpoint":       "s3.us-west-2.amazonaws.com",
+				"size":           "20GB",
+				"auth_type":      "ACCESS_KEY",
+				"access_id":      "AKIA-TEST",
+				"access_key":     "secret-test",
+			},
+		},
+		"smtp_config": []interface{}{
+			map[string]interface{}{
+				"server":             "smtp.example.com",
+				"port":               587,
+				"from_email_address": "noreply@example.com",
+				"tls_authentication": true,
+				"send_timeout":       120,
+				"smtp_authentication": []interface{}{
+					map[string]interface{}{"user": "smtp_user", "password": "smtp_pass"},
+				},
+			},
+		},
+		"dns_config": []interface{}{
+			map[string]interface{}{
+				"servers": []interface{}{"8.8.8.8", "8.8.4.4"},
+				"domains": []interface{}{"example.com"},
+			},
+		},
+		"web_proxy_config": []interface{}{
+			map[string]interface{}{
+				"host":     "proxy.internal.com",
+				"port":     3128,
+				"username": "proxy_admin",
+				"password": "proxy_secret",
+			},
+		},
+		"sso_config": []interface{}{
+			map[string]interface{}{
+				"enabled":       true,
+				"saml_metadata": "<EntityDescriptor/>",
+			},
+		},
+	}
+	if engineType == "CC" {
+		raw["compliance_user"] = "admin"
+		raw["compliance_password"] = "Admin-12"
+		raw["compliance_new_password"] = "Admin@45"
+		raw["compliance_email"] = "compliance@example.com"
+	}
+	return schema.TestResourceDataRaw(t, res.Schema, raw)
+}
+
+// TestEngineConfigCreateFullFlow drives the entire create handler end-to-end
+// for a Continuous Compliance + OBJECT(AWS) engine with every optional service
+// block enabled: CC setup, all configuration tasks, OBJECT storage parameter
+// extraction, system initialization, action polling, engine-type selection,
+// SSO, both password updates, and the final read. The mock engine returns
+// success for every endpoint, so the handler runs to completion.
+//
+// This is the slow test (~80s: the 10s masking sleep, the 10s pre-init sleep,
+// and the 60s post-init sleep all run for real); see the package note above.
+func TestEngineConfigCreateFullFlow(t *testing.T) {
+	t.Parallel()
+	srv := newMockEngine(mockEngineOptions{})
+	defer srv.Close()
+
+	d := newCreateData(t, srv.URL, "CC")
+	diags := engineConfigCreate(context.Background(), d, nil)
+	if diags.HasError() {
+		t.Fatalf("expected engineConfigCreate to succeed, got: %+v", diags)
+	}
+	if d.Id() != srv.URL {
+		t.Errorf("expected resource ID %q, got %q", srv.URL, d.Id())
+	}
+	// engineConfigRead runs at the end of create and populates computed fields.
+	if got := d.Get("hostname").(string); got == "" {
+		t.Error("expected hostname to be populated by the trailing read")
+	}
+}
+
+// TestEngineConfigCreateInitFailureRollback drives the Continuous Compliance
+// rollback path: when system initialization fails, the handler restores the
+// compliance user's password before returning the initialization error.
+func TestEngineConfigCreateInitFailureRollback(t *testing.T) {
+	t.Parallel()
+	srv := newMockEngine(mockEngineOptions{initFails: true})
+	defer srv.Close()
+
+	d := newCreateData(t, srv.URL, "CC")
+	diags := engineConfigCreate(context.Background(), d, nil)
+	if !diags.HasError() {
+		t.Fatal("expected engineConfigCreate to fail when initialization errors")
+	}
+	if !strings.Contains(diags[0].Summary, "Error initializing system") {
+		t.Fatalf("unexpected error: %s", diags[0].Summary)
+	}
+}
+
+// TestEngineConfigCreateComplianceSetup covers the Continuous Compliance branch
+// (start masking, compliance-user login, compliance-user update). The mock
+// rejects the compliance-user update so the handler returns right after the CC
+// setup, before reaching the pre-init sleep. Only the 10s masking-startup sleep
+// is incurred.
+func TestEngineConfigCreateComplianceSetup(t *testing.T) {
+	t.Parallel()
+	srv := newMockEngine(mockEngineOptions{complianceUpdateFails: true})
+	defer srv.Close()
+
+	d := newCreateData(t, srv.URL, "CC")
+	diags := engineConfigCreate(context.Background(), d, nil)
+	if !diags.HasError() {
+		t.Fatal("expected engineConfigCreate to fail at the compliance-user update step")
+	}
+	if !strings.Contains(diags[0].Summary, "Error in updating compliance user details") {
+		t.Fatalf("unexpected error: %s", diags[0].Summary)
+	}
+}
+
+// TestEngineConfigCreateSessionFailure covers the earliest error path: a failed
+// session start returns immediately, before any sleeps.
+func TestEngineConfigCreateSessionFailure(t *testing.T) {
+	t.Parallel()
+	d := newCreateData(t, "http://127.0.0.1:1", "CD") // nothing listening
+	diags := engineConfigCreate(context.Background(), d, nil)
+	if !diags.HasError() {
+		t.Fatal("expected engineConfigCreate to fail when the session cannot start")
+	}
+	if !strings.Contains(diags[0].Summary, "Error starting session") {
+		t.Fatalf("unexpected error: %s", diags[0].Summary)
+	}
 }
