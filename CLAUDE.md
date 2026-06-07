@@ -238,3 +238,12 @@ configure GitHub.
 | Who can bypass | No one (recommended) |
 
 **The exact status-check string to enter in GitHub's branch protection UI is: `ci / unit-tests`**
+
+### Drift Management
+
+The values in the Workflow Summary table above (threshold, status-check
+string, trigger branches, workflow name, job name) are duplicated from
+`.github/workflows/ci.yml`. Any future PR that changes those values in
+`ci.yml` MUST also update the corresponding rows in this section in the
+same PR. This is a process rule, not a tooling-enforced check — reviewers
+should call out mismatches during PR review.
