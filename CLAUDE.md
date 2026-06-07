@@ -170,3 +170,71 @@ Do **not** manually edit the version in [GNUmakefile](GNUmakefile) or [.goreleas
 - [Delphix Ecosystem Terraform Docs](https://help.delphix.com/eh/current/content/terraform.htm)
 - [DCT SDK Go](https://github.com/delphix/dct-sdk-go)
 - [Terraform Plugin SDK v2 Docs](https://developer.hashicorp.com/terraform/plugin/sdkv2)
+
+---
+
+## CI Contract
+
+The CI workflow is defined in `.github/workflows/ci.yml` and runs automatically on every
+pull request targeting `main` or `develop`, and on every push to `main` or `develop`.
+
+### Workflow Summary
+
+| Item | Value |
+|---|---|
+| Workflow file | `.github/workflows/ci.yml` |
+| Workflow name | `ci` |
+| Job name | `unit-tests` |
+| Status-check string | `ci / unit-tests` |
+| Trigger | `pull_request` to `main` or `develop`; `push` to `main` or `develop` |
+| Runner | `ubuntu-latest` |
+| Go version | Auto-detected from `go.mod` via `actions/setup-go@v5` |
+| Test command | `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s` |
+| Coverage artifact | `coverage-report` (7-day retention) |
+| Coverage threshold | `COVERAGE_THRESHOLD` in `ci.yml` env block (current: `2%`) |
+| Baseline at threshold set | `2.3%` (measured 2026-06-06; unit tests only, no `TF_ACC`) |
+
+Acceptance tests (`TF_ACC=1`) are **not run in CI** — they require live DCT infrastructure
+and are excluded automatically because the workflow does not export `TF_ACC`.
+
+### Running the Equivalent Check Locally
+
+```bash
+go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s
+go tool cover -func=coverage.out | tail -1
+```
+
+To see a per-function breakdown:
+```bash
+go tool cover -func=coverage.out | sort -t$'\t' -k3 -n
+```
+
+To see an HTML report in your browser:
+```bash
+go tool cover -html=coverage.out
+```
+
+### Updating the Coverage Threshold
+
+1. Measure current coverage locally using the commands above.
+2. Edit `COVERAGE_THRESHOLD` in `.github/workflows/ci.yml`.
+3. Document the old value, new value, and reason in the PR description.
+4. The change takes effect on the next CI run.
+
+Do not lower the threshold without team agreement.
+
+### Branch Protection
+
+The following settings must be applied to the `main` branch in
+**GitHub Settings → Branches → Branch protection rules** by a repo maintainer.
+This document describes the required contract; it does not programmatically
+configure GitHub.
+
+| Setting | Required Value |
+|---|---|
+| Require status checks to pass before merging | Enabled |
+| Status check to require | `ci / unit-tests` |
+| Require branches to be up to date before merging | Enabled |
+| Who can bypass | No one (recommended) |
+
+**The exact status-check string to enter in GitHub's branch protection UI is: `ci / unit-tests`**
