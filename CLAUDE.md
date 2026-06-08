@@ -239,6 +239,26 @@ configure GitHub.
 
 **The exact status-check string to enter in GitHub's branch protection UI is: `ci / unit-tests`**
 
+### CI Gates
+
+Three rules enforced on every PR targeting `main` or `develop`:
+
+1. **Unit-test workflow runs on every PR** — CI executes
+   `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s`
+   (the local equivalent is `make test`, though CI uses 300 s vs. `make test`'s
+   30 s timeout). The workflow must pass before a PR can be merged.
+
+2. **Coverage gate** — if total unit-test coverage drops below **2%**
+   (the `COVERAGE_THRESHOLD` in `ci.yml`), the `ci / unit-tests` check fails.
+   Adding or modifying a feature without a corresponding unit test will lower
+   coverage and block the PR. Raise the threshold — never lower it — when
+   adding new coverage.
+
+3. **Acceptance tests are NOT enforced in CI** — `TestAcc*` tests require a
+   live DCT instance and are excluded automatically because CI does not set
+   `TF_ACC=1`. Run them locally with `TF_ACC=1 make testacc` before marking
+   a feature complete.
+
 ### Drift Management
 
 The values in the Workflow Summary table above (threshold, status-check

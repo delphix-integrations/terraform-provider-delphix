@@ -17,14 +17,34 @@ This project operates under the Delphix Code of Conduct. By participating in thi
 All pull requests to `main` or `develop` must pass the `ci / unit-tests` GitHub Actions check before merging.
 The check runs automatically when you open or update a PR.
 
+### CI Gates
+
+Three rules are enforced on every PR:
+
+1. **Unit-test workflow runs on every PR** — CI runs
+   `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s`
+   against your branch. The workflow must pass before the PR can be merged
+   (the local equivalent is `make test`, though CI uses a 300 s timeout).
+
+2. **Coverage gate** — total unit-test coverage must stay at or above **2%**
+   (the current `COVERAGE_THRESHOLD` in `.github/workflows/ci.yml`). If your
+   change adds or modifies code without a corresponding unit test, coverage may
+   drop and the `ci / unit-tests` check will fail. Every feature or bugfix
+   should include at least one unit test.
+
+3. **Acceptance tests are NOT enforced in CI** — tests whose names start with
+   `TestAcc` require a live DCT instance and are excluded automatically because
+   CI does not set `TF_ACC=1`. Run them locally before marking your work done:
+   `TF_ACC=1 make testacc`.
+
 ### What the CI Check Does
 
 1. Checks out your branch at the PR commit SHA.
 2. Installs Go (version auto-detected from `go.mod`).
 3. Runs `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s`.
 4. Uploads `coverage.out` as a downloadable artifact (7-day retention).
-5. Fails if total coverage falls below the configured threshold
-   (see `COVERAGE_THRESHOLD` in `.github/workflows/ci.yml`).
+5. Fails if total coverage falls below **2%**
+   (`COVERAGE_THRESHOLD` in `.github/workflows/ci.yml`).
 
 ### Verifying Locally Before Pushing
 
