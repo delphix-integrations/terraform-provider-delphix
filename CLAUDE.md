@@ -4,7 +4,7 @@
 
 This is a HashiCorp Terraform provider for [Delphix Control Tower (DCT)](https://help.delphix.com/eh/current/content/terraform.htm). It enables Infrastructure-as-Code management of Delphix Continuous Data & Continuous Compliance resources — virtual databases (VDBs), dSources, environments, engine registration, and engine configuration — by wrapping the DCT REST API via the `dct-sdk-go` SDK.
 
-**Current version:** 4.3.0 — added GCP Object Storage support for `delphix_engine_configuration` (DLPXECO-13662)  
+**Current version:** 4.3.1  
 **Required Go version:** 1.25+  
 **DCT requirement:** v2025.2.0+  
 **Delphix Engine requirement:** v29.0.0.0+
@@ -18,7 +18,7 @@ terraform-provider-delphix/
 ├── main.go                    # Provider entry point; sets version, enables debug mode
 ├── go.mod / go.sum            # Module definition; Go 1.25
 ├── GNUmakefile                # Build, install, test targets
-├── .goreleaser.yml            # Multi-platform release config (version 4.3.0)
+├── .goreleaser.yml            # Multi-platform release config (version 4.3.1)
 ├── internal/provider/         # All provider logic lives here (single package)
 │   ├── provider.go            # Schema, resource/datasource registration
 │   ├── resource_vdb.go        # delphix_vdb resource
