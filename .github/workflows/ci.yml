@@ -1,0 +1,85 @@
+# .github/workflows/ci.yml
+#
+# Copyright (c) 2023, 2024 by Delphix. All rights reserved.
+#
+# CI workflow: runs unit tests and enforces coverage threshold on every PR to main or develop.
+#
+# COVERAGE_THRESHOLD: minimum acceptable total coverage percentage (integer).
+# Measured baseline at time of initial commit: 4.1%
+# Initial threshold: 4 (floor(4.1%) — no extra buffer, as agreed with team).
+# To raise the threshold: edit env.COVERAGE_THRESHOLD below, document reason in the PR description.
+#
+# Local equivalent:
+#   go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s
+#   go tool cover -func=coverage.out | tail -1
+
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+env:
+  # Minimum acceptable total coverage percentage (integer, e.g. 2 means 2.0%).
+  # Baseline measured 2026-06-06: 2.3% (unit tests only, no TF_ACC — acceptance tests require live DCT
+  # and are auto-skipped in CI because TF_ACC is not exported by this workflow).
+  # Threshold = floor(2.3%) = 2 (no extra buffer — ensures CI passes on first run).
+  # Note: the 4.1% figure in the file header was measured locally with TF_ACC=1 and live DCT credentials;
+  # that higher number is not achievable in CI without credentials.
+  # To update: edit this value, document old value / new value / reason in the PR description.
+  COVERAGE_THRESHOLD: 2
+
+jobs:
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests with coverage
+        run: |
+          go test ./... \
+            -coverprofile=coverage.out \
+            -covermode=atomic \
+            -timeout=300s
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 7
+
+      - name: Enforce coverage threshold
+        run: |
+          if [[ ! -f coverage.out ]] || [[ ! -s coverage.out ]]; then
+            echo "ERROR: coverage.out is missing or empty — test step may have been skipped or compilation failed"
+            exit 1
+          fi
+          TOTAL=$(go tool cover -func=coverage.out | grep "^total:" | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${TOTAL}%"
+          PASS=$(awk -v total="$TOTAL" -v threshold="$COVERAGE_THRESHOLD" \
+            'BEGIN { print (total + 0 >= threshold + 0) ? "1" : "0" }')
+          if [[ "$PASS" != "1" ]]; then
+            echo "FAIL: Coverage ${TOTAL}% is below threshold ${COVERAGE_THRESHOLD}%"
+            exit 1
+          fi
+          echo "PASS: Coverage ${TOTAL}% >= threshold ${COVERAGE_THRESHOLD}%"
