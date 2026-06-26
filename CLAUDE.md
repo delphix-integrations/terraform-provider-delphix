@@ -184,24 +184,49 @@ pull request targeting `main` or `develop`, and on every push to `main` or `deve
 |---|---|
 | Workflow file | `.github/workflows/ci.yml` |
 | Workflow name | `ci` |
-| Job name | `unit-tests` |
-| Status-check string | `ci / unit-tests` |
+| Job names | `unit-tests` |
+| Status-check strings | `ci / unit-tests` |
 | Trigger | `pull_request` to `main` or `develop`; `push` to `main` or `develop` |
 | Runner | `ubuntu-latest` |
 | Go version | Auto-detected from `go.mod` via `actions/setup-go@v5` |
-| Test command | `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s` |
-| Coverage artifact | `coverage-report` (7-day retention) |
-| Coverage threshold | `COVERAGE_THRESHOLD` in `ci.yml` env block (current: `2%`) |
+| Unit test command | `go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s` |
+| Coverage artifact | `coverage-report` (7-day retention; from `unit-tests`) |
+| Overall coverage threshold | `COVERAGE_THRESHOLD` in `ci.yml` env block (current: `2%`; enforced every run by `unit-tests`) |
+| Patch coverage threshold | `PATCH_COVERAGE_THRESHOLD` in `ci.yml` env block (current: `80%`; enforced on `pull_request` events by `unit-tests`) |
+| Patch coverage tools | `gocover-cobertura@v1.5.0` (Go→Cobertura) + `diff-cover==9.7.2` (Python) |
+| Checkout depth | `fetch-depth: 0` (full history required so diff-cover can compare against the base branch) |
 | Baseline at threshold set | `2.3%` (measured 2026-06-06; unit tests only, no `TF_ACC`) |
 
-Acceptance tests (`TF_ACC=1`) are **not run in CI** — they require live DCT infrastructure
-and are excluded automatically because the workflow does not export `TF_ACC`.
+The CI has a single job, `unit-tests` (fast, no credentials), which runs `go test ./...` and
+then enforces two coverage gates:
+
+- **Overall** — total coverage must stay `>= COVERAGE_THRESHOLD` (currently `2%`). Enforced on
+  every run by a self-contained shell step (`go tool cover`), so it works with no network access.
+- **Patch** — on `pull_request` events, the Go lines a PR adds or changes must be
+  `>= PATCH_COVERAGE_THRESHOLD` (currently `80%`). The Go coverage profile is converted to
+  Cobertura XML with `gocover-cobertura`, then `diff-cover` measures only the changed lines
+  relative to the PR's base branch and exits non-zero if coverage is below the threshold —
+  failing the `unit-tests` job (and therefore the PR). New features and bug fixes must ship
+  with tests covering at least 80% of the Go code they touch.
+
+The patch gate runs **only on `pull_request` events** (where there is a clean base branch to
+diff against); pushes to `main`/`develop` enforce only the overall gate. PRs that change no
+coverable Go lines (docs/YAML/examples only) pass the patch gate trivially.
 
 ### Running the Equivalent Check Locally
 
+Overall coverage:
 ```bash
 go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s
 go tool cover -func=coverage.out | tail -1
+```
+
+Patch coverage (mirrors the PR gate — check the Go lines your branch changes vs `main`):
+```bash
+go install github.com/boumenot/gocover-cobertura@v1.5.0
+pip install "diff-cover==9.7.2"
+gocover-cobertura < coverage.out > coverage.xml
+diff-cover coverage.xml --compare-branch=origin/main --fail-under=80
 ```
 
 To see a per-function breakdown:
@@ -214,14 +239,15 @@ To see an HTML report in your browser:
 go tool cover -html=coverage.out
 ```
 
-### Updating the Coverage Threshold
+### Updating the Coverage Thresholds
 
 1. Measure current coverage locally using the commands above.
-2. Edit `COVERAGE_THRESHOLD` in `.github/workflows/ci.yml`.
+2. Edit `COVERAGE_THRESHOLD` (overall) and/or `PATCH_COVERAGE_THRESHOLD` (new code) in
+   `.github/workflows/ci.yml`.
 3. Document the old value, new value, and reason in the PR description.
 4. The change takes effect on the next CI run.
 
-Do not lower the threshold without team agreement.
+Do not lower either threshold without team agreement.
 
 ### Branch Protection
 
@@ -241,8 +267,9 @@ configure GitHub.
 
 ### Drift Management
 
-The values in the Workflow Summary table above (threshold, status-check
-string, trigger branches, workflow name, job name) are duplicated from
+The values in the Workflow Summary table above (overall threshold, patch
+threshold, patch-coverage tool versions, status-check string, trigger
+branches, workflow name, job name) are duplicated from
 `.github/workflows/ci.yml`. Any future PR that changes those values in
 `ci.yml` MUST also update the corresponding rows in this section in the
 same PR. This is a process rule, not a tooling-enforced check — reviewers
