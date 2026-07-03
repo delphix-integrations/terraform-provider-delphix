@@ -1,0 +1,130 @@
+# .github/workflows/ci.yml
+#
+# Copyright (c) 2023, 2024 by Delphix. All rights reserved.
+#
+# CI workflow. Runs on every PR to main or develop, and on every push to those branches:
+#
+#   1. unit-tests — fast, no credentials. Runs `go test ./...`, then enforces two coverage gates:
+#        a. Overall  — total coverage must stay >= COVERAGE_THRESHOLD       (every run).
+#        b. Patch    — changed Go lines in a PR must be >= PATCH_COVERAGE_THRESHOLD
+#                      (pull_request events only; measured by diff-cover vs the base branch).
+#
+# COVERAGE_THRESHOLD:       minimum acceptable total coverage percentage (integer), enforced every run.
+# PATCH_COVERAGE_THRESHOLD: minimum acceptable coverage of newly changed Go lines in a PR (integer).
+# To change either: edit the env block below, document old/new value + reason in the PR description.
+#
+# Local equivalents:
+#   go test ./... -coverprofile=coverage.out -covermode=atomic -timeout=300s          # unit + overall
+#   gocover-cobertura < coverage.out > coverage.xml                                    # convert report
+#   diff-cover coverage.xml --compare-branch=origin/main --fail-under=80               # patch gate
+
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+
+env:
+  # Minimum acceptable total coverage percentage (integer, e.g. 2 means 2.0%).
+  # Baseline measured 2026-06-06: 2.3% (unit tests only, no TF_ACC).
+  # Threshold = floor(2.3%) = 2 (no extra buffer — ensures CI passes on first run).
+  # To update: edit this value, document old value / new value / reason in the PR description.
+  COVERAGE_THRESHOLD: 2
+  # Minimum acceptable coverage of newly changed Go lines in a PR (integer percent).
+  # Enforced by diff-cover on pull_request events only — new features and bug fixes must
+  # cover at least this share of the Go lines they add or modify.
+  PATCH_COVERAGE_THRESHOLD: 80
+
+jobs:
+  unit-tests:
+    name: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so diff-cover can compare the PR against its base branch.
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests with coverage
+        run: |
+          go test ./... \
+            -coverprofile=coverage.out \
+            -covermode=atomic \
+            -timeout=300s
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 7
+
+      - name: Enforce coverage threshold
+        run: |
+          if [[ ! -f coverage.out ]] || [[ ! -s coverage.out ]]; then
+            echo "ERROR: coverage.out is missing or empty — test step may have been skipped or compilation failed"
+            exit 1
+          fi
+          TOTAL=$(go tool cover -func=coverage.out | grep "^total:" | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${TOTAL}%"
+          PASS=$(awk -v total="$TOTAL" -v threshold="$COVERAGE_THRESHOLD" \
+            'BEGIN { print (total + 0 >= threshold + 0) ? "1" : "0" }')
+          if [[ "$PASS" != "1" ]]; then
+            echo "FAIL: Coverage ${TOTAL}% is below threshold ${COVERAGE_THRESHOLD}%"
+            exit 1
+          fi
+          echo "PASS: Coverage ${TOTAL}% >= threshold ${COVERAGE_THRESHOLD}%"
+
+      # ---- Patch coverage gate (pull_request only) ----
+      # New features and bug fixes must cover >= PATCH_COVERAGE_THRESHOLD of the Go lines
+      # they change. We convert the Go coverage profile to Cobertura XML, then let diff-cover
+      # measure only the lines changed relative to the PR's base branch.
+      - name: Set up Python
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install patch-coverage tools
+        if: github.event_name == 'pull_request'
+        run: |
+          go install github.com/boumenot/gocover-cobertura@v1.5.0
+          python -m pip install --upgrade pip
+          pip install "diff-cover==9.7.2"
+
+      - name: Enforce patch coverage threshold
+        if: github.event_name == 'pull_request'
+        run: |
+          if [[ ! -f coverage.out ]] || [[ ! -s coverage.out ]]; then
+            echo "ERROR: coverage.out is missing or empty — cannot measure patch coverage"
+            exit 1
+          fi
+          # Convert the Go coverage profile to Cobertura XML for diff-cover.
+          "$(go env GOPATH)/bin/gocover-cobertura" < coverage.out > coverage.xml
+          # Ensure the PR base branch is present as a remote-tracking ref for the diff.
+          # (checkout fetches full history of the PR branch, but not necessarily origin/<base>.)
+          git fetch --no-tags origin \
+            "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+          BASE="origin/${{ github.base_ref }}"
+          echo "Measuring patch coverage of changed Go lines vs ${BASE} (threshold ${PATCH_COVERAGE_THRESHOLD}%)"
+          diff-cover coverage.xml \
+            --compare-branch="${BASE}" \
+            --fail-under="${PATCH_COVERAGE_THRESHOLD}"

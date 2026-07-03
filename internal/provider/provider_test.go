@@ -32,6 +32,9 @@ func TestProvider_impl(t *testing.T) {
 }
 
 func testAccPreCheck(t *testing.T) {
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("Acceptance tests skipped unless TF_ACC is set")
+	}
 	if err := os.Getenv("DCT_KEY"); err == "" {
 		t.Fatal("DCT_KEY must be set for acceptance tests")
 	}

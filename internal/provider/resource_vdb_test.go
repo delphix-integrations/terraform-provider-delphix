@@ -48,6 +48,15 @@ var bookmark_id string
 var vdb_id string
 
 func TestAccVdb_bookmark_provision(t *testing.T) {
+	// Guard: testAccCheckDctVDBBookmarkConfigBasic makes a live DCT API call at struct
+	// initialization time (before resource.Test can check TF_ACC). Explicit pre-checks
+	// here prevent a "TestStep missing Config" failure when run without credentials.
+	if os.Getenv("TF_ACC") == "" {
+		t.Skip("TF_ACC not set — skipping acceptance test")
+	}
+	if os.Getenv("DATASOURCE_ID") == "" {
+		t.Skip("DATASOURCE_ID must be set for vdb acceptance tests")
+	}
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccVdbPreCheck(t) },
 		Providers:    testAccProviders,
