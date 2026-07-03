@@ -1,0 +1,93 @@
+# PR spec-structure gate.
+#
+# Enforces that every pull request to `main` or `develop` carries a structured,
+# machine-parseable spec: the required sections from pull_request_template.md are
+# filled in (placeholder comments replaced), the Acceptance Criteria are written
+# as verifiable assertions, and the PR checklist is fully ticked.
+#
+# Status-check string: `pr-spec-check / spec-structure`
+# Make it a REQUIRED check in branch protection for `main` and `develop` so it
+# cannot be bypassed. Closes maturity criterion S2-GATE-REQ.
+name: pr-spec-check
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  spec-structure:
+    name: spec-structure
+    runs-on: ubuntu-latest
+    # Draft PRs are work-in-progress; skip until marked ready for review.
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Validate PR body structure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const REQUIRED_SECTIONS = ['Problem', 'Solution', 'Acceptance Criteria', 'Testing'];
+            const raw = context.payload.pull_request.body || '';
+
+            // Strip HTML comments so template guidance/placeholders don't count as content.
+            const clean = raw.replace(/<!--[\s\S]*?-->/g, '');
+
+            const errors = [];
+
+            // --- 1. Required sections present and non-empty ---
+            // Split the cleaned body into (heading -> content) blocks on markdown headings.
+            const lines = clean.split('\n');
+            const sections = {};
+            let current = null;
+            for (const line of lines) {
+              const m = line.match(/^#{1,6}\s+(.*?)\s*:?\s*$/);
+              if (m) {
+                current = m[1].trim().toLowerCase();
+                sections[current] = '';
+              } else if (current) {
+                sections[current] += line + '\n';
+              }
+            }
+
+            for (const name of REQUIRED_SECTIONS) {
+              const key = name.toLowerCase();
+              const content = (sections[key] || '').trim();
+              if (!(key in sections)) {
+                errors.push(`Missing required section heading: "${name}".`);
+              } else if (content.length === 0) {
+                errors.push(`Section "${name}" is empty — replace the placeholder comment with real content.`);
+              }
+            }
+
+            // --- 2. Acceptance Criteria must be assertion-style ---
+            const ac = (sections['acceptance criteria'] || '').trim();
+            if (ac.length > 0) {
+              const hasGWT = /\bgiven\b[\s\S]*\bwhen\b[\s\S]*\bthen\b/i.test(ac);
+              const hasMust = /\b(must|shall|should)\b/i.test(ac);
+              if (!hasGWT && !hasMust) {
+                errors.push(
+                  'Acceptance Criteria must be verifiable assertions: use Given/When/Then ' +
+                  'or "must"/"shall" statements.'
+                );
+              }
+            }
+
+            // --- 3. All checklist boxes ticked ---
+            const unchecked = (clean.match(/^\s*[-*]\s*\[ \]/gm) || []).length;
+            if (unchecked > 0) {
+              errors.push(`PR checklist has ${unchecked} unchecked item(s) — tick every box before merge.`);
+            }
+
+            if (errors.length > 0) {
+              core.setFailed(
+                'PR spec-structure check failed:\n  - ' + errors.join('\n  - ') +
+                '\n\nEdit the PR description to satisfy pull_request_template.md, then re-run.'
+              );
+            } else {
+              core.info('PR spec-structure check passed: all required sections filled, ' +
+                        'acceptance criteria are assertion-style, checklist complete.');
+            }
