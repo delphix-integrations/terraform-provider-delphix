@@ -43,52 +43,12 @@ func resourceEngineConfiguration() *schema.Resource {
 
 					//Cloud Provider specific validations
 					cloud_provider := block["cloud_provider"].(string)
-					if cloud_provider == AWS {
-						if _, ok := block["endpoint"]; !ok {
-							return errors.New("endpoint must be provided in object_storage_params for AWS cloud_provider")
-						}
-
-						if _, ok := block["region"]; !ok {
-							return errors.New("region must be provided in object_storage_params for AWS cloud_provider")
-						}
-
-						if _, ok := block["bucket"]; !ok {
-							return errors.New("bucket must be provided in object_storage_params for AWS cloud_provider")
-						}
-
-						if authType, ok := block["auth_type"]; ok {
-							authTypeStr := authType.(string)
-							if authTypeStr != ROLE && authTypeStr != ACCESS_KEY {
-								return errors.New("auth_type for AWS cloud_provider must be either ROLE or ACCESS_KEY")
-							}
-
-							if authType == ACCESS_KEY && (block["access_id"] == "" || block["access_key"] == "") {
-								return errors.New("access_id and access_key must be provided when auth_type is ACCESS_KEY")
-							}
-						}
-
-					} else if cloud_provider == AZURE {
-						if container, _ := block["azure_container"].(string); container == "" {
-							return errors.New("azure_container must be provided in object_storage_params for AZURE cloud_provider")
-						}
-
-						if account, _ := block["azure_account"].(string); account == "" {
-							return errors.New("azure_account must be provided in object_storage_params for AZURE cloud_provider")
-						}
-
-						if authType, ok := block["auth_type"]; ok {
-							authTypeStr := authType.(string)
-							if authTypeStr != MANAGED_IDENTITIES && authTypeStr != ACCESS_KEY {
-								return errors.New("auth_type for AZURE cloud_provider must be either MANAGED_IDENTITIES or ACCESS_KEY")
-							}
-							if authTypeStr == ACCESS_KEY && block["azure_key"] == "" {
-								return errors.New("azure_key must be provided when auth_type is ACCESS_KEY for AZURE cloud_provider")
-							}
-						}
-					} else if cloud_provider == GCP {
-						if bucket, ok := block["bucket"].(string); !ok || bucket == "" {
-							return errors.New("bucket must be a non-empty string in object_storage_params for GCP cloud_provider")
-						}
+					provider, err := cloudProviderFor(cloud_provider)
+					if err != nil {
+						return err
+					}
+					if err := provider.Validate(block); err != nil {
+						return err
 					}
 				}
 				ntp_servers := rd.Get("ntp_servers").([]interface{})
@@ -610,30 +570,11 @@ func engineConfigCreate(ctx context.Context, d *schema.ResourceData, meta interf
 		params.Size = normalizeStorageSize(object_storage_params[0].(map[string]interface{})["size"].(string))
 		params.AuthType = object_storage_params[0].(map[string]interface{})["auth_type"].(string)
 
-		if params.CloudProvider == AWS {
-			params.Endpoint = object_storage_params[0].(map[string]interface{})["endpoint"].(string)
-			params.Region = object_storage_params[0].(map[string]interface{})["region"].(string)
-			params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
-
-			if params.AuthType == ACCESS_KEY {
-				params.ACCESS_ID = object_storage_params[0].(map[string]interface{})["access_id"].(string)
-				params.ACCESS_KEY = object_storage_params[0].(map[string]interface{})["access_key"].(string)
-			} else {
-				params.S3_INSTANCE_PROFILE = object_storage_params[0].(map[string]interface{})["s3_instance_profile"].(string)
-			}
-		} else if params.CloudProvider == AZURE {
-			params.Container = object_storage_params[0].(map[string]interface{})["azure_container"].(string)
-			params.AZURE_ACCOUNT = object_storage_params[0].(map[string]interface{})["azure_account"].(string)
-
-			if params.AuthType == ACCESS_KEY {
-				params.AZURE_KEY = object_storage_params[0].(map[string]interface{})["azure_key"].(string)
-			} else {
-				params.AzureManagedIdentities = object_storage_params[0].(map[string]interface{})["azure_managed_identities"].(string)
-			}
-		} else if params.CloudProvider == GCP {
-			params.Bucket = object_storage_params[0].(map[string]interface{})["bucket"].(string)
+		provider, err := cloudProviderFor(params.CloudProvider)
+		if err != nil {
+			return diag.FromErr(err)
 		}
-
+		provider.ExtractParams(object_storage_params[0].(map[string]interface{}), &params)
 	}
 
 	configTasks := []ConfigTask{
